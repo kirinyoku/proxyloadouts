@@ -1,0 +1,11 @@
+# Runtime SQLite database
+/data/
+
+# Local secrets
+.env
+
+# Build output
+/bin/
+coverage.out
+coverage.html
+/internal/adapter/http/static/assets/
