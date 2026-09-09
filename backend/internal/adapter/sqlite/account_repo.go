@@ -1,0 +1,145 @@
+package sqlite
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
+)
+
+// SQLiteAccountRepo implements domain.AccountRepository on top of SQLite.
+type SQLiteAccountRepo struct {
+	db *sql.DB
+}
+
+var _ domain.AccountRepository = (*SQLiteAccountRepo)(nil)
+
+// NewAccountRepo creates a new game account repository.
+func NewAccountRepo(db *sql.DB) *SQLiteAccountRepo {
+	return &SQLiteAccountRepo{db: db}
+}
+
+// Create persists a new game account, generating ID and CreatedAt when not set.
+func (r *SQLiteAccountRepo) Create(ctx context.Context, account *domain.GameAccount) error {
+	if account.ID == uuid.Nil {
+		account.ID = uuid.New()
+	}
+	if account.Region == "" {
+		account.Region = domain.DefaultRegion
+	}
+	if account.CreatedAt.IsZero() {
+		account.CreatedAt = time.Now()
+	}
+
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO game_accounts (id, user_id, uid, region, created_at)
+		 VALUES (?, ?, ?, ?, ?);`,
+		account.ID.String(), account.UserID.String(), account.UID, account.Region, formatTime(account.CreatedAt),
+	)
+	if err != nil {
+		if mapped := mapConstraintError(err); mapped != nil {
+			return mapped
+		}
+		return fmt.Errorf("failed to insert game account: %w", err)
+	}
+	return nil
+}
+
+// GetByID returns the game account with the given ID or domain.ErrNotFound.
+func (r *SQLiteAccountRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.GameAccount, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT id, user_id, uid, region, created_at FROM game_accounts WHERE id = ?;`,
+		id.String(),
+	)
+	return scanAccountRow(row)
+}
+
+// GetByUserAndUID returns the account of the user with the given UID or domain.ErrNotFound.
+func (r *SQLiteAccountRepo) GetByUserAndUID(ctx context.Context, userID uuid.UUID, uid string) (*domain.GameAccount, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT id, user_id, uid, region, created_at FROM game_accounts WHERE user_id = ? AND uid = ?;`,
+		userID.String(), uid,
+	)
+	return scanAccountRow(row)
+}
+
+// ListByUser returns all accounts linked to the user, oldest first.
+func (r *SQLiteAccountRepo) ListByUser(ctx context.Context, userID uuid.UUID) ([]*domain.GameAccount, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, user_id, uid, region, created_at FROM game_accounts WHERE user_id = ? ORDER BY created_at, uid;`,
+		userID.String(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list game accounts: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var accounts []*domain.GameAccount
+	for rows.Next() {
+		account, err := scanAccountRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, account)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate game accounts: %w", err)
+	}
+	return accounts, nil
+}
+
+// CountByUser returns the number of game accounts linked to the user.
+func (r *SQLiteAccountRepo) CountByUser(ctx context.Context, userID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM game_accounts WHERE user_id = ?;`, userID.String()).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count game accounts: %w", err)
+	}
+	return count, nil
+}
+
+// Delete removes the game account and cascades to its builds and teams.
+func (r *SQLiteAccountRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM game_accounts WHERE id = ?;`, id.String())
+	if err != nil {
+		return fmt.Errorf("failed to delete game account %s: %w", id, err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("%w: game account %s", domain.ErrNotFound, id)
+	}
+	return nil
+}
+
+func scanAccountRow(row rowScanner) (*domain.GameAccount, error) {
+	var (
+		a         domain.GameAccount
+		id        string
+		userID    string
+		createdAt string
+	)
+	if err := row.Scan(&id, &userID, &a.UID, &a.Region, &createdAt); err != nil {
+		return nil, notFound("game account", err)
+	}
+
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse game account id %q: %w", id, err)
+	}
+	parsedUserID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse user id %q: %w", userID, err)
+	}
+	createdAtParsed, err := parseTime(createdAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse game account created_at: %w", err)
+	}
+
+	a.ID = parsedID
+	a.UserID = parsedUserID
+	a.CreatedAt = createdAtParsed
+	return &a, nil
+}
