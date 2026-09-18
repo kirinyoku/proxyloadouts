@@ -1,0 +1,11 @@
+# ProxyLoadouts — independent fan project, not affiliated with COGNOSPHERE PTE.
+#
+# This file exists because the SPA host rewrites unknown paths to index.html:
+# without it a crawler requesting /robots.txt gets the HTML shell back, fails to
+# parse it, and the Lighthouse `robots-txt` audit reports a wall of syntax
+# errors. The app is client-rendered, so there is little here worth indexing
+# regardless; `/` and `/privacy` are the only genuinely public pages.
+
+User-agent: *
+Allow: /
+Disallow: /api/
