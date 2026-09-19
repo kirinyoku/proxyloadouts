@@ -1,0 +1,98 @@
+version: "2"
+
+run:
+  tests: true
+
+linters:
+  enable:
+    - bodyclose
+    - copyloopvar
+    - durationcheck
+    - errcheck
+    - errorlint
+    - gocritic
+    - gosec
+    - govet
+    - ineffassign
+    - intrange
+    - makezero
+    - mirror
+    - misspell
+    - nakedret
+    - nilerr
+    - nilnesserr
+    - noctx
+    - perfsprint
+    - predeclared
+    - reassign
+    - revive
+    - rowserrcheck
+    - sloglint
+    - sqlclosecheck
+    - staticcheck
+    - tagalign
+    - unconvert
+    - unused
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+  settings:
+    gosec:
+      excludes:
+        - G101
+    revive:
+      rules:
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: useless-break
+        - name: var-declaration
+        - name: var-naming
+    sloglint:
+      no-mixed-args: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gosec
+          - noctx
+        path: _test\.go
+      - linters:
+          - noctx
+        path: internal/adapter/sqlite/db\.go
+      - linters:
+          - gosec
+        text: "G201|G124|G301|G306"
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
