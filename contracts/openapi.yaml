@@ -1,0 +1,1084 @@
+openapi: 3.1.0
+info:
+  title: ProxyLoadouts API Specification
+  description: Contract-First API specification for Zenless Zone Zero loadout presets and real-time equipment conflict detection.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development / embedded server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns service liveness status and current timestamp.
+      operationId: getHealth
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - time
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  time:
+                    type: string
+                    format: date-time
+                    example: "2026-09-06T12:00:00Z"
+
+  /auth/discord/login:
+    get:
+      summary: Initiate Discord OAuth2 login
+      description: Redirects browser to Discord OAuth2 authorization URL with encrypted state cookie.
+      operationId: discordLogin
+      tags:
+        - Auth
+      responses:
+        '302':
+          description: Redirect to Discord OAuth2
+
+  /auth/discord/callback:
+    get:
+      summary: Complete Discord OAuth2 callback
+      description: Exchanges authorization code for user profile, issues encrypted session cookie, and redirects to frontend.
+      operationId: discordCallback
+      tags:
+        - Auth
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to frontend home
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/logout:
+    post:
+      summary: Terminate session
+      description: Clears session cookie and invalidates client session.
+      operationId: logout
+      tags:
+        - Auth
+      responses:
+        '204':
+          description: Logged out successfully
+
+  /auth/me:
+    get:
+      summary: Get current authenticated user profile
+      description: Returns user profile details along with all linked game accounts.
+      operationId: getMe
+      tags:
+        - Auth
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Current user profile and accounts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    delete:
+      summary: Permanently delete user account and all data
+      description: Permanently deletes the authenticated user, cascading to all linked accounts, builds, and teams. Invalidate session cookie.
+      operationId: deleteMe
+      tags:
+        - Auth
+      security:
+        - CookieAuth: []
+      responses:
+        '204':
+          description: Account successfully deleted
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /accounts:
+    get:
+      summary: List linked game accounts
+      description: Returns all game accounts linked to the authenticated user.
+      operationId: listAccounts
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: List of game accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameAccount'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      summary: Link a ZZZ game account
+      description: Links a new ZZZ UID to the authenticated user with automatic server region detection from the UID prefix (maximum 3 accounts per user).
+      operationId: createAccount
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Account linked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameAccount'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /accounts/{accountID}:
+    delete:
+      summary: Unlink a game account
+      description: Removes linked game account; cascades to associated builds and teams.
+      operationId: deleteAccount
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: accountID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Account unlinked successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /showcase/{uid}:
+    get:
+      summary: Scan player showcase by UID
+      description: Public endpoint retrieving character showcase from Enka Network via Fairy SDK. Coalesced with singleflight and cached in-memory.
+      operationId: scanShowcase
+      tags:
+        - Showcase
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{9,10}$'
+            example: "1500000000"
+        - name: lang
+          in: query
+          required: false
+          description: Preferred localization language for agent equipment and metadata (e.g. 'ru', 'en')
+          schema:
+            type: string
+            default: "ru"
+            example: "ru"
+      responses:
+        '200':
+          description: Showcase data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '502':
+          $ref: '#/components/responses/BadGatewayError'
+
+  /builds:
+    get:
+      summary: List saved builds for an account
+      description: Returns saved agent presets belonging to the specified game account.
+      operationId: listBuilds
+      tags:
+        - Builds
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: game_account_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: lang
+          in: query
+          required: false
+          description: Target language for dynamic localization (e.g. ru, en)
+          schema:
+            type: string
+            example: ru
+      responses:
+        '200':
+          description: List of agent builds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Build'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+    post:
+      summary: Save a build preset
+      description: Snapshots an agent's current showcase equipment into a saved preset.
+      operationId: createBuild
+      tags:
+        - Builds
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBuildRequest'
+      responses:
+        '201':
+          description: Build saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Build'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /builds/{buildID}:
+    get:
+      summary: Get detailed build
+      description: Retrieves one owned build preset with full equipment payload.
+      operationId: getBuild
+      tags:
+        - Builds
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: buildID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: lang
+          in: query
+          required: false
+          description: Target language for dynamic localization (e.g. ru, en)
+          schema:
+            type: string
+            example: ru
+      responses:
+        '200':
+          description: Agent build details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Build'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      summary: Rename build or update notes
+      description: Updates the preset name or optional description. Equipment remains immutable.
+      operationId: updateBuildDetails
+      tags:
+        - Builds
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: buildID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchBuildRequest'
+      responses:
+        '204':
+          description: Build updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      summary: Delete build preset
+      description: Removes an owned build preset. Returns 409 Conflict if referenced by an active team.
+      operationId: deleteBuild
+      tags:
+        - Builds
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: buildID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Build deleted successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /teams:
+    get:
+      summary: List teams for an account
+      description: Returns saved teams with member builds and live Conflict Engine validation status.
+      operationId: listTeams
+      tags:
+        - Teams
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: game_account_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: lang
+          in: query
+          required: false
+          description: Target language for dynamic localization (e.g. ru, en)
+          schema:
+            type: string
+            example: ru
+      responses:
+        '200':
+          description: List of team summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamSummary'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+    post:
+      summary: Create team preset
+      description: Atomically creates a 1–3 agent squad after Conflict Engine verification.
+      operationId: createTeam
+      tags:
+        - Teams
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeamRequest'
+      responses:
+        '201':
+          description: Team created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+
+  /teams/validate:
+    get:
+      summary: Validate squad composition
+      description: >
+        Runs the Conflict Engine against candidate build IDs without persisting
+        anything. Declared as GET rather than POST because it is a pure read:
+        a cacheable verb lets the browser and any intermediary reuse the report
+        for a composition that has already been checked, instead of re-running
+        the engine on every visit to the same slot arrangement.
+      operationId: validateTeam
+      tags:
+        - Teams
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: build_ids
+          in: query
+          required: true
+          description: Comma-separated list of 2-3 build IDs forming the candidate squad.
+          schema:
+            type: string
+            example: 6f1c...-...,9a2b...-...,3c4d...-...
+      responses:
+        '200':
+          description: Validation result report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictReport'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /teams/count:
+    get:
+      summary: Count teams of a game account
+      description: >
+        Returns how many teams exist on a game account without serializing the
+        teams themselves. Used to enforce the per-account team limit in the UI:
+        the full list response embeds every member's complete build payload, so
+        fetching it just to read a number is a large avoidable transfer.
+      operationId: countTeams
+      tags:
+        - Teams
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: game_account_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Number of teams on the account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamCountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /teams/{teamID}:
+    get:
+      summary: Get team details
+      description: Retrieves team metadata and full build details for each slot.
+      operationId: getTeam
+      tags:
+        - Teams
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: lang
+          in: query
+          required: false
+          description: Target language for dynamic localization (e.g. ru, en)
+          schema:
+            type: string
+            example: ru
+      responses:
+        '200':
+          description: Team details with member builds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamDetail'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    put:
+      summary: Update team composition
+      description: Atomically updates team name, description, and replaces member slots after Conflict Engine validation.
+      operationId: updateTeam
+      tags:
+        - Teams
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTeamRequest'
+      responses:
+        '200':
+          description: Team updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+    delete:
+      summary: Delete team preset
+      description: Removes an owned team; members cascade deleted.
+      operationId: deleteTeam
+      tags:
+        - Teams
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Team deleted successfully
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: pl_session
+      description: AES-256-GCM encrypted session cookie issued on Discord OAuth2 completion (named __Host-pl_session in production).
+
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - discord_id
+        - username
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        discord_id:
+          type: string
+        username:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    GameAccount:
+      type: object
+      required:
+        - id
+        - uid
+        - region
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        uid:
+          type: string
+          example: "1500000000"
+        region:
+          type: string
+          enum: [Europe, America, Asia, TW/HK/MO]
+          example: "Europe"
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAccountRequest:
+      type: object
+      required:
+        - uid
+      properties:
+        uid:
+          type: string
+          pattern: '^[0-9]{9,10}$'
+        region:
+          type: string
+          description: Server region (optional; automatically determined from 10-digit UID prefix if omitted)
+          enum: [Europe, America, Asia, TW/HK/MO]
+          example: "Europe"
+
+    MeResponse:
+      type: object
+      required:
+        - user
+        - accounts
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameAccount'
+
+    Build:
+      type: object
+      required:
+        - id
+        - game_account_id
+        - agent_id
+        - agent_name
+        - name
+        - disc_uids
+        - build_data
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        game_account_id:
+          type: string
+          format: uuid
+        agent_id:
+          type: integer
+          example: 1511
+        agent_name:
+          type: string
+          example: "Miyabi"
+        name:
+          type: string
+          example: "Anomaly DPS"
+        description:
+          type: string
+          nullable: true
+        weapon_uid:
+          type: string
+          nullable: true
+        weapon_id:
+          type: integer
+          nullable: true
+        disc_uids:
+          type: array
+          items:
+            type: string
+        build_data:
+          type: object
+          description: Full enriched agent payload from Enka / Fairy
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateBuildRequest:
+      type: object
+      required:
+        - game_account_id
+        - raw_agent_payload
+      properties:
+        game_account_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        raw_agent_payload:
+          type: object
+          description: Agent JSON payload from showcase
+        raw_data:
+          type: object
+          description: Optional raw zzz.AvatarData JSON payload (ignored when server scanner is active)
+
+    PatchBuildRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    Team:
+      type: object
+      required:
+        - id
+        - game_account_id
+        - name
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        game_account_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Ice Anomaly Trio"
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TeamMember:
+      type: object
+      required:
+        - slot_number
+        - build
+      properties:
+        slot_number:
+          type: integer
+          minimum: 1
+          maximum: 3
+        build:
+          $ref: '#/components/schemas/Build'
+
+    TeamDetail:
+      type: object
+      required:
+        - team
+        - members
+      properties:
+        team:
+          $ref: '#/components/schemas/Team'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMember'
+
+    TeamSummary:
+      type: object
+      required:
+        - team
+        - report
+        - members
+      properties:
+        team:
+          $ref: '#/components/schemas/Team'
+        report:
+          $ref: '#/components/schemas/ConflictReport'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMember'
+
+    TeamCountResponse:
+      type: object
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          description: Number of teams on the game account
+          example: 3
+
+    CreateTeamRequest:
+      type: object
+      required:
+        - game_account_id
+        - build_ids
+      properties:
+        game_account_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Squad preset name. If omitted or empty, auto-generated from member agent names (e.g. "Aria/Nangong Yu/Sanna").
+        description:
+          type: string
+          nullable: true
+        build_ids:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            type: string
+            format: uuid
+
+    UpdateTeamRequest:
+      type: object
+      required:
+        - game_account_id
+        - build_ids
+      properties:
+        game_account_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Squad preset name. If omitted or empty, auto-generated from member agent names (e.g. "Aria/Nangong Yu/Sanna").
+        description:
+          type: string
+          nullable: true
+        build_ids:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            type: string
+            format: uuid
+
+    ConflictCode:
+      type: string
+      enum:
+        - DUPLICATE_AGENT
+        - ITEM_REUSE
+        - WEAPON_REUSE
+        - ACCOUNT_MISMATCH
+
+    ConflictError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          $ref: '#/components/schemas/ConflictCode'
+        message:
+          type: string
+        agent_id:
+          type: integer
+        item_type:
+          type: string
+          enum: [drive_disc, w_engine]
+        item_uid:
+          type: string
+        slot:
+          type: integer
+        conflicting_builds:
+          type: array
+          items:
+            type: string
+
+    ConflictReport:
+      type: object
+      required:
+        - is_valid
+        - errors
+      properties:
+        is_valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConflictError'
+
+    ShowcaseResponse:
+      type: object
+      required:
+        - uid
+        - nickname
+        - region
+        - interknot_level
+        - source
+        - ttl_seconds
+        - fetched_at
+        - agent_count
+        - agents
+      properties:
+        uid:
+          type: string
+        nickname:
+          type: string
+        region:
+          type: string
+        interknot_level:
+          type: integer
+        avatar_url:
+          type: string
+        source:
+          type: string
+          enum: [fresh, cached]
+        ttl_seconds:
+          type: integer
+        fetched_at:
+          type: string
+          format: date-time
+        agent_count:
+          type: integer
+        agents:
+          type: array
+          items:
+            type: object
+
+    ErrorEnvelope:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: "entity not found"
+
+    ValidationErrorEnvelope:
+      type: object
+      required:
+        - error
+        - conflicts
+      properties:
+        error:
+          type: string
+          example: "team has equipment conflicts"
+        conflicts:
+          $ref: '#/components/schemas/ConflictReport'
+
+  responses:
+    BadRequestError:
+      description: Malformed or invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    UnauthorizedError:
+      description: Authentication required or session expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ForbiddenError:
+      description: Attempted access to a resource belonging to another user (anti-IDOR)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFoundError:
+      description: Requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ConflictError:
+      description: Conflict with existing state (e.g. build in active team)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    UnprocessableEntityError:
+      description: Conflict Engine rejected squad composition
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorEnvelope'
+    RateLimitedError:
+      description: Enka Network rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    BadGatewayError:
+      description: Upstream game source (Enka / Fairy) unavailable or maintenance
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    InternalServerError:
+      description: Unexpected internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
