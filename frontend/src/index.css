@@ -1,0 +1,586 @@
+@import "./styles/fonts.css";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: 'Russo One', sans-serif;
+    --font-display: 'Unbounded Variable', sans-serif;
+    --font-sans: 'Inter Variable', sans-serif;
+    --font-mono: 'JetBrains Mono Variable', monospace;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --color-subtle: var(--surface-subtle);
+    --color-elevated: var(--surface-elevated);
+    --color-brand: var(--brand);
+    --color-success: var(--success);
+    --color-warning: var(--warning);
+    --color-info: var(--info);
+    --color-attr-physical: var(--attr-physical);
+    --color-attr-fire: var(--attr-fire);
+    --color-attr-ice: var(--attr-ice);
+    --color-attr-electric: var(--attr-electric);
+    --color-attr-ether: var(--attr-ether);
+    --color-attr-frost: var(--attr-frost);
+    --color-attr-honed-edge: var(--attr-honed-edge);
+    --color-attr-wind: var(--attr-wind);
+    --color-attr-auric-ink: var(--attr-auric-ink);
+    --color-attr-lumiflux: var(--attr-lumiflux);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+    --radius-input: var(--radius-input);
+    --radius-input-sm: var(--radius-input-sm);
+    --radius-input-lg: var(--radius-input-lg);
+}
+
+:root {
+    /* Surfaces — ZZZ dark graphite */
+    --background: #0c0f13;
+    --foreground: #f3f5f8;
+    --card: #141920;
+    --card-foreground: #f3f5f8;
+    --popover: #1a222c;
+    --popover-foreground: #f3f5f8;
+    --surface-subtle: #10151b;
+    --surface-elevated: #1a222c;
+
+    /* Accents */
+    --primary: #c9f24b;
+    --primary-foreground: #111400;
+    --brand: #f5ee38;
+    --secondary: #1a222c;
+    --secondary-foreground: #f3f5f8;
+    --muted: #1b232e;
+    --muted-foreground: #8b98a5;
+    --accent: #212b37;
+    --accent-foreground: #f3f5f8;
+
+    /* Semantics */
+    --destructive: #e02d1b;
+    --success: #00cc0d;
+    --warning: #ffc300;
+    --info: #8fa3b8;
+
+    /* Agent elemental attributes — ZZZ canon */
+    --attr-physical: #f0d12a;
+    --attr-fire: #ff5522;
+    --attr-ice: #98eff0;
+    --attr-electric: #bf6aff;
+    --attr-ether: #fe427e;
+    --attr-frost: #7dd8ff;
+    --attr-honed-edge: #ffb13d;
+    --attr-wind: #34d399;
+    --attr-auric-ink: #818cf8;
+    --attr-lumiflux: #5eead4;
+
+    --border: rgba(255, 255, 255, 0.09);
+    --input: rgba(255, 255, 255, 0.13);
+    --ring: #c9f24b;
+    --chart-1: #c9f24b;
+    --chart-2: #2eb6ff;
+    --chart-3: #bf6aff;
+    --chart-4: #fbbf24;
+    --chart-5: #ff5522;
+    --radius: 0.75rem;
+    --radius-card: 20px 20px 0 20px;
+    --radius-input: 10px 10px 0 10px;
+    --radius-input-sm: 6px 6px 0 6px;
+    --radius-input-lg: 14px 14px 0 14px;
+    --sidebar: #141920;
+    --sidebar-foreground: #f3f5f8;
+    --sidebar-primary: #c9f24b;
+    --sidebar-primary-foreground: #111400;
+    --sidebar-accent: #212b37;
+    --sidebar-accent-foreground: #f3f5f8;
+    --sidebar-border: rgba(255, 255, 255, 0.09);
+    --sidebar-ring: #c9f24b;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(201, 242, 75, 0.05), transparent 70%),
+      radial-gradient(circle at 100% 100%, rgba(46, 182, 255, 0.04), transparent 50%);
+    background-attachment: fixed;
+    }
+  html {
+    @apply font-sans;
+    }
+  ::selection {
+    background-color: color-mix(in oklch, var(--primary) 30%, transparent);
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select {
+    cursor: pointer;
+  }
+}
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background-color: color-mix(in oklch, var(--foreground) 16%, transparent);
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* ============ ZZZ TEXTURES & PATTERNS ============ */
+
+/* Checker pattern for dark buttons/surfaces */
+.checker-light {
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.07) 25%, transparent 0 75%, rgba(255, 255, 255, 0.07) 0),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.07) 25%, transparent 0 75%, rgba(255, 255, 255, 0.07) 0);
+  background-position: 0 0, 3px 3px;
+  background-size: 6px 6px;
+}
+
+/* Checker pattern for light (acid) buttons */
+.checker-dark {
+  background-image:
+    linear-gradient(45deg, rgba(17, 20, 0, 0.1) 25%, transparent 0 75%, rgba(17, 20, 0, 0.1) 0),
+    linear-gradient(45deg, rgba(17, 20, 0, 0.1) 25%, transparent 0 75%, rgba(17, 20, 0, 0.1) 0);
+  background-position: 0 0, 3px 3px;
+  background-size: 6px 6px;
+}
+
+/* Crosshatch pattern — panels and accent bars */
+.crosshatch {
+  background-image:
+    linear-gradient(65deg, rgba(0, 0, 0, 0.22) 12%, transparent 0 88%, rgba(0, 0, 0, 0.22) 0),
+    linear-gradient(65deg, rgba(0, 0, 0, 0.22) 12%, transparent 0 88%, rgba(0, 0, 0, 0.22) 0),
+    linear-gradient(115deg, rgba(0, 0, 0, 0.22) 12%, transparent 0 88%, rgba(0, 0, 0, 0.22) 0),
+    linear-gradient(115deg, rgba(0, 0, 0, 0.22) 12%, transparent 0 88%, rgba(0, 0, 0, 0.22) 0);
+  background-position: 0 0, 4px 7px, 0 0, 4px 7px;
+  background-size: 8px 14px;
+}
+
+/* Diagonal stripes — section dividers */
+.stripes-40 {
+  background-image: repeating-linear-gradient(40deg, transparent 0 5px, rgba(255, 255, 255, 0.08) 5px 10px);
+}
+
+/* Halftone dots — decorative */
+.halftone {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.16) 1.2px, transparent 1.7px);
+  background-size: 9px 9px;
+}
+
+/* Signature comic card: black border, sharp bottom-right corner */
+.card-zzz {
+  border: 2px solid #000;
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+/* Pulsing focus ring — single active element per view */
+@keyframes zzz-focus-pulse {
+  from {
+    box-shadow: inset 0 0 0 3px color-mix(in oklch, var(--primary) 95%, transparent), inset 0 0 0 4px rgba(0, 0, 0, 0.85);
+  }
+  to {
+    box-shadow: inset 0 0 0 3px color-mix(in oklch, var(--primary) 30%, transparent), inset 0 0 0 4px rgba(0, 0, 0, 0.85);
+  }
+}
+
+/* ============ ZZZ TOP RIM ACCENT ============ */
+
+/* Subtle top rim neon accent (clean 2px gradient via-primary/60 without overbloom) */
+.glow-top {
+  position: relative;
+  overflow: hidden;
+}
+
+.glow-top::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, color-mix(in oklch, var(--primary) 60%, transparent) 50%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Delicate top rim for compact/secondary cards */
+.glow-top-subtle {
+  position: relative;
+  overflow: hidden;
+}
+
+.glow-top-subtle::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, color-mix(in oklch, var(--primary) 40%, transparent) 50%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ============ ZZZ STRICT SHARP GEOMETRY MODE ============ */
+
+/* When [data-corners="sharp"] is set on <html>, reset all radius tokens to 0 */
+[data-corners="sharp"] {
+  --radius: 0px !important;
+  --radius-card: 0px !important;
+  --radius-dialog: 0px !important;
+  --radius-popover: 0px !important;
+  --radius-input: 0px !important;
+  --radius-input-sm: 0px !important;
+  --radius-input-lg: 0px !important;
+  --radius-button: 0px !important;
+  --radius-sm: 0px !important;
+  --radius-md: 0px !important;
+  --radius-lg: 0px !important;
+  --radius-xl: 0px !important;
+  --radius-2xl: 0px !important;
+  --radius-3xl: 0px !important;
+  --radius-4xl: 0px !important;
+}
+
+/* Zero out all rectangular containers, inputs, cards, dialogs, badges, and buttons */
+[data-corners="sharp"] [class*="rounded"]:not([class*="rounded-full"]):not([data-keep-rounded="true"]) {
+  border-radius: 0px !important;
+}
+
+/* Explicitly preserve circularity for avatars, disc dials, status pulses, and spinners */
+[data-corners="sharp"] .rounded-full,
+[data-corners="sharp"] [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+
+/* ============ ZZZ HORIZONTAL MARQUEE BACKGROUND ============ */
+
+@keyframes zzz-marquee-left {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes zzz-marquee-right {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.zzz-marquee-track-left {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: zzz-marquee-left linear infinite;
+}
+
+.zzz-marquee-track-right {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: zzz-marquee-right linear infinite;
+}
+
+/* Hollow / Stroked typography style matching ZZZ in-game graphics */
+.text-stroke-zzz {
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.055);
+}
+
+/* When disabled via settings attribute */
+[data-bg-animation="disabled"] .zzz-bg-animated-root,
+[data-bg-animation="disabled"] .zzz-marquee-track-left,
+[data-bg-animation="disabled"] .zzz-marquee-track-right,
+[data-bg-animation="disabled"] .vhs-tracking-line,
+[data-bg-animation="disabled"] .film-playhead {
+  display: none !important;
+  animation: none !important;
+  will-change: auto !important;
+}
+
+/* Avoid continuous GPU/paint work and battery drain on mobile form factors:
+   - Portrait mobile screens (<= 767px)
+   - Mobile landscape devices (height <= 500px in landscape)
+   - Coarse pointer / touch screens up to tablet breakpoint (<= 1024px)
+   - Reduced-motion or data-saver preferences */
+@media (max-width: 767px),
+       ((max-height: 500px) and (orientation: landscape)),
+       ((hover: none) and (pointer: coarse) and (max-width: 1024px)),
+       (prefers-reduced-motion: reduce),
+       (prefers-reduced-data: reduce) {
+  .zzz-bg-animated-root,
+  .zzz-marquee-track-left,
+  .zzz-marquee-track-right,
+  .vhs-tracking-line,
+  .film-playhead {
+    display: none !important;
+    animation: none !important;
+    will-change: auto !important;
+  }
+}
+
+/* ============ FILM STRIP & VHS RETRO TEXTURES ============ */
+
+/* 35mm film perforation sprocket track */
+.film-sprockets-border {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.08) 0px,
+    rgba(255, 255, 255, 0.08) 10px,
+    transparent 10px,
+    transparent 28px
+  );
+  height: 8px;
+}
+
+/* Analog CRT / VHS Scanlines overlay */
+.vhs-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.35) 0px,
+    rgba(0, 0, 0, 0.35) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Phosphor bloom for CRT-style terminal text */
+.phosphor-glow {
+  text-shadow: 0 0 6px color-mix(in oklch, var(--primary) 45%, transparent);
+}
+
+/* Analog film grain / noise pattern */
+.film-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+/* Slow VHS tracking drift bar */
+@keyframes vhs-tracking-drift {
+  0% {
+    transform: translateY(-30vh);
+    opacity: 0;
+  }
+  4% {
+    opacity: 0.16;
+  }
+  14% {
+    transform: translateY(120vh);
+    opacity: 0.10;
+  }
+  18% {
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(120vh);
+    opacity: 0;
+  }
+}
+
+.vhs-tracking-line {
+  position: absolute;
+  inset-inline: 0;
+  height: 12px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 40%,
+    rgba(201, 242, 75, 0.07) 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.04);
+  animation: vhs-tracking-drift 18s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Analog shutter bar sweeping across a horizontal 35mm film strip */
+@keyframes film-playhead-sweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  90% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.film-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--primary) 22%,
+    var(--primary) 78%,
+    transparent 100%
+  );
+  box-shadow: 0 0 14px color-mix(in oklch, var(--primary) 55%, transparent);
+  animation: film-playhead-sweep 11s linear infinite;
+  will-change: transform, opacity;
+}
+
+/* ============ CENTERED ERROR POPUP / MODAL TOASTER ============ */
+
+/* Center container on screen for both desktop and mobile */
+[data-sonner-toaster].toaster-error-center {
+  position: fixed !important;
+  top: 50% !important;
+  bottom: auto !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(calc(100vw - 2rem), 440px) !important;
+  max-width: 440px !important;
+  height: var(--front-toast-height, auto) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  z-index: 999999999 !important;
+  pointer-events: none !important;
+  transition: transform 400ms ease, height 400ms ease !important;
+}
+
+@media (max-width: 600px) {
+  [data-sonner-toaster].toaster-error-center {
+    top: 50% !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: calc(100vw - 2rem) !important;
+    max-width: calc(100vw - 2rem) !important;
+  }
+
+  [data-sonner-toaster].toaster-error-center [data-sonner-toast] {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* Enable pointer events on error toast elements */
+[data-sonner-toaster].toaster-error-center [data-sonner-toast] {
+  pointer-events: auto !important;
+}
+
+/* Comic styled ZZZ Error Modal Toast */
+.cn-error-toast {
+  position: relative !important;
+  border: 2px solid #000 !important;
+  outline: 1px solid rgba(224, 45, 27, 0.5) !important;
+  background-color: #121620 !important;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.85),
+    0 0 36px rgba(224, 45, 27, 0.25) !important;
+  border-radius: var(--radius-card, 20px 20px 0 20px) !important;
+  padding: 1.125rem 1.25rem !important;
+  gap: 0.875rem !important;
+  min-height: 64px !important;
+  align-items: center !important;
+}
+
+/* Top rim neon destructive glow */
+.cn-error-toast::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(224, 45, 27, 0.95) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Custom error toast close button */
+.cn-error-toast [data-close-button] {
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  background: #1a222c !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: var(--muted-foreground) !important;
+  cursor: pointer !important;
+  border-radius: 9999px !important;
+  width: 22px !important;
+  height: 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 150ms ease !important;
+}
+
+.cn-error-toast [data-close-button]:hover {
+  background: rgba(224, 45, 27, 0.25) !important;
+  color: #ffffff !important;
+  border-color: rgba(224, 45, 27, 0.6) !important;
+}
