@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict%206.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Bundler](https://img.shields.io/badge/Bundler-Vite%208-646CFF?logo=vite)](https://vite.dev/)
 [![Styling](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38B2AC?logo=tailwindcss)](https://tailwindcss.com/)
-[![Testing](https://img.shields.io/badge/Unit%20Tests-Vitest%20(225%20passed)-729B1B?logo=vitest)](package.json)
+[![Testing](https://img.shields.io/badge/Unit%20Tests-Vitest%20(226%20passed)-729B1B?logo=vitest)](package.json)
 [![E2E Testing](https://img.shields.io/badge/E2E-Playwright-2EAD33?logo=playwright)](playwright.config.ts)
 [![Linter](https://img.shields.io/badge/Linter-Oxlint%20(0%20warnings)-blue)](.oxlintrc.json)
 
@@ -236,7 +236,7 @@ Unit and component tests execute in a mocked DOM environment via **Vitest**:
 # Run all unit tests
 npm run test
 ```
-*Current test suite status*: **225 tests passing across 42 test suites** in ~1.3 seconds.
+*Current test suite status*: **226 tests passing across 42 test suites** in ~1.3 seconds.
 
 ### 2. Static Code Analysis (Oxlint)
 

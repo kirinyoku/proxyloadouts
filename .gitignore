@@ -1,0 +1,46 @@
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Go build & test artifacts
+backend/bin/
+backend/data/
+backend/internal/adapter/http/static/assets/
+coverage.out
+coverage.html
+*.test
+*.prof
+test-results/
+playwright-report/
+
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.auth/
+
+# Node / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# IDE & editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
