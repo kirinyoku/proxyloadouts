@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kirinyoku/enkanetwork-go v1.1.2
-	github.com/kirinyoku/fairy v1.4.1
+	github.com/kirinyoku/fairy v1.4.2
 	golang.org/x/sync v0.21.0
 	golang.org/x/time v0.16.0
 	modernc.org/sqlite v1.57.0
