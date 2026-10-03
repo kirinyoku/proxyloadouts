@@ -8,7 +8,7 @@ vi.mock('react-i18next', async (importOriginal) => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string, options?: { uid?: string }) => {
+      t: (key: string, options?: { uid?: string; seconds?: number | string }) => {
         const dict: Record<string, string> = {
           'showcase.liveDataTooltip': 'Свежие данные',
           'showcase.cachedDataTooltip': 'Данные из кэша',
@@ -16,6 +16,9 @@ vi.mock('react-i18next', async (importOriginal) => {
           'showcase.cacheReady': 'можно обновить',
           'showcase.refreshNow': 'Обновить сейчас',
           'showcase.refreshAria': 'Обновить данные',
+          'showcase.refreshing': 'Обновление…',
+          'showcase.cooldownTooltip': 'Кулдаун {{seconds}}с',
+          'showcase.readyToRefreshTooltip': 'Обновить витрину',
           'showcase.copyUidTitle': 'Скопировать UID',
           'showcase.copyUidAria': 'Скопировать UID',
           'showcase.searchPlaceholder': 'UID Прокси…',
@@ -25,6 +28,7 @@ vi.mock('react-i18next', async (importOriginal) => {
           'common.clear': 'Очистить',
         }
         if (options?.uid) return `Витрина ${options.uid}`
+        if (options?.seconds !== undefined) return (dict[key] ?? key).replace('{{seconds}}', String(options.seconds))
         return dict[key] ?? key
       },
       i18n: { language: 'ru' },
@@ -88,16 +92,15 @@ describe('ShowcaseProfileHeader', () => {
     expect(html).toContain('45с')
   })
 
-  it('renders LIVE badge when source is fresh', () => {
-    const freshShowcase: ShowcaseResponse = {
+  it('renders ready-to-refresh button when ttl is 0', () => {
+    const readyShowcase: ShowcaseResponse = {
       ...mockShowcase,
-      source: 'fresh',
       ttl_seconds: 0,
     }
 
     const html = renderToString(
       <ShowcaseProfileHeader
-        showcase={freshShowcase}
+        showcase={readyShowcase}
         uidInput=""
         isUidValid={false}
         isRefetching={false}
@@ -107,8 +110,24 @@ describe('ShowcaseProfileHeader', () => {
       />
     )
 
-    expect(html).toContain('LIVE')
+    expect(html).toContain('Обновить сейчас')
     expect(html).not.toContain('45с')
+  })
+
+  it('renders refetching state when isRefetching is true', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={mockShowcase}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={true}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+
+    expect(html).toContain('Обновление…')
   })
 
   it('renders clear button when uidInput is non-empty', () => {

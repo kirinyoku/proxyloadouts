@@ -307,11 +307,15 @@ export function ShowcasePage() {
     setSelectedAgentId(null)
     setUidInput(uid)
     persistLastUid(uid)
-    setSearchParams((previous) => {
-      const next = new URLSearchParams(previous)
-      next.set('uid', uid)
-      return next
-    })
+    if (uid === scannedUid) {
+      void showcaseQuery.refetch()
+    } else {
+      setSearchParams((previous) => {
+        const next = new URLSearchParams(previous)
+        next.set('uid', uid)
+        return next
+      })
+    }
   }
 
   function markSaved(fingerprint: string) {

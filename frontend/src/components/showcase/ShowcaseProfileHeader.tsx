@@ -155,17 +155,7 @@ function UidCopyChip({ uid }: { uid: string }) {
   )
 }
 
-function StatusPulse({ className }: { className: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn('size-1.5 shrink-0 animate-pulse rounded-full shadow-sm', className)}
-    />
-  )
-}
-
 interface CacheStatusPillProps {
-  isFresh: boolean
   ttlSeconds: number
   isRefetching: boolean
   onRefresh: () => void
@@ -173,7 +163,6 @@ interface CacheStatusPillProps {
 }
 
 function CacheStatusPill({
-  isFresh,
   ttlSeconds,
   isRefetching,
   onRefresh,
@@ -183,93 +172,76 @@ function CacheStatusPill({
   const [timeLeft, setTimeLeft] = useState(ttlSeconds)
 
   useEffect(() => {
-    if (timeLeft <= 0) return
+    if (ttlSeconds <= 0) return
 
-    const timer = window.setTimeout(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1))
-    }, 1000)
+    const expiresAt = Date.now() + ttlSeconds * 1000
+    const interval = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000))
+      setTimeLeft(remaining)
+      if (remaining <= 0) {
+        window.clearInterval(interval)
+      }
+    }, 500)
 
-    return () => window.clearTimeout(timer)
-  }, [timeLeft])
+    return () => window.clearInterval(interval)
+  }, [ttlSeconds])
 
-  if (isFresh) {
-    return (
-      <div
-        className={cn(
-          'inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 font-mono text-[11px] font-semibold text-emerald-400 shadow-xs select-none shrink-0',
-          className
-        )}
-        title={t('showcase.liveDataTooltip')}
-      >
-        <StatusPulse className="bg-emerald-400 shadow-emerald-400/60" />
-        <span>LIVE</span>
-      </div>
-    )
-  }
-
-  const isExpired = timeLeft <= 0
+  const isCooldown = timeLeft > 0
+  const isReady = !isRefetching && !isCooldown
   const unit = i18n.language.startsWith('en') ? 's' : 'с'
 
+  const tooltipTitle = isRefetching
+    ? t('showcase.refreshing')
+    : isCooldown
+      ? t('showcase.cooldownTooltip', { seconds: formatNumber(timeLeft) })
+      : t('showcase.readyToRefreshTooltip')
+
   return (
-    <div
+    <button
+      type="button"
+      onClick={isReady ? onRefresh : undefined}
+      disabled={!isReady}
+      title={tooltipTitle}
+      aria-label={t('showcase.refreshAria')}
+      aria-busy={isRefetching}
       className={cn(
-        'inline-flex h-8 items-center rounded-lg border px-1.5 pl-2 font-mono text-[11px] transition-colors select-none shadow-xs shrink-0',
-        isExpired
-          ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
-          : 'border-white/[0.08] bg-white/[0.03] text-muted-foreground',
+        'group inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 font-mono text-[11px] transition-all select-none shadow-xs shrink-0',
+        isRefetching &&
+          'border-white/[0.08] bg-white/[0.03] text-muted-foreground opacity-80 cursor-wait',
+        !isRefetching &&
+          isCooldown &&
+          'border-white/[0.08] bg-white/[0.03] text-muted-foreground opacity-85 cursor-not-allowed',
+        isReady &&
+          'border-primary/40 bg-primary/10 text-primary hover:border-primary/70 hover:bg-primary/20 active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
         className
       )}
-      title={
-        isExpired
-          ? t('showcase.refreshNow')
-          : `${t('showcase.cachedDataTooltip')} (${formatNumber(timeLeft)}${unit})`
-      }
     >
-      <StatusPulse
-        className={cn(
-          'mr-1.5',
-          isExpired
-            ? 'bg-amber-400 shadow-amber-400/60'
-            : 'bg-muted-foreground/60'
-        )}
-      />
-      <span className="font-medium whitespace-nowrap text-[11px]">
-        {isExpired ? (
-          <span className="text-amber-400 font-semibold">{t('showcase.cacheReady')}</span>
-        ) : (
-          <span>
-            {t('showcase.cacheLabel')}{' '}
+      {isRefetching ? (
+        <>
+          <Spinner size="xs" color="primary" className="size-3.5 shrink-0" />
+          <span className="font-medium whitespace-nowrap text-[11px]">
+            {t('showcase.refreshing')}
+          </span>
+        </>
+      ) : isCooldown ? (
+        <>
+          <RefreshCw className="size-3.5 shrink-0 opacity-50" />
+          <span className="font-medium whitespace-nowrap text-[11px]">
+            <span className="text-muted-foreground/80 mr-1">{t('showcase.cacheLabel')}</span>
             <span className="tabular-nums font-semibold text-foreground/80">
-              {formatNumber(timeLeft)}{unit}
+              {`${formatNumber(timeLeft)}${unit}`}
             </span>
           </span>
-        )}
-      </span>
-
-      <span aria-hidden className="mx-1 h-3.5 w-px bg-white/10" />
-
-      <button
-        type="button"
-        onClick={onRefresh}
-        disabled={isRefetching}
-        title={t('showcase.refreshNow')}
-        aria-label={t('showcase.refreshAria')}
-        className={cn(
-          'flex size-5.5 cursor-pointer items-center justify-center rounded transition-all active:scale-90',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
-          isExpired
-            ? 'text-amber-400 hover:bg-amber-400/20 hover:text-amber-300'
-            : 'text-muted-foreground hover:bg-white/10 hover:text-foreground',
-          'disabled:pointer-events-none disabled:opacity-50'
-        )}
-      >
-        {isRefetching ? (
-          <Spinner size="xs" color="primary" />
-        ) : (
-          <RefreshCw className="size-3.5" />
-        )}
-      </button>
-    </div>
+        </>
+      ) : (
+        <>
+          <RefreshCw className="size-3.5 shrink-0 text-primary transition-transform group-hover:rotate-45" />
+          <span className="font-semibold whitespace-nowrap text-[11px] text-primary">
+            {t('showcase.refreshNow')}
+          </span>
+        </>
+      )}
+    </button>
   )
 }
 
@@ -369,7 +341,6 @@ export function ShowcaseProfileHeader({
   onRefresh,
 }: ShowcaseProfileHeaderProps) {
   const { t } = useTranslation()
-  const isFresh = showcase.source === 'fresh'
 
   return (
     <div className="card-zzz relative p-3 sm:px-4 sm:py-2">
@@ -427,8 +398,7 @@ export function ShowcaseProfileHeader({
         {/* Action Row: Cache Status API + Search input sharing the row */}
         <div className="flex items-center gap-2 min-w-0 pt-2 border-t border-white/[0.06] sm:border-t-0 sm:pt-0 sm:ml-auto">
           <CacheStatusPill
-            key={`${showcase.source}-${showcase.ttl_seconds}`}
-            isFresh={isFresh}
+            key={showcase.fetched_at || `${showcase.source}-${showcase.ttl_seconds}`}
             ttlSeconds={showcase.ttl_seconds}
             isRefetching={isRefetching}
             onRefresh={onRefresh}

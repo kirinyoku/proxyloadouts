@@ -17,7 +17,7 @@ import * as api from './client'
 
 const AUTH_STALE_TIME = 60_000
 const COLLECTION_STALE_TIME = 2 * 60_000
-const SHOWCASE_STALE_TIME = 5 * 60_000
+const SHOWCASE_STALE_TIME = 60_000
 const VALIDATION_DEBOUNCE_MS = 300
 
 // Stable empty reference so consumers do not re-render on every render while
