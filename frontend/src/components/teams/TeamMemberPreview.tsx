@@ -37,19 +37,8 @@ export function TeamMemberPreview({
   if (!member) {
     const slotBody = (
       <>
-        {/* Subtle halftone texture */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 size-full select-none"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px)',
-            backgroundSize: '8px 8px',
-          }}
-        />
-
-        <div className="relative z-10 flex items-center gap-3">
-          <span className="flex size-9 sm:size-9.5 items-center justify-center rounded-full border border-dashed border-white/30 bg-white/[0.04] text-base font-light text-muted-foreground transition-all duration-200 group-hover/empty:scale-105 group-hover/empty:border-primary group-hover/empty:bg-primary/15 group-hover/empty:text-primary">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <span className="flex size-10 sm:size-11 items-center justify-center rounded-full border-2 border-dashed border-white/20 bg-black/30 text-base text-muted-foreground transition-colors duration-150 group-hover/empty:border-primary/70 group-hover/empty:text-primary">
             {isUpdating ? (
               <Spinner size="xs" color="primary" />
             ) : (
@@ -57,23 +46,23 @@ export function TeamMemberPreview({
             )}
           </span>
           <div className="flex flex-col text-left">
-            <span className="font-heading text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 group-hover/empty:text-primary transition-colors">
+            <span className="font-heading text-xs uppercase tracking-wider text-foreground/80 transition-colors group-hover/empty:text-primary">
               {isUpdating ? t('teams.slotAdding') : t('teams.slotChooseAgent')}
             </span>
-            <span className="text-[10px] text-muted-foreground/50">{t('teams.slotLabel', { slot: slotNumber })}</span>
+            <span className="text-[11px] text-muted-foreground">{t('teams.slotLabel', { slot: slotNumber })}</span>
           </div>
         </div>
 
-        <span className="relative z-10 rounded border border-white/15 bg-black/60 px-2 py-0.5 font-mono text-[10px] font-bold text-muted-foreground/70 transition-colors group-hover/empty:border-primary/40 group-hover/empty:text-primary">
+        <span className="rounded-[4px_4px_0_4px] border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none text-muted-foreground transition-colors group-hover/empty:text-primary">
           {slotNumber}P
         </span>
       </>
     )
 
     const slotClasses = cn(
-      'group/empty relative flex min-h-[56px] sm:min-h-[64px] h-auto w-full items-center justify-between overflow-hidden rounded-xl border border-dashed px-3 sm:px-4 py-2.5 sm:py-0 text-muted-foreground transition-all duration-200 cursor-pointer',
-      'border-white/15 bg-[#0c1017]/85 hover:border-primary/60 hover:bg-[#111622] hover:text-primary',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.99] sm:active:scale-100',
+      'group/empty relative flex min-h-[60px] sm:min-h-[68px] w-full items-center justify-between rounded-(--radius-input-lg) border-2 border-dashed border-white/15 bg-subtle/60 px-3 sm:px-3.5 py-2 text-muted-foreground transition-colors duration-150 cursor-pointer',
+      'hover:border-primary/60 hover:bg-subtle',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card active:translate-y-px',
       isUpdating && 'pointer-events-none opacity-70',
     )
 
@@ -133,28 +122,23 @@ export function TeamMemberPreview({
 
   const memberContent = (
     <>
-      {/* Background halftone texture */}
-      <div
+      {/* Hover / focus accent strip — echoes the crosshatch acid bar of AppHeader */}
+      <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 size-full select-none"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px)',
-          backgroundSize: '7px 7px',
-        }}
+        className="pointer-events-none absolute inset-y-2 left-0 w-[3px] origin-center scale-y-0 rounded-r-full bg-primary transition-transform duration-150 group-hover/slot:scale-y-100 group-focus-visible/slot:scale-y-100"
       />
 
       {/* Left Part: Avatar + Agent Name & Build Tag */}
-      <div className="relative z-10 flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-        {/* CircleIcon Avatar with Rarity Border */}
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+        {/* CircleIcon Avatar: black ink border + rarity ring (same recipe as the Showcase profile avatar) */}
         <div
           className={cn(
-            'relative size-10 sm:size-11 shrink-0 rounded-full border-2 bg-[#10141b] shadow-md transition-transform duration-200 group-hover/slot:scale-105',
+            'relative size-10 sm:size-11 shrink-0 rounded-full border-2 border-black bg-background ring-2 transition-shadow duration-150 group-hover/slot:ring-primary/80',
             agent.rarity === 'S'
-              ? 'border-amber-400/80 shadow-[0_0_10px_rgba(245,238,56,0.2)] group-hover/slot:border-primary group-hover/slot:shadow-[0_0_14px_rgba(201,242,75,0.4)]'
+              ? 'ring-brand/45'
               : agent.rarity === 'A'
-                ? 'border-purple-400/80 shadow-[0_0_10px_rgba(192,132,252,0.2)] group-hover/slot:border-primary group-hover/slot:shadow-[0_0_14px_rgba(201,242,75,0.4)]'
-                : 'border-white/20 group-hover/slot:border-primary',
+                ? 'ring-attr-electric/45'
+                : 'ring-white/15',
           )}
         >
           <span className="relative block size-full overflow-hidden rounded-full">
@@ -166,10 +150,10 @@ export function TeamMemberPreview({
                 decoding="async"
                 fetchPriority="low"
                 draggable={false}
-                className="crisp-img size-full object-cover select-none pointer-events-none transition-transform duration-200 group-hover/slot:scale-110"
+                className="crisp-img size-full object-cover select-none pointer-events-none"
               />
             ) : (
-              <span className="flex size-full items-center justify-center font-heading text-xs font-bold text-foreground">
+              <span className="flex size-full items-center justify-center font-heading text-xs text-foreground">
                 {agentName.slice(0, 2)}
               </span>
             )}
@@ -182,9 +166,9 @@ export function TeamMemberPreview({
         </div>
 
         {/* Text Details: Name & Attribute on top, Build tag below */}
-        <div className="flex flex-col min-w-0 justify-center">
+        <div className="flex flex-col min-w-0 justify-center gap-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="truncate font-heading text-xs sm:text-sm font-bold tracking-wide text-foreground transition-colors group-hover/slot:text-primary">
+            <span className="truncate font-heading text-xs sm:text-sm leading-tight tracking-wide text-foreground transition-colors group-hover/slot:text-primary">
               {agentName}
             </span>
             <div className="flex items-center gap-1 shrink-0">
@@ -205,22 +189,18 @@ export function TeamMemberPreview({
             </div>
           </div>
 
-          <div className="mt-0.5 flex items-center min-w-0">
-            <div className="inline-flex max-w-full items-center rounded border border-primary/30 bg-primary/10 px-1.5 py-0.2 sm:py-0.5 shadow-xs transition-colors group-hover/slot:border-primary/50 group-hover/slot:bg-primary/15">
-              <span className="truncate font-mono text-[10px] sm:text-[11px] font-semibold text-primary tracking-tight">
-                {build.name}
-              </span>
-            </div>
-          </div>
+          <span className="truncate font-mono text-[10px] sm:text-[11px] font-semibold leading-tight tabular-nums text-muted-foreground transition-colors group-hover/slot:text-foreground">
+            {build.name}
+          </span>
         </div>
       </div>
 
       {/* Right Part: Gear Section (W-Engine + Discs) */}
-      <div className="relative z-10 flex items-center gap-1.5 sm:gap-2 shrink-0 border-l border-white/12 pl-2 sm:pl-3">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 border-l border-dashed border-white/10 pl-2 sm:pl-3">
         {/* W-Engine */}
         {wEngine ? (
           <div
-            className="relative flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center transition-transform duration-200 group-hover/slot:scale-110"
+            className="relative flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center"
             title={`W-Engine: ${wEngineName} (P${wEngine.modification || 1})`}
           >
             {wEngine.icon_url ? (
@@ -231,22 +211,20 @@ export function TeamMemberPreview({
                 decoding="async"
                 fetchPriority="low"
                 draggable={false}
-                className="size-full object-contain select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
+                className="size-full object-contain select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]"
               />
             ) : (
-              <span className="font-heading text-xs font-bold text-primary">
+              <span className="font-heading text-xs text-primary">
                 W
               </span>
             )}
-            {wEngine.modification > 1 && (
-              <span className="absolute -bottom-1 -right-1 rounded bg-black/95 px-1 font-mono text-[8px] font-black text-amber-400 border border-amber-400/40 leading-none shadow-xs">
-                P{wEngine.modification}
-              </span>
-            )}
+            <span className="absolute -bottom-0.5 -right-1 flex h-3.5 items-center rounded-full border border-white/20 bg-black px-1 font-sans text-[8px] font-black leading-none text-white">
+              P{wEngine.modification || 1}
+            </span>
           </div>
         ) : (
           <div
-            className="flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center text-[10px] font-mono text-muted-foreground/30"
+            className="flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center text-[10px] font-mono text-muted-foreground/60"
             title={t('teams.noWEngine')}
           >
             {t('teams.noWEngineShort')}
@@ -258,7 +236,7 @@ export function TeamMemberPreview({
           visualDiscSets.slice(0, 2).map((discSet) => (
             <div
               key={discSet.setId}
-              className="relative flex size-7 sm:size-8 shrink-0 items-center justify-center transition-transform duration-200 group-hover/slot:scale-110"
+              className="relative flex size-7 sm:size-8 shrink-0 items-center justify-center"
               title={`${discSet.name} (${t('gear.pieces', { count: discSet.count })})`}
             >
               {discSet.iconUrl ? (
@@ -269,19 +247,19 @@ export function TeamMemberPreview({
                   decoding="async"
                   fetchPriority="low"
                   draggable={false}
-                  className="size-full object-contain select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
+                  className="size-full object-contain select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]"
                 />
               ) : (
                 <Disc className="size-3.5 sm:size-4 text-muted-foreground/60" />
               )}
-              <span className="absolute -bottom-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-primary font-mono text-[8px] font-black text-black shadow-xs border border-black/80">
+              <span className="absolute -bottom-0.5 -right-1 flex size-3.5 items-center justify-center rounded-full border border-black bg-primary font-mono text-[8px] font-black leading-none text-primary-foreground">
                 {discSet.count}
               </span>
             </div>
           ))
         ) : (
           <div
-            className="flex size-7 sm:size-8 shrink-0 items-center justify-center text-[10px] font-mono text-muted-foreground/30"
+            className="flex size-7 sm:size-8 shrink-0 items-center justify-center text-[10px] font-mono text-muted-foreground/60"
             title={t('teamBuilder.noSets')}
           >
             {t('teams.noDiscsShort')}
@@ -292,10 +270,9 @@ export function TeamMemberPreview({
   )
 
   const slotClasses = cn(
-    'group/slot relative flex items-center justify-between gap-2 sm:gap-3 overflow-hidden rounded-xl border px-2.5 sm:px-3.5 py-2 sm:py-2.5 transition-all duration-200 w-full text-left cursor-pointer',
-    'border-white/[0.14] bg-gradient-to-b from-[#161d28] to-[#121722]',
-    'hover:border-primary/60 hover:from-[#1c2432] hover:to-[#161e2a] shadow-[0_4px_16px_rgba(0,0,0,0.4)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.6),0_0_16px_rgba(201,242,75,0.12)]',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.99] sm:active:scale-100',
+    'group/slot relative flex w-full items-center justify-between gap-2 sm:gap-3 overflow-hidden rounded-(--radius-input-lg) border-2 border-black bg-subtle px-2.5 sm:px-3.5 py-2 sm:py-2.5 text-left cursor-pointer transition-colors duration-150',
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-elevated',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card active:translate-y-px',
   )
 
   if (onInspectClick) {

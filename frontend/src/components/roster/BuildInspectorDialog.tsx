@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, Layers, X } from 'lucide-react'
+import { ExternalLink, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -163,15 +163,14 @@ export function BuildInspectorDialog({
                   </div>
                 </div>
 
-                {/* Line 2: Build Name Tag + Squad Info */}
-                <div className="flex items-center gap-1.5 text-xs min-w-0">
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] sm:text-xs font-bold text-primary shadow-2xs">
-                    <Layers className="size-3" />
-                    <span className="truncate max-w-[85px] min-[400px]:max-w-[120px] sm:max-w-none">{build.name}</span>
+                {/* Line 2: Build Name + Squad Info */}
+                <div className="flex items-center gap-2 text-xs min-w-0">
+                  <span className="truncate font-mono text-[11px] sm:text-xs font-semibold leading-tight tabular-nums text-muted-foreground">
+                    {build.name}
                   </span>
 
                   {teamName && (
-                    <span className="truncate text-muted-foreground/80 font-mono text-[11px] max-w-[110px] min-[400px]:max-w-[160px] sm:max-w-xs">
+                    <span className="truncate text-muted-foreground/80 font-mono text-[11px] max-w-[120px] min-[400px]:max-w-[180px] sm:max-w-xs">
                       {t('roster.inSquad')}<span className="text-neutral-200 font-sans font-semibold">{teamName}</span>
                     </span>
                   )}

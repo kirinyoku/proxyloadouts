@@ -130,25 +130,37 @@ export const TeamCard = memo(function TeamCard({ summary, index }: TeamCardProps
     <article
       aria-label={t('teams.teamAria', { name: team.name })}
       className={cn(
-        'group relative flex flex-col justify-between space-y-3 sm:space-y-3.5 rounded-2xl border p-3.5 sm:p-5 transition-all duration-300 [contain-intrinsic-size:auto_380px] [content-visibility:auto]',
-        'border-border/60 bg-card/80 shadow-[0_16px_40px_rgba(0,0,0,0.65)] hover:border-primary/50 hover:shadow-[0_20px_48px_rgba(0,0,0,0.8),0_0_24px_rgba(201,242,75,0.1)]',
-        hasConflict &&
-          'border-red-500/40 bg-gradient-to-b from-[#241217] to-[#1a0c10] hover:border-red-500/60 hover:shadow-[0_16px_40px_rgba(239,68,68,0.15)]',
+        'relative flex flex-col gap-3 sm:gap-3.5 rounded-(--radius-card) border-2 border-black bg-card p-3.5 sm:p-5 [contain-intrinsic-size:auto_380px] [content-visibility:auto]',
+        'shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_32px_-16px_rgba(0,0,0,0.9)]',
+        hasConflict && 'bg-[color-mix(in_oklch,var(--card),var(--destructive)_7%)]',
       )}
     >
+      {/* Top rim accent sitting on the ink border (same idea as .glow-top, but
+          inset from the rounded corners so the card does not need overflow-hidden) */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-x-8 -top-0.5 h-0.5 bg-linear-to-r from-transparent to-transparent',
+          hasConflict ? 'via-destructive' : 'via-primary/60',
+        )}
+      />
+
       {/* Top Header: Single compact row on all screens */}
       <div className="flex items-center justify-between gap-2 min-w-0">
         {/* Squad Index, Conflict status & Team Title */}
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="flex h-5.5 items-center rounded-md border border-primary/40 bg-primary/15 px-2 font-mono text-xs font-bold text-primary shadow-xs shrink-0">
-            #{squadIndex}
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          {/* Skewed acid tag — mirrors the active nav tab in AppHeader */}
+          <span className="checker-dark inline-flex h-6 shrink-0 -skew-x-12 items-center bg-primary px-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">
+            <span className="skew-x-12 font-heading text-xs leading-none tabular-nums text-primary-foreground">
+              #{squadIndex}
+            </span>
           </span>
 
           {hasConflict && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
-                  className="inline-flex shrink-0 items-center gap-1 rounded border border-destructive/40 bg-destructive/15 px-1.5 py-0.5 text-[10px] font-bold text-destructive cursor-help"
+                  className="inline-flex h-5 shrink-0 cursor-help items-center gap-1 rounded-[4px_4px_0_4px] border border-black bg-destructive px-1.5 font-heading text-[10px] leading-none tracking-wide text-white"
                 >
                   <AlertCircle className="size-3" />
                   <span>{t('teams.conflictBadge')}</span>
@@ -161,7 +173,7 @@ export const TeamCard = memo(function TeamCard({ summary, index }: TeamCardProps
           )}
 
           <h2
-            className="truncate font-heading text-base sm:text-lg font-bold tracking-wide text-foreground"
+            className="truncate font-heading text-base sm:text-lg leading-tight tracking-wide text-foreground"
             title={team.name}
           >
             {team.name}
@@ -169,11 +181,11 @@ export const TeamCard = memo(function TeamCard({ summary, index }: TeamCardProps
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
-            className="group/btn size-7.5 sm:size-auto sm:h-8 sm:px-2.5 p-0 sm:py-0 gap-1.5 rounded-lg border border-white/15 bg-[#161d28] text-xs font-semibold text-foreground shadow-xs hover:border-primary/60 hover:bg-[#1c2432] hover:text-primary hover:shadow-[0_0_12px_rgba(201,242,75,0.15)] focus-visible:ring-1 focus-visible:ring-primary active:scale-[0.98] transition-all"
+            className="size-8 p-0 sm:w-auto sm:px-3 gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated text-xs text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-accent hover:text-primary active:translate-y-px"
             asChild
           >
             <Link
@@ -182,7 +194,7 @@ export const TeamCard = memo(function TeamCard({ summary, index }: TeamCardProps
               aria-label={t('teams.editTeamAria', { name: team.name })}
               title={t('teams.editTeam')}
             >
-              <Pencil className="size-3.5 text-muted-foreground transition-colors group-hover/btn:text-primary" />
+              <Pencil className="size-3.5" />
               <span className="hidden sm:inline">{t('teams.editTeam')}</span>
             </Link>
           </Button>
@@ -190,14 +202,13 @@ export const TeamCard = memo(function TeamCard({ summary, index }: TeamCardProps
           <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
             <AlertDialogTrigger asChild>
               <Button
-                variant="ghost"
+                variant="destructive"
                 size="icon"
-                className="group/del size-7.5 sm:size-8 rounded-lg border border-white/15 bg-[#161d28] text-muted-foreground shadow-xs hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive hover:shadow-[0_0_12px_rgba(239,68,68,0.2)] focus-visible:ring-1 focus-visible:ring-destructive active:scale-[0.98] transition-all"
                 aria-label={t('teams.deleteTeam')}
                 title={t('teams.deleteTeam')}
                 disabled={deleteMutation.isPending}
               >
-                <Trash2 className="size-3.5 transition-colors group-hover/del:text-destructive" />
+                <Trash2 className="size-3.5" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -275,20 +286,20 @@ export const TeamCard = memo(function TeamCard({ summary, index }: TeamCardProps
       )}
 
       {/* Footer: Description & Updated Date */}
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border-t border-white/10 pt-2.5 text-xs text-muted-foreground">
+      <div className="mt-auto flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border-t border-dashed border-white/10 pt-2.5 text-xs text-muted-foreground">
         <div className="min-w-0 flex-1">
           {team.description?.trim() && (
             <p
-              className="text-xs font-medium text-muted-foreground/80 line-clamp-2 sm:truncate transition-colors hover:text-foreground/90"
+              className="text-xs font-medium text-muted-foreground line-clamp-2 sm:truncate"
               title={team.description.trim()}
             >
-              <span className="mr-1.5 select-none font-mono font-bold text-primary/70">//</span>
+              <span className="mr-1.5 select-none font-heading text-primary">//</span>
               {team.description.trim()}
             </p>
           )}
         </div>
 
-        <span className="shrink-0 text-[11px] text-muted-foreground/60 font-mono sm:text-right">
+        <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground sm:text-right">
           {t('teams.updatedAt', { date: formatDateTime(team.updated_at) })}
         </span>
       </div>
