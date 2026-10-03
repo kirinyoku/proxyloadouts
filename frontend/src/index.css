@@ -305,6 +305,12 @@
   border-radius: 9999px !important;
 }
 
+/* Switches and toggles become sharp in sharp mode */
+[data-corners="sharp"] [data-slot="switch"],
+[data-corners="sharp"] [data-slot="switch-thumb"] {
+  border-radius: 0px !important;
+}
+
 /* ============ ZZZ HORIZONTAL MARQUEE BACKGROUND ============ */
 
 @keyframes zzz-marquee-left {

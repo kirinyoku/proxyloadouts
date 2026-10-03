@@ -203,7 +203,7 @@ export function SettingsPage() {
           action={
             <span
               className={cn(
-                'inline-flex h-6 items-center gap-1 rounded-full border px-2.5 font-mono text-[11px] font-medium tabular-nums transition-colors',
+                'inline-flex h-6 items-center gap-1 rounded-4xl border px-2.5 font-mono text-[11px] font-medium tabular-nums transition-colors',
                 isMaxAccounts
                   ? 'border-warning/30 bg-warning/10 text-warning'
                   : 'border-white/10 bg-white/[0.04] text-muted-foreground'
@@ -249,8 +249,9 @@ export function SettingsPage() {
 
       {isAuthed && (
         <section aria-label={t('settings.deleteAccountTitle')}>
-          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3.5 sm:px-5 sm:py-4 transition-colors">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <div className="relative overflow-hidden rounded-2xl border border-destructive/40 bg-card px-4 py-3.5 sm:px-5 sm:py-4 transition-colors">
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-destructive/10" />
+            <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
               <div className="min-w-0 space-y-0.5">
                 <span className="block text-sm font-semibold text-destructive tracking-tight">
                   {t('settings.deleteAccountTitle')}

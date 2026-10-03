@@ -40,8 +40,8 @@ export function SettingsSection({
         className={cn(
           'relative overflow-hidden rounded-2xl border transition-colors shadow-sm',
           isDanger
-            ? 'border-destructive/25 bg-card/40'
-            : 'border-white/[0.08] bg-card/40'
+            ? 'border-destructive/25 bg-card'
+            : 'border-white/[0.08] bg-card'
         )}
       >
         <header className="flex flex-col gap-1.5 border-b border-white/[0.06] px-4 py-3.5 sm:px-5 sm:py-4">
