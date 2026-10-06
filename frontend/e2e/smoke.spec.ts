@@ -15,7 +15,7 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     await page.goto('/')
 
     // 2. Assert: Brand header and essential links are visible
-    const brand = page.getByRole('banner').getByRole('link', { name: /PROXYLOADOUTS/i })
+    const brand = page.getByRole('banner').getByRole('link', { name: /PROXY\s*LOADOUTS/i })
     await expect(brand).toBeVisible()
 
     const showcaseHeading = page.getByRole('heading', { name: /Менеджер сборок агентов/i })

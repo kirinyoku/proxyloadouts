@@ -62,7 +62,12 @@ export function AppHeader() {
       <div aria-hidden className="crosshatch absolute inset-x-0 top-0 h-1 opacity-90" style={{ backgroundColor: 'var(--primary)' }} />
       <div className="mx-auto max-w-6xl px-3 sm:px-4">
         <div className="relative flex h-14 items-center justify-between gap-2 sm:gap-4">
-          <NavLink to="/" end className="group flex shrink-0 items-center select-none py-1">
+          <NavLink
+            to="/"
+            end
+            aria-label="ProxyLoadouts"
+            className="group flex shrink-0 items-center select-none py-1"
+          >
             <PxlLogo size="md" />
           </NavLink>
 

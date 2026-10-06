@@ -26,6 +26,7 @@ export function AppFooter() {
         <div className="grid grid-cols-1 items-center gap-3 min-[350px]:grid-cols-[minmax(0,1fr)_auto] lg:flex lg:flex-wrap lg:gap-x-3">
           <Link
             to="/"
+            aria-label="ProxyLoadouts"
             className="group order-1 inline-flex w-fit items-center rounded-sm outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary/70"
           >
             <PxlLogo size="sm" />
