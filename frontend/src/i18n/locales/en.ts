@@ -232,6 +232,8 @@ const en: TranslationSchema = {
     emptyDesc: 'Scan a showcase via EnkaNetwork — agents and their builds land here.',
     goToShowcase: 'Scan showcase',
     noFilterResults: 'No agents match the current filters.',
+    noSearchResults: 'No agents match your search query.',
+    clearSearchButton: 'Clear search',
     resetFilters: 'Reset filters',
     buildSelectPlaceholder: 'Build',
     renameBuild: 'Rename build',

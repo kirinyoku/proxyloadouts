@@ -14,6 +14,8 @@ vi.mock('react-i18next', async (importOriginal) => {
           'nav.roster': 'РОСТЕР',
           'roster.linkUidTitle': 'Привяжите UID',
           'roster.emptyTitle': 'В ростере пока нет сохраненных сборок',
+          'roster.noSearchResults': 'По поисковому запросу ничего не найдено.',
+          'roster.clearSearchButton': 'Очистить поиск',
           'roster.noFilterResults': 'По выбранным атрибутам и специальностям агентов не найдено.',
           'roster.resetFilters': 'Сбросить фильтры',
           'roster.buildsLimitTitle': `${options?.count ?? 0}/5 сборок`,
@@ -154,7 +156,7 @@ describe('RosterPage', () => {
     expect(html).toContain('В ростере пока нет сохраненных сборок')
   })
 
-  it('hides showcase and displays empty filter message with reset button when no agents match filter', () => {
+  it('hides showcase and displays empty search message with clear button when search matches no agents', () => {
     mockUseActiveAccount.mockReturnValue({
       activeAccount: { id: 1, uid: '1504687050' },
       accounts: [{ id: 1, uid: '1504687050' }],
@@ -167,18 +169,18 @@ describe('RosterPage', () => {
       isSuccess: true,
     })
 
-    // Filter by Ice attribute (which Anby is not)
-    const html = renderToString(<RosterPage initialAttribute="Ice" />)
+    // Search query that matches no agents
+    const html = renderToString(<RosterPage initialSearch="NonExistentAgent" />)
 
-    // Should display empty filter results message
-    expect(html).toContain('По выбранным атрибутам и специальностям агентов не найдено.')
-    // Should display reset filters button
-    expect(html).toContain('Сбросить фильтры')
+    // Should display empty search results message
+    expect(html).toContain('По поисковому запросу ничего не найдено.')
+    // Should display clear search button
+    expect(html).toContain('Очистить поиск')
     // Showcase and agent rail must NOT be rendered when no agents match
     expect(html).not.toContain('Anby Stun Build')
   })
 
-  it('hides showcase when specialty filter matches no agents', () => {
+  it('does not display empty plate when no search is active even if an unmatching filter was preset', () => {
     mockUseActiveAccount.mockReturnValue({
       activeAccount: { id: 1, uid: '1504687050' },
       accounts: [{ id: 1, uid: '1504687050' }],
@@ -191,11 +193,72 @@ describe('RosterPage', () => {
       isSuccess: true,
     })
 
-    // Filter by Support specialty (which Anby is not)
-    const html = renderToString(<RosterPage initialSpecialty="Support" />)
+    // Filter by Ice attribute without search query
+    const html = renderToString(<RosterPage initialAttribute="Ice" />)
 
-    expect(html).toContain('По выбранным атрибутам и специальностям агентов не найдено.')
-    expect(html).toContain('Сбросить фильтры')
+    // Empty plate is reserved only for search, so it must not render
+    expect(html).not.toContain('По поисковому запросу ничего не найдено.')
+    expect(html).not.toContain('Очистить поиск')
+    // Showcase is not rendered because no agent matches Ice
     expect(html).not.toContain('Anby Stun Build')
+  })
+
+  it('disables specialties that do not exist for the selected attribute (e.g. Physical disables Defense)', () => {
+    const mockCorin: Build = {
+      ...mockBuild,
+      id: 'corin-1',
+      agent_id: 1021,
+      agent_name: 'Corin Wickes',
+      name: 'Corin Saw Build',
+      build_data: {
+        ...mockBuild.build_data,
+        id: 1021,
+        name: 'Corin Wickes',
+        attribute: 'Physical',
+        attribute_name: 'Physical',
+        specialty: 'Attack',
+        specialty_name: 'Attack',
+      },
+    }
+
+    const mockBen: Build = {
+      ...mockBuild,
+      id: 'ben-1',
+      agent_id: 1031,
+      agent_name: 'Ben Bigger',
+      name: 'Ben Pillar Build',
+      build_data: {
+        ...mockBuild.build_data,
+        id: 1031,
+        name: 'Ben Bigger',
+        attribute: 'Fire',
+        attribute_name: 'Fire',
+        specialty: 'Defense',
+        specialty_name: 'Defense',
+      },
+    }
+
+    mockUseActiveAccount.mockReturnValue({
+      activeAccount: { id: 1, uid: '1504687050' },
+      accounts: [{ id: 1, uid: '1504687050' }],
+      isPending: false,
+    })
+    mockUseBuilds.mockReturnValue({
+      data: [mockCorin, mockBen], // Corin is Physical Attack, Ben is Fire Defense (NO Physical Defense)
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    })
+
+    // Select Physical attribute: Defense has NO Physical agent, so Defense must be disabled
+    const htmlWithPhysical = renderToString(<RosterPage initialAttribute="Physical" />)
+
+    // Corin build should be rendered
+    expect(htmlWithPhysical).toContain('Corin Wickes')
+
+    // Specialty: Defense is marked as disabled because no Physical Defense agent exists
+    expect(htmlWithPhysical).toContain('aria-disabled="true"')
+    expect(htmlWithPhysical).toContain('disabled=""')
+    expect(htmlWithPhysical).toContain('cursor-not-allowed')
   })
 })

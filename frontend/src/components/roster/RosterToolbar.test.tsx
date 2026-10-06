@@ -59,7 +59,7 @@ describe('RosterToolbar', () => {
     expect(html).toContain('06')
   })
 
-  it('renders updated filter labels "Атрибут" and "Специальность"', () => {
+  it('omits visible text labels "Attribute" and "Specialty" to preserve compact toolbar layout', () => {
     const html = renderToString(
       <RosterToolbar
         search=""
@@ -72,11 +72,14 @@ describe('RosterToolbar', () => {
       />,
     )
 
-    expect(html).toContain('Атрибут')
-    expect(html).toContain('Специальность')
-    // Ensure old labels "Стихия" and "Роль" are not rendered
-    expect(html).not.toContain('Стихия')
-    expect(html).not.toContain('Роль')
+    // No visible label text taking up horizontal space
+    expect(html).not.toContain('Атрибут:')
+    expect(html).not.toContain('Специальность:')
+    expect(html).not.toContain('Attribute:')
+    expect(html).not.toContain('Specialty:')
+    // Accessibility labels on groups remain intact
+    expect(html).toContain('aria-label="Фильтр по атрибуту"')
+    expect(html).toContain('aria-label="Фильтр по специальности"')
   })
 
   it('renders desktop filters before the search input in the desktop section', () => {
@@ -137,5 +140,92 @@ describe('RosterToolbar', () => {
     )
 
     expect(html).toContain('title="Сбросить фильтры"')
+  })
+
+  it('applies calm, neutral and uniform active styling to selected attribute without neon colored glow', () => {
+    const html = renderToString(
+      <RosterToolbar
+        search=""
+        onSearchChange={vi.fn()}
+        selectedAttribute="Ice"
+        onAttributeChange={vi.fn()}
+        selectedSpecialty={null}
+        onSpecialtyChange={vi.fn()}
+        totalAgents={6}
+      />,
+    )
+
+    // Neutral active style present on the active button
+    expect(html).toContain('border-white/40 bg-white/20')
+    // No element-specific colored border or glow
+    expect(html).not.toContain('border-[#98eff0]')
+    expect(html).not.toContain('shadow-[0_0_10px')
+    expect(html).not.toContain('ring-[#98eff0]')
+  })
+
+  it('applies the exact same calm neutral active styling to selected specialty as attribute', () => {
+    const html = renderToString(
+      <RosterToolbar
+        search=""
+        onSearchChange={vi.fn()}
+        selectedAttribute={null}
+        onAttributeChange={vi.fn()}
+        selectedSpecialty="Attack"
+        onSpecialtyChange={vi.fn()}
+        totalAgents={6}
+      />,
+    )
+
+    // Identical neutral styling on active specialty button
+    expect(html).toContain('border-white/40 bg-white/20')
+    // No neon green colored glow on specialty button
+    expect(html).not.toContain('shadow-[0_0_10px_rgba(201,242,75')
+    expect(html).not.toContain('ring-primary/60')
+  })
+
+  it('disables filter buttons and sets cursor-not-allowed for attributes not in the roster', () => {
+    // Only Electric is available in roster
+    const availableAttributes = new Set<any>(['Electric'])
+
+    const html = renderToString(
+      <RosterToolbar
+        search=""
+        onSearchChange={vi.fn()}
+        selectedAttribute={null}
+        onAttributeChange={vi.fn()}
+        selectedSpecialty={null}
+        onSpecialtyChange={vi.fn()}
+        totalAgents={1}
+        availableAttributes={availableAttributes}
+      />,
+    )
+
+    // Unavailable buttons have disabled attribute, aria-disabled and cursor-not-allowed
+    expect(html).toContain('disabled=""')
+    expect(html).toContain('aria-disabled="true"')
+    expect(html).toContain('cursor-not-allowed')
+  })
+
+  it('disables filter buttons for specialties not in the roster', () => {
+    // Only Attack is available in roster
+    const availableSpecialties = new Set<any>(['Attack'])
+
+    const html = renderToString(
+      <RosterToolbar
+        search=""
+        onSearchChange={vi.fn()}
+        selectedAttribute={null}
+        onAttributeChange={vi.fn()}
+        selectedSpecialty={null}
+        onSpecialtyChange={vi.fn()}
+        totalAgents={1}
+        availableSpecialties={availableSpecialties}
+      />,
+    )
+
+    // Unavailable specialty buttons (e.g. Armorer) have disabled and cursor-not-allowed
+    expect(html).toContain('disabled=""')
+    expect(html).toContain('aria-disabled="true"')
+    expect(html).toContain('cursor-not-allowed')
   })
 })

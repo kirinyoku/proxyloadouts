@@ -230,6 +230,8 @@ const ru = {
     emptyDesc: 'Просканируйте витрину через EnkaNetwork — агенты и их сборки появятся здесь.',
     goToShowcase: 'Сканировать витрину',
     noFilterResults: 'Под фильтры не подошёл ни один агент.',
+    noSearchResults: 'По поисковому запросу ничего не найдено.',
+    clearSearchButton: 'Очистить поиск',
     resetFilters: 'Сбросить фильтры',
     buildSelectPlaceholder: 'Сборка',
     renameBuild: 'Переименовать сборку',

@@ -337,7 +337,7 @@ export function BuildPickerDialog({
                         className={cn(
                           'size-8 rounded-lg flex items-center justify-center transition-all cursor-pointer border shrink-0',
                           isSelected
-                            ? 'bg-primary/20 border-primary text-primary shadow-[0_0_10px_rgba(201,242,75,0.3)] scale-105'
+                            ? 'bg-white/20 border-white/40 text-white opacity-100 shadow-xs z-10 hover:bg-white/25 hover:border-white/50'
                             : 'border-white/8 bg-white/[0.03] text-muted-foreground/80 hover:border-white/20 hover:bg-white/[0.08] hover:text-white',
                         )}
                       >
@@ -366,7 +366,7 @@ export function BuildPickerDialog({
                         className={cn(
                           'size-8 rounded-lg flex items-center justify-center transition-all cursor-pointer border shrink-0',
                           isSelected
-                            ? 'bg-primary/20 border-primary text-primary shadow-[0_0_10px_rgba(201,242,75,0.3)] scale-105'
+                            ? 'bg-white/20 border-white/40 text-white opacity-100 shadow-xs z-10 hover:bg-white/25 hover:border-white/50'
                             : 'border-white/8 bg-white/[0.03] text-muted-foreground/80 hover:border-white/20 hover:bg-white/[0.08] hover:text-white',
                         )}
                       >

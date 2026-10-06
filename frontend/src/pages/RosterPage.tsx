@@ -11,7 +11,6 @@ import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { InterknotTerminalError } from '@/components/common/InterknotTerminalError'
 import { RosterPageSkeleton } from '@/components/roster/RosterPageSkeleton'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
@@ -105,8 +104,8 @@ export function RosterPage({
     return groupByAgent(allBuilds)
   }, [allBuilds])
 
-  // Available attributes and specialties for filter highlights
-  const { availableAttributes, availableSpecialties } = useMemo(() => {
+  // 1. All attributes and specialties present in the full roster (for base toolbar buttons)
+  const { rosterAttributes, rosterSpecialties } = useMemo(() => {
     const attrs = new Set<Attribute>()
     const specs = new Set<Specialty>()
     for (const g of allGroups) {
@@ -114,43 +113,67 @@ export function RosterPage({
       if (agent?.attribute) attrs.add(agent.attribute)
       if (agent?.specialty) specs.add(agent.specialty)
     }
-    return { availableAttributes: attrs, availableSpecialties: specs }
+    return { rosterAttributes: attrs, rosterSpecialties: specs }
   }, [allGroups])
 
-  // Filter agent groups by search query, attribute, and specialty
-  const filteredGroups = useMemo(() => {
-    const searchNorm = deferredSearch.trim().toLowerCase()
+  // 2. Groups matching the search query
+  const searchNorm = deferredSearch.trim().toLowerCase()
+  const groupsMatchingSearch = useMemo(() => {
+    if (!searchNorm) return allGroups
 
     return allGroups.filter((group) => {
-      const primaryAgent = group.builds[0]?.build_data
+      const matchAgent = group.agentName.toLowerCase().includes(searchNorm)
+      const matchBuildName = group.builds.some((b) =>
+        b.name.toLowerCase().includes(searchNorm),
+      )
+      const matchWeapon = group.builds.some((b) =>
+        b.build_data.w_engine?.name.toLowerCase().includes(searchNorm),
+      )
+      return matchAgent || matchBuildName || matchWeapon
+    })
+  }, [allGroups, searchNorm])
 
-      // Search filter (agent name, build name, or W-Engine name)
-      if (searchNorm) {
-        const matchAgent = group.agentName.toLowerCase().includes(searchNorm)
-        const matchBuildName = group.builds.some((b) =>
-          b.name.toLowerCase().includes(searchNorm),
-        )
-        const matchWeapon = group.builds.some((b) =>
-          b.build_data.w_engine?.name.toLowerCase().includes(searchNorm),
-        )
-        if (!matchAgent && !matchBuildName && !matchWeapon) {
-          return false
-        }
+  // 3. Faceted available attributes: only attributes of agents that match search AND selectedSpecialty (if selected)
+  const availableAttributes = useMemo(() => {
+    const attrs = new Set<Attribute>()
+    for (const g of groupsMatchingSearch) {
+      const agent = g.builds[0]?.build_data
+      if (!agent?.attribute) continue
+      if (selectedSpecialty && agent.specialty !== selectedSpecialty) {
+        continue
       }
+      attrs.add(agent.attribute)
+    }
+    return attrs
+  }, [groupsMatchingSearch, selectedSpecialty])
 
-      // Attribute filter
+  // 4. Faceted available specialties: only specialties of agents that match search AND selectedAttribute (if selected)
+  const availableSpecialties = useMemo(() => {
+    const specs = new Set<Specialty>()
+    for (const g of groupsMatchingSearch) {
+      const agent = g.builds[0]?.build_data
+      if (!agent?.specialty) continue
+      if (selectedAttribute && agent.attribute !== selectedAttribute) {
+        continue
+      }
+      specs.add(agent.specialty)
+    }
+    return specs
+  }, [groupsMatchingSearch, selectedAttribute])
+
+  // 5. Final filtered agent groups matching search, selectedAttribute, and selectedSpecialty
+  const filteredGroups = useMemo(() => {
+    return groupsMatchingSearch.filter((group) => {
+      const primaryAgent = group.builds[0]?.build_data
       if (selectedAttribute && primaryAgent?.attribute !== selectedAttribute) {
         return false
       }
-
-      // Specialty filter
       if (selectedSpecialty && primaryAgent?.specialty !== selectedSpecialty) {
         return false
       }
-
       return true
     })
-  }, [allGroups, deferredSearch, selectedAttribute, selectedSpecialty])
+  }, [groupsMatchingSearch, selectedAttribute, selectedSpecialty])
 
   const totalAgents = allGroups.length
   const totalBuilds = allBuilds.length
@@ -273,6 +296,8 @@ export function RosterPage({
         totalAgents={totalAgents}
         availableAttributes={availableAttributes}
         availableSpecialties={availableSpecialties}
+        rosterAttributes={rosterAttributes}
+        rosterSpecialties={rosterSpecialties}
         fromTeams={fromTeams}
         onResetFilters={handleResetFilters}
       />
@@ -281,9 +306,9 @@ export function RosterPage({
       {accountsPending ? (
         <RosterPageSkeleton />
       ) : accounts.length === 0 ? (
-        <Card className="border-dashed border-border/80">
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-12 shadow-lg backdrop-blur-xl">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-primary shadow-xs">
               <Plus className="size-6" />
             </div>
             <h3 className="font-heading text-lg font-bold">{t('roster.linkUidTitle')}</h3>
@@ -296,8 +321,8 @@ export function RosterPage({
                 {t('roster.linkUidButton')}
               </Link>
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <>
           {/* Builds loading state */}
@@ -319,10 +344,10 @@ export function RosterPage({
 
           {/* Roster is empty state */}
           {buildsQuery.isSuccess && totalBuilds === 0 && (
-            <Card className="border-dashed border-border/80">
-              <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-                <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <Search className="size-6" />
+            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-12 shadow-lg backdrop-blur-xl">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-muted-foreground shadow-xs">
+                  <Search className="size-6 text-muted-foreground/80" />
                 </div>
                 <h3 className="font-heading text-lg font-bold">{t('roster.emptyTitle')}</h3>
                 <p className="max-w-md text-sm text-muted-foreground">
@@ -334,28 +359,31 @@ export function RosterPage({
                     {t('roster.goToShowcase')}
                   </Link>
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
-          {/* Filter yielded no results state */}
-          {buildsQuery.isSuccess && totalBuilds > 0 && filteredAgents === 0 && (
-            <Card className="border-dashed border-border/80">
-              <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {t('roster.noFilterResults')}
+          {/* Search yielded no results state */}
+          {buildsQuery.isSuccess && totalBuilds > 0 && filteredAgents === 0 && searchNorm !== '' && (
+            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-12 shadow-lg backdrop-blur-xl">
+              <div className="flex flex-col items-center justify-center gap-3 text-center">
+                <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-muted-foreground shadow-xs">
+                  <Search className="size-6 text-muted-foreground/80" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  {t('roster.noSearchResults')}
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleResetFilters}
-                  className="gap-1.5"
+                  onClick={() => setSearch('')}
+                  className="gap-1.5 rounded-xl border border-white/10 bg-black/40 hover:bg-white/[0.08] text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs"
                 >
                   <RotateCcw className="size-3.5" />
-                  {t('roster.resetFilters')}
+                  {t('roster.clearSearchButton')}
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* 3. Master-detail roster layout */}
@@ -366,7 +394,7 @@ export function RosterPage({
                 ref={agentRailRef}
                 role="tablist"
                 aria-label={t('showcase.agentsRailAria')}
-                className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-border/80 bg-gradient-to-b from-card to-background/90 p-2 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:w-auto md:flex-col md:overflow-y-auto md:overflow-x-hidden md:max-h-[calc(100vh-8rem)] md:snap-none"
+                className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2 shadow-xl backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:w-auto md:flex-col md:overflow-y-auto md:overflow-x-hidden md:max-h-[calc(100vh-8rem)] md:snap-none"
               >
                 {filteredGroups.map((group) => (
                   <AgentAvatarTab
@@ -384,7 +412,7 @@ export function RosterPage({
 
               {/* Right column: detailed build inspector */}
               <div className="min-w-0 flex-1 w-full">
-                <div className="relative rounded-3xl border border-white/[0.08] bg-gradient-to-b from-[#121722]/95 via-[#0f141d]/95 to-[#0b0e14]/98 p-2.5 md:py-3 md:px-3.5 shadow-2xl backdrop-blur-xl">
+                <div className="relative rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2.5 md:py-3 md:px-3.5 shadow-2xl backdrop-blur-xl">
                   <div className="space-y-2.5">
                     {/* Build management toolbar */}
                     <RosterBuildToolbar
