@@ -184,4 +184,20 @@ describe('RosterBuildToolbar', () => {
     expect(chipIdx).toBeGreaterThan(-1)
     expect(buildSelectIdx).toBeGreaterThan(chipIdx)
   })
+
+  it('does not render date in mobile build selector to maximize build name width', () => {
+    const html = renderToString(
+      <RosterBuildToolbar
+        agentName="Ария"
+        builds={mockBuilds}
+        selectedBuildId="build-1"
+        onSelectBuildId={vi.fn()}
+      />,
+    )
+
+    const mobileToolbar = html.split('sm:hidden')[1]
+    expect(mobileToolbar).toBeDefined()
+    expect(mobileToolbar).toContain('Основной билд')
+    expect(mobileToolbar).not.toContain('text-[10px] text-muted-foreground/90')
+  })
 })

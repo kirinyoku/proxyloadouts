@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Check, FileText, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   Select,
@@ -135,7 +135,7 @@ export function RosterBuildToolbar({
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
                 placeholder={t('roster.renameInputPlaceholder')}
-                className="h-7.5 min-w-[100px] flex-1 rounded-[10px] border-0 bg-black/60 px-2.5 font-mono text-xs text-foreground outline-none ring-1 ring-primary/60 transition-shadow placeholder:text-muted-foreground/50 focus:ring-2"
+                className="h-7.5 min-w-[100px] flex-1 rounded-[calc(var(--radius-xl)-2px)] border-0 bg-black/60 px-2.5 font-mono text-xs text-foreground outline-none ring-1 ring-primary/60 transition-shadow placeholder:text-muted-foreground/50 focus:ring-2"
                 autoFocus
                 maxLength={60}
                 onKeyDown={(e) => {
@@ -147,7 +147,7 @@ export function RosterBuildToolbar({
                 size="sm"
                 onClick={handleSaveName}
                 disabled={isPending || !nameDraft.trim()}
-                className="h-7.5 w-7.5 shrink-0 rounded-[10px] bg-primary p-0 text-black shadow-sm hover:bg-primary/90 cursor-pointer"
+                className="h-7.5 w-7.5 shrink-0 rounded-[calc(var(--radius-xl)-2px)] bg-primary p-0 text-black shadow-sm hover:bg-primary/90 cursor-pointer"
                 title={t('roster.renameSave')}
               >
                 <Check className="size-3.5 stroke-[2.5]" />
@@ -156,7 +156,7 @@ export function RosterBuildToolbar({
                 size="sm"
                 variant="ghost"
                 onClick={() => setEditingName(false)}
-                className="h-7.5 w-7.5 shrink-0 rounded-[10px] p-0 text-muted-foreground hover:bg-white/10 cursor-pointer"
+                className="h-7.5 w-7.5 shrink-0 rounded-[calc(var(--radius-xl)-2px)] p-0 text-muted-foreground hover:bg-white/10 cursor-pointer"
                 title={t('roster.renameCancel')}
               >
                 <X className="size-3.5" />
@@ -171,10 +171,12 @@ export function RosterBuildToolbar({
               >
                 <SelectTrigger
                   size="sm"
-                  className="h-7.5 w-auto max-w-[180px] shrink justify-start gap-1.5 rounded-[10px] border-0 bg-white/[0.05] text-xs font-mono text-foreground shadow-none hover:border-0 hover:bg-white/[0.1] md:max-w-[240px]"
+                  className="h-7.5 w-auto max-w-[180px] shrink justify-start gap-1.5 rounded-[calc(var(--radius-xl)-2px)] border-0 bg-white/[0.05] text-xs font-mono text-foreground shadow-none hover:border-0 hover:bg-white/[0.1] md:max-w-[240px]"
                   title={`${currentBuild.name} (${formatDateTime(currentBuild.updated_at || currentBuild.created_at)})`}
                 >
-                  <SelectValue placeholder={t('roster.buildSelectPlaceholder')} />
+                  <SelectValue placeholder={t('roster.buildSelectPlaceholder')}>
+                    {currentBuild.name}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent align="start" className="max-w-[90vw] sm:max-w-md">
                   {builds.map((build) => (
@@ -194,7 +196,7 @@ export function RosterBuildToolbar({
                 type="button"
                 onClick={handleStartRename}
                 disabled={isPending}
-                className="flex size-7.5 shrink-0 items-center justify-center rounded-[10px] text-neutral-300 transition-colors hover:bg-white/[0.07] hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
+                className="flex size-7.5 shrink-0 items-center justify-center rounded-[calc(var(--radius-xl)-2px)] text-neutral-300 transition-colors hover:bg-white/[0.07] hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
                 title={t('roster.renameBuild')}
               >
                 <Pencil className="size-3" />
@@ -213,7 +215,7 @@ export function RosterBuildToolbar({
                 value={noteDraft}
                 onChange={(e) => setNoteDraft(e.target.value)}
                 placeholder={t('roster.noteInputPlaceholder')}
-                className="h-7.5 min-w-0 flex-1 rounded-[10px] border-0 bg-black/60 px-2.5 text-xs text-foreground outline-none ring-1 ring-primary/50 transition-shadow placeholder:text-muted-foreground/50 focus:ring-2"
+                className="h-7.5 min-w-0 flex-1 rounded-[calc(var(--radius-xl)-2px)] border-0 bg-black/60 px-2.5 text-xs text-foreground outline-none ring-1 ring-primary/50 transition-shadow placeholder:text-muted-foreground/50 focus:ring-2"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSaveNote()
@@ -225,7 +227,7 @@ export function RosterBuildToolbar({
                 size="sm"
                 onClick={handleSaveNote}
                 disabled={isPending}
-                className="h-7.5 w-7.5 shrink-0 rounded-[10px] bg-primary p-0 text-black hover:bg-primary/90 cursor-pointer"
+                className="h-7.5 w-7.5 shrink-0 rounded-[calc(var(--radius-xl)-2px)] bg-primary p-0 text-black hover:bg-primary/90 cursor-pointer"
                 title={t('roster.renameSave')}
               >
                 <Check className="size-3" />
@@ -234,7 +236,7 @@ export function RosterBuildToolbar({
                 size="sm"
                 variant="ghost"
                 onClick={() => setEditingNote(false)}
-                className="h-7.5 w-7.5 shrink-0 rounded-[10px] p-0 text-muted-foreground hover:bg-white/10 cursor-pointer"
+                className="h-7.5 w-7.5 shrink-0 rounded-[calc(var(--radius-xl)-2px)] p-0 text-muted-foreground hover:bg-white/10 cursor-pointer"
                 title={t('roster.renameCancel')}
               >
                 <X className="size-3" />
@@ -242,19 +244,31 @@ export function RosterBuildToolbar({
             </div>
           ) : hasDescription ? (
             <div
+              role="button"
+              tabIndex={0}
               onClick={handleStartNoteEdit}
-              className="group/note flex h-full min-w-0 w-fit max-w-full shrink cursor-pointer select-none items-center gap-1.5 rounded-[10px] px-2 transition-colors hover:bg-white/[0.07]"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleStartNoteEdit()
+                }
+              }}
+              className="group/note flex h-full min-w-0 w-fit max-w-full shrink cursor-pointer select-none items-center gap-1.5 rounded-[calc(var(--radius-xl)-2px)] pl-2 pr-2.5 text-xs transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
               title={t('roster.noteEditTitle', { desc: currentBuild.description ?? '' })}
             >
-              <FileText className="size-3 shrink-0 text-primary" />
-              <span className="min-w-0 truncate text-xs text-neutral-200">{currentBuild.description}</span>
-              <Pencil className="ml-0.5 size-2.5 shrink-0 text-neutral-400 opacity-60 transition-opacity group-hover/note:opacity-100" />
+              <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
+                {t('roster.addNote')}
+              </span>
+              <span className="min-w-0 truncate text-neutral-200 transition-colors group-hover/note:text-white">
+                {currentBuild.description}
+              </span>
+              <Pencil className="ml-0.5 size-2.5 shrink-0 text-neutral-400 opacity-50 transition-all group-hover/note:opacity-100 group-hover/note:text-primary group-hover/note:scale-110" />
             </div>
           ) : (
             <button
               type="button"
               onClick={handleStartNoteEdit}
-              className="flex h-full min-w-0 w-fit shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-[10px] px-2 text-xs text-neutral-400 transition-colors hover:bg-white/[0.07] hover:text-primary"
+              className="flex h-full min-w-0 w-fit shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-[calc(var(--radius-xl)-2px)] pl-2 pr-2.5 text-xs text-neutral-400 transition-colors hover:bg-white/[0.07] hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
               title={t('roster.addNoteTitle')}
             >
               <Plus className="size-3 shrink-0" />
@@ -356,17 +370,18 @@ export function RosterBuildToolbar({
                   className="h-8 flex-1 min-w-0 text-xs font-mono border-white/15 bg-[#121820] hover:border-white/30 text-foreground"
                   title={`${currentBuild.name} (${formatDateTime(currentBuild.updated_at || currentBuild.created_at)})`}
                 >
-                  <SelectValue placeholder={t('roster.buildSelectPlaceholder')} />
+                  <SelectValue placeholder={t('roster.buildSelectPlaceholder')}>
+                    {currentBuild.name}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent align="start" className="max-w-[90vw]">
                   {builds.map((build) => (
-                    <SelectItem key={build.id} value={build.id} title={build.name}>
-                      <div className="flex w-full items-center justify-between gap-3">
-                        <span className="truncate">{build.name}</span>
-                        <span className="shrink-0 font-mono text-[10px] text-muted-foreground/90">
-                          {formatDateTime(build.updated_at || build.created_at)}
-                        </span>
-                      </div>
+                    <SelectItem
+                      key={build.id}
+                      value={build.id}
+                      title={`${build.name} (${formatDateTime(build.updated_at || build.created_at)})`}
+                    >
+                      <span className="truncate">{build.name}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -459,19 +474,33 @@ export function RosterBuildToolbar({
             </div>
           ) : hasDescription ? (
             <div
+              role="button"
+              tabIndex={0}
               onClick={handleStartNoteEdit}
-              className="group/note flex items-center gap-1.5 rounded-xl border border-white/[0.1] bg-[#121820]/80 px-2.5 h-7.5 hover:bg-[#18202c] hover:border-white/25 transition-all cursor-pointer select-none flex-1 min-w-0 truncate shadow-xs"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleStartNoteEdit()
+                }
+              }}
+              className="group/note flex h-7.5 flex-1 min-w-0 items-center justify-between gap-1.5 rounded-xl border border-white/[0.1] bg-[#121820]/80 px-2.5 text-xs transition-all hover:border-white/25 hover:bg-[#18202c] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none shadow-xs"
               title={t('roster.noteEditTitle', { desc: currentBuild.description ?? '' })}
             >
-              <FileText className="size-3 text-primary shrink-0" />
-              <span className="text-neutral-200 text-xs truncate flex-1">{currentBuild.description}</span>
-              <Pencil className="size-2.5 text-neutral-400 opacity-60 group-hover/note:opacity-100 transition-opacity shrink-0 ml-1" />
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
+                  {t('roster.addNote')}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-neutral-200 transition-colors group-hover/note:text-white">
+                  {currentBuild.description}
+                </span>
+              </div>
+              <Pencil className="ml-1 size-2.5 shrink-0 text-neutral-400 opacity-60 transition-all group-hover/note:opacity-100 group-hover/note:text-primary" />
             </div>
           ) : (
             <button
               type="button"
               onClick={handleStartNoteEdit}
-              className="inline-flex h-7.5 flex-1 items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/[0.2] bg-white/[0.03] hover:bg-white/[0.08] hover:border-primary/50 hover:text-primary px-2.5 text-xs text-neutral-300 transition-all cursor-pointer select-none min-w-0"
+              className="inline-flex h-7.5 flex-1 items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/[0.2] bg-white/[0.03] hover:border-primary/50 hover:bg-white/[0.08] hover:text-primary px-2.5 text-xs text-neutral-300 transition-all active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none min-w-0"
               title={t('roster.addNoteTitle')}
             >
               <Plus className="size-3 shrink-0" />
