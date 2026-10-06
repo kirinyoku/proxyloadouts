@@ -31,11 +31,14 @@ export const MAX_ACTIVE_TOASTS = 4
 // Deduplication window in milliseconds
 export const DEDUP_WINDOW_MS = 1500
 
+export type ToastMessage = Parameters<typeof sonnerToast>[0]
+export type ToastOptions = Parameters<typeof sonnerToast>[1]
+
 interface QueuedToast {
   id: string | number
   type: ToastType
-  message: React.ReactNode
-  options?: Parameters<typeof sonnerToast>[1]
+  message: ToastMessage
+  options?: ToastOptions
   priority: number
   key: string
 }
@@ -68,7 +71,7 @@ function cleanStaleToasts() {
   }
 }
 
-function getToastKey(type: ToastType, message: React.ReactNode): string {
+function getToastKey(type: ToastType, message: ToastMessage): string {
   if (typeof message === 'string' || typeof message === 'number') {
     return `${type}:${message}`
   }
@@ -102,7 +105,7 @@ function enforceMaxActiveLimit() {
   }
 }
 
-function executeSonnerCall(type: ToastType, message: React.ReactNode, options: Parameters<typeof sonnerToast>[1]) {
+function executeSonnerCall(type: ToastType, message: ToastMessage, options: ToastOptions) {
   switch (type) {
     case 'success':
       return rawSuccess(message, options)
@@ -155,8 +158,8 @@ function flushPendingQueue() {
 
 function dispatchSmartToast(
   type: ToastType,
-  message: React.ReactNode,
-  options?: Parameters<typeof sonnerToast>[1]
+  message: ToastMessage,
+  options?: ToastOptions
 ): string | number {
   cleanStaleToasts()
 
@@ -207,15 +210,15 @@ function dispatchSmartToast(
 }
 
 // Smart Toast API facade
-type ToastFn = (message: React.ReactNode, data?: Parameters<typeof sonnerToast>[1]) => string | number
+type ToastFn = (message: ToastMessage, data?: ToastOptions) => string | number
 
 interface SmartToastInterface extends ToastFn {
-  success: (message: React.ReactNode, data?: Parameters<typeof sonnerToast>[1]) => string | number
-  error: (message: React.ReactNode, data?: Parameters<typeof sonnerToast>[1]) => string | number
-  warning: (message: React.ReactNode, data?: Parameters<typeof sonnerToast>[1]) => string | number
-  info: (message: React.ReactNode, data?: Parameters<typeof sonnerToast>[1]) => string | number
-  loading: (message: React.ReactNode, data?: Parameters<typeof sonnerToast>[1]) => string | number
-  message: (message: React.ReactNode, data?: Parameters<typeof sonnerToast>[1]) => string | number
+  success: (message: ToastMessage, data?: ToastOptions) => string | number
+  error: (message: ToastMessage, data?: ToastOptions) => string | number
+  warning: (message: ToastMessage, data?: ToastOptions) => string | number
+  info: (message: ToastMessage, data?: ToastOptions) => string | number
+  loading: (message: ToastMessage, data?: ToastOptions) => string | number
+  message: (message: ToastMessage, data?: ToastOptions) => string | number
   promise: typeof sonnerToast.promise
   custom: typeof sonnerToast.custom
   dismiss: (id?: string | number) => string | number | undefined
@@ -223,7 +226,7 @@ interface SmartToastInterface extends ToastFn {
   getHistory: typeof sonnerToast.getHistory
 }
 
-const smartToast = ((message: React.ReactNode, data?: Parameters<typeof sonnerToast>[1]) => {
+const smartToast = ((message: ToastMessage, data?: ToastOptions) => {
   return dispatchSmartToast('default', message, data)
 }) as SmartToastInterface
 
