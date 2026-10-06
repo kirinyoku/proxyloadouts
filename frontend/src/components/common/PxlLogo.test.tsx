@@ -7,7 +7,7 @@ describe('PxlLogo', () => {
     const html = renderToString(<PxlLogo />)
 
     expect(html).not.toContain('<svg')
-    expect(html).toContain('PXL')
+    expect(html).toContain('aria-label="PXL"')
     expect(html).toContain('text-primary')
   })
 
@@ -21,7 +21,7 @@ describe('PxlLogo', () => {
   it('can hide subtitle when showSubtitle is false', () => {
     const html = renderToString(<PxlLogo showSubtitle={false} />)
 
-    expect(html).toContain('PXL')
+    expect(html).toContain('aria-label="PXL"')
     expect(html).not.toContain('PROXY')
   })
 

@@ -7,6 +7,11 @@ interface PxlLogoProps {
   subtitleText?: string
 }
 
+/**
+ * Text-only wordmark lockup. Title tracking and subtitle tracking are tuned
+ * per size so that PROXYLOADOUTS spans the same width as PXL. — keep in sync.
+ * Hover/focus is driven by an ancestor `.group` (e.g. the wrapping link).
+ */
 export function PxlLogo({
   className,
   size = 'md',
@@ -14,44 +19,68 @@ export function PxlLogo({
   subtitleText,
 }: PxlLogoProps) {
   const titleSizes = {
-    sm: 'text-sm tracking-wider',
-    md: 'text-base sm:text-lg tracking-wider',
-    lg: 'text-3xl sm:text-4xl tracking-widest',
+    sm: 'text-[20px] tracking-[0.09em]',
+    md: 'text-[20px] tracking-[0.09em]',
+    lg: 'text-[32px] sm:text-[40px] tracking-[0.06em]',
   }
 
   const subSizes = {
-    sm: 'text-[8px] tracking-widest',
-    md: 'text-[9px] tracking-[0.2em]',
-    lg: 'text-xs tracking-[0.25em]',
+    sm: 'text-[8px] tracking-[0.01em]',
+    md: 'text-[8px] tracking-[0.01em]',
+    lg: 'text-[11px] sm:text-[14px] tracking-[0.05em]',
   }
 
   return (
-    <div className={cn('inline-flex flex-col text-left leading-none select-none group', className)}>
-      {/* Primary Brand Typography */}
+    <div className={cn('group inline-flex flex-col text-left leading-none select-none', className)}>
+      {/* Primary brand typography */}
       <span
+        role="img"
+        aria-label="PXL"
         className={cn(
-          'font-display font-black text-white transition-opacity group-hover:opacity-90',
+          'font-display font-black leading-[0.9] text-foreground',
           titleSizes[size],
         )}
       >
-        <span>PXL</span>
-        <span className="text-primary font-bold">.</span>
+        <span
+          aria-hidden
+          className="transition-colors duration-200 group-hover:text-primary group-focus-visible:text-primary motion-reduce:transition-none"
+        >
+          P
+        </span>
+        <span
+          aria-hidden
+          className="text-primary transition-colors duration-200 group-hover:text-foreground group-focus-visible:text-foreground motion-reduce:transition-none"
+        >
+          X
+        </span>
+        <span
+          aria-hidden
+          className="transition-colors duration-200 group-hover:text-primary group-focus-visible:text-primary motion-reduce:transition-none"
+        >
+          L
+        </span>
+        <span
+          aria-hidden
+          className="text-primary transition-colors duration-200 group-hover:text-foreground group-focus-visible:text-foreground motion-reduce:transition-none"
+        >
+          .
+        </span>
       </span>
 
-      {/* Subtitle / Descriptive Tag */}
+      {/* Subtitle / descriptive tag */}
       {showSubtitle && (
         <span
           className={cn(
-            'mt-0.5 font-mono font-bold text-muted-foreground uppercase transition-colors group-hover:text-foreground/80',
+            'mt-1 flex justify-between font-mono font-bold uppercase text-muted-foreground',
             subSizes[size],
           )}
         >
           {subtitleText ? (
-            subtitleText
+            <span>{subtitleText}</span>
           ) : (
             <>
               <span>PROXY</span>
-              <span className="text-foreground/80 ml-1">LOADOUTS</span>
+              <span className="text-foreground/80">LOADOUTS</span>
             </>
           )}
         </span>
