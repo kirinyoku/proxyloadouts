@@ -327,7 +327,7 @@ const en: TranslationSchema = {
     teamNamePlaceholder: 'Mono Ice',
     nameAutoHint: 'Leave blank to auto-generate from squad agent names',
     teamDescLabel: 'Notes',
-    teamDescPlaceholder: '',
+    teamDescPlaceholder: 'Some useful info...',
     saveTeam: 'Save Squad',
     saveChanges: 'Save Changes',
     saving: 'Saving…',

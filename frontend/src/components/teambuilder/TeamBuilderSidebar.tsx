@@ -90,7 +90,7 @@ export function TeamBuilderSidebar({
               value={name}
               onChange={(event) => onSetName(event.target.value)}
               maxLength={100}
-              className="bg-[#0f141c] border-white/20 text-sm text-foreground focus-visible:bg-[#131a24] focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/40 shadow-xs transition-all"
+              className="bg-[#0f141c] dark:bg-[#0f141c] border-white/20 text-sm text-foreground focus-visible:bg-[#131a24] focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/40 shadow-xs transition-all"
             />
             <p className="text-[11px] text-zinc-400">
               {t('teamBuilder.nameAutoHint')}
@@ -112,12 +112,12 @@ export function TeamBuilderSidebar({
             </div>
             <Textarea
               id="team-description"
-              placeholder={t('teamBuilder.teamDescPlaceholder') || undefined}
+              placeholder={t('teamBuilder.teamDescPlaceholder') || 'Some useful info...'}
               value={description}
               onChange={(event) => onSetDescription(event.target.value)}
               rows={2}
               maxLength={500}
-              className="bg-[#0f141c] border-white/20 text-xs text-foreground resize-none focus-visible:bg-[#131a24] focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/40 shadow-xs transition-all"
+              className="bg-[#0f141c] dark:bg-[#0f141c] border-white/20 text-xs text-foreground resize-none focus-visible:bg-[#131a24] focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/40 shadow-xs transition-all"
             />
           </div>
         </div>
@@ -145,7 +145,7 @@ export function TeamBuilderSidebar({
           <p
             id="team-save-hint"
             aria-live="polite"
-            className="text-center text-xs text-muted-foreground px-2"
+            className="text-center text-xs font-semibold text-destructive px-2"
           >
             {saveHint}
           </p>

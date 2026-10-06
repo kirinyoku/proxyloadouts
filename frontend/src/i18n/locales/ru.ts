@@ -325,7 +325,7 @@ const ru = {
     teamNamePlaceholder: 'Моно Айс',
     nameAutoHint: 'Оставьте пустым — название соберётся по именам агентов',
     teamDescLabel: 'Заметки',
-    teamDescPlaceholder: '',
+    teamDescPlaceholder: 'Полезные заметки...',
     saveTeam: 'Сохранить отряд',
     saveChanges: 'Сохранить изменения',
     saving: 'Сохраняем…',

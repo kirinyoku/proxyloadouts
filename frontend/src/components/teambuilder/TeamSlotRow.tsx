@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
-import { AlertCircle, Disc, Pencil, X } from 'lucide-react'
+import { AlertCircle, Disc, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { MindscapeBadge } from '@/components/ui/MindscapeBadge'
@@ -76,37 +76,22 @@ export function TeamSlotRow({
           aria-label={t('teams.slotAriaEmpty', { slot })}
           title={t('teamBuilder.emptySlotAdd')}
           className={cn(
-            'group/empty relative flex h-[60px] sm:h-[64px] w-full items-center justify-between overflow-hidden rounded-xl border border-dashed px-3.5 sm:px-4 transition-all duration-200 cursor-pointer',
-            'border-white/20 bg-[#0c1017] hover:border-primary/60 hover:bg-[#111622]',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            'group/empty relative flex min-h-[60px] sm:min-h-[68px] w-full items-center justify-between rounded-(--radius-input-lg) border-2 border-dashed border-white/15 bg-subtle/60 px-3 sm:px-3.5 py-2 text-muted-foreground transition-colors duration-150 cursor-pointer',
+            'hover:border-primary/60 hover:bg-subtle',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card active:translate-y-px',
           )}
         >
-          {/* Subtle halftone texture */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 size-full select-none"
-            style={{
-              backgroundImage:
-                'radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px)',
-              backgroundSize: '8px 8px',
-            }}
-          />
-
-          <div className="relative z-10 flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-full border border-dashed border-white/40 bg-white/[0.06] text-base font-medium text-zinc-300 transition-all duration-200 group-hover/empty:scale-105 group-hover/empty:border-primary group-hover/empty:bg-primary/15 group-hover/empty:text-primary">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <span className="flex size-10 sm:size-11 items-center justify-center rounded-full border-2 border-dashed border-white/20 bg-black/30 text-base text-muted-foreground transition-colors duration-150 group-hover/empty:border-primary/70 group-hover/empty:text-primary">
               +
             </span>
             <div className="flex flex-col text-left">
-              <span className="font-heading text-xs font-bold uppercase tracking-wider text-zinc-200 group-hover/empty:text-primary transition-colors">
+              <span className="font-heading text-xs font-bold uppercase tracking-wider text-zinc-200 transition-colors group-hover/empty:text-primary">
                 {t('teamBuilder.emptySlotChoose')}
               </span>
-              <span className="text-[11px] font-medium text-zinc-400">{t('teams.slotLabel', { slot })}</span>
+              <span className="text-[11px] text-muted-foreground">{t('teams.slotLabel', { slot })}</span>
             </div>
           </div>
-
-          <span className="relative z-10 rounded border border-white/20 bg-black/75 px-2 py-0.5 font-mono text-[11px] font-bold text-zinc-300 transition-colors group-hover/empty:border-primary/50 group-hover/empty:text-primary">
-            {slot}P
-          </span>
         </button>
 
         {pickerOpen && (
@@ -167,35 +152,29 @@ export function TeamSlotRow({
         aria-label={t('teams.slotAriaFilled', { slot, agent: agentName, build: selected.name })}
         title={`${agentName} — «${selected.name}» (${t('teamBuilder.replaceAgent')})`}
         className={cn(
-          'group/slot relative flex items-center justify-between gap-2.5 sm:gap-3 overflow-hidden rounded-xl border px-3.5 py-2.5 transition-all duration-200 cursor-pointer',
-          hasConflict
-            ? 'border-destructive/80 bg-linear-to-r from-red-950/50 via-[#181115] to-red-950/40 hover:border-destructive shadow-[0_0_16px_rgba(239,68,68,0.25)]'
-            : 'border-white/15 bg-gradient-to-b from-[#161d28] to-[#121722] hover:border-primary/60 hover:from-[#1c2432] hover:to-[#161e2a] shadow-[0_4px_16px_rgba(0,0,0,0.4)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.6),0_0_16px_rgba(201,242,75,0.12)]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          'group/slot relative flex w-full items-center justify-between gap-2 sm:gap-3 overflow-hidden rounded-(--radius-input-lg) border-2 border-black bg-subtle px-2.5 sm:px-3.5 py-2 sm:py-2.5 text-left cursor-pointer transition-colors duration-150',
+          'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-elevated',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card active:translate-y-px',
+          hasConflict && 'border-destructive/80 bg-[color-mix(in_oklch,var(--subtle),var(--destructive)_12%)]',
         )}
       >
-        {/* Background halftone texture */}
-        <div
+        {/* Hover / focus accent strip — echoes the crosshatch acid bar of AppHeader */}
+        <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 size-full select-none"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px)',
-            backgroundSize: '7px 7px',
-          }}
+          className="pointer-events-none absolute inset-y-2 left-0 w-[3px] origin-center scale-y-0 rounded-r-full bg-primary transition-transform duration-150 group-hover/slot:scale-y-100 group-focus-visible/slot:scale-y-100"
         />
 
         {/* Left: Avatar + Agent Name & Build Tag + Conflict status */}
-        <div className="relative z-10 flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-          {/* CircleIcon Avatar with Rarity Border */}
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+          {/* CircleIcon Avatar: black ink border + rarity ring */}
           <div
             className={cn(
-              'relative size-11.5 sm:size-12 shrink-0 rounded-full border-2 bg-[#10141b] shadow-md transition-transform duration-200 group-hover/slot:scale-105',
+              'relative size-10 sm:size-11 shrink-0 rounded-full border-2 border-black bg-background ring-2 transition-shadow duration-150 group-hover/slot:ring-primary/80',
               agent.rarity === 'S'
-                ? 'border-amber-400/80 shadow-[0_0_10px_rgba(245,238,56,0.2)] group-hover/slot:border-primary group-hover/slot:shadow-[0_0_14px_rgba(201,242,75,0.4)]'
+                ? 'ring-brand/45'
                 : agent.rarity === 'A'
-                  ? 'border-purple-400/80 shadow-[0_0_10px_rgba(192,132,252,0.2)] group-hover/slot:border-primary group-hover/slot:shadow-[0_0_14px_rgba(201,242,75,0.4)]'
-                  : 'border-white/20 group-hover/slot:border-primary',
+                  ? 'ring-attr-electric/45'
+                  : 'ring-white/15',
             )}
           >
             <span className="relative block size-full overflow-hidden rounded-full">
@@ -203,10 +182,10 @@ export function TeamSlotRow({
                 <img
                   src={iconUrl}
                   alt={agentName}
-                  loading="eager"
+                  loading="lazy"
                   decoding="async"
                   draggable={false}
-                  className="crisp-img size-full object-cover select-none pointer-events-none transition-transform duration-200 group-hover/slot:scale-110"
+                  className="crisp-img size-full object-cover select-none pointer-events-none"
                 />
               ) : (
                 <span className="flex size-full items-center justify-center font-heading text-xs font-bold text-foreground">
@@ -221,10 +200,10 @@ export function TeamSlotRow({
             )}
           </div>
 
-          {/* Text Details: Name & Attribute on top, Build tag below */}
-          <div className="flex flex-col min-w-0 justify-center">
+          {/* Text Details: Name & Attribute on top, Build name below */}
+          <div className="flex flex-col min-w-0 justify-center gap-1">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="truncate font-heading text-xs sm:text-sm font-bold tracking-wide text-foreground transition-colors group-hover/slot:text-primary">
+              <span className="truncate font-heading text-xs sm:text-sm leading-tight tracking-wide text-foreground transition-colors group-hover/slot:text-primary">
                 {agentName}
               </span>
               <div className="flex items-center gap-1 shrink-0">
@@ -245,18 +224,16 @@ export function TeamSlotRow({
               </div>
             </div>
 
-            <div className="mt-1 flex flex-wrap items-center gap-1.5 min-w-0">
-              <div className="inline-flex max-w-full items-center rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 shadow-xs transition-colors group-hover/slot:border-primary/50 group-hover/slot:bg-primary/15">
-                <span className="truncate font-mono text-[10px] sm:text-[11px] font-semibold text-primary tracking-tight">
-                  {selected.name}
-                </span>
-              </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="truncate font-mono text-[10px] sm:text-[11px] font-semibold leading-tight tabular-nums text-muted-foreground transition-colors group-hover/slot:text-foreground">
+                {selected.name}
+              </span>
 
               {hasConflict && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span
-                      className="inline-flex items-center gap-1 rounded border border-destructive/50 bg-destructive/20 px-1.5 py-0.5 text-[9px] font-bold text-destructive shrink-0 cursor-help"
+                      className="inline-flex items-center gap-1 rounded-[4px_4px_0_4px] border border-black bg-destructive px-1.5 py-0.5 text-[9px] font-bold text-white shrink-0 cursor-help"
                     >
                       <AlertCircle className="size-2.5 animate-pulse" />
                       <span>{conflictReason}</span>
@@ -271,15 +248,15 @@ export function TeamSlotRow({
           </div>
         </div>
 
-        {/* Right: Gear Section + Slot Badge + Interactive Actions */}
-        <div className="relative z-10 flex items-center gap-1.5 sm:gap-2.5 shrink-0 pl-3 border-l border-white/12">
+        {/* Right: Gear Section (W-Engine + Discs) + Slot Tag + Remove Action */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 border-l border-dashed border-white/10 pl-2 sm:pl-3">
           {/* W-Engine */}
           {wEngine ? (
             <div
               className={cn(
-                'relative flex size-8 sm:size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover/slot:scale-110',
+                'relative flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center',
                 conflictDetail?.hasWeaponConflict &&
-                  'ring-2 ring-destructive border border-destructive/80 bg-destructive/20 shadow-[0_0_8px_rgba(239,68,68,0.5)]',
+                  'ring-2 ring-destructive border border-destructive/80 bg-destructive/20 rounded-lg shadow-[0_0_8px_rgba(239,68,68,0.5)]',
               )}
               title={
                 conflictDetail?.hasWeaponConflict
@@ -291,25 +268,25 @@ export function TeamSlotRow({
                 <img
                   src={wEngine.icon_url}
                   alt=""
-                  loading="eager"
+                  loading="lazy"
                   decoding="async"
                   draggable={false}
-                  className="size-full object-contain select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
+                  className="size-full object-contain select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]"
                 />
               ) : (
-                <span className="font-heading text-xs font-bold text-primary">
+                <span className="font-heading text-xs text-primary">
                   W
                 </span>
               )}
-              {wEngine.modification > 1 && (
-                <span className="absolute -bottom-1 -right-1 rounded bg-black/95 px-1 font-mono text-[8px] font-black text-amber-400 border border-amber-400/40 leading-none shadow-xs">
-                  P{wEngine.modification}
+              {(wEngine.rarity === 'S' || wEngine.modification > 1) && (
+                <span className="absolute -bottom-0.5 -right-1 flex h-3.5 items-center rounded-full border border-white/20 bg-black px-1 font-sans text-[8px] font-black leading-none text-white">
+                  P{wEngine.modification || 1}
                 </span>
               )}
             </div>
           ) : (
             <div
-              className="flex size-8 sm:size-9 shrink-0 items-center justify-center text-[11px] font-mono text-zinc-500"
+              className="flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center text-[10px] font-mono text-muted-foreground/60"
               title={t('teams.noWEngine')}
             >
               {t('teams.noWEngineShort')}
@@ -317,94 +294,67 @@ export function TeamSlotRow({
           )}
 
           {/* Drive Discs */}
-          <div
-            className={cn(
-              'flex items-center gap-1 sm:gap-1.5 rounded-lg transition-all',
-              hasDiscConflict &&
-                'ring-1.5 ring-destructive/80 bg-destructive/15 border border-destructive/40 p-0.5 shadow-[0_0_8px_rgba(239,68,68,0.3)]',
-            )}
-            title={
-              hasDiscConflict && discSlotsStr
-                ? t('conflicts.slotConflictBadge', { slot: discSlotsStr })
-                : undefined
-            }
-          >
-            {visualDiscSets.length > 0 ? (
-              visualDiscSets.slice(0, 2).map((discSet) => (
-                <div
-                  key={discSet.setId}
-                  className="relative flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center transition-transform duration-200 group-hover/slot:scale-110"
-                  title={`${discSet.name} (${t('gear.pieces', { count: discSet.count })})`}
-                >
-                  {discSet.iconUrl ? (
-                    <img
-                      src={discSet.iconUrl}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      draggable={false}
-                      className="size-full object-contain select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
-                    />
-                  ) : (
-                    <Disc className="size-4 text-muted-foreground/60" />
-                  )}
-                  <span className="absolute -bottom-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-primary font-mono text-[8px] font-black text-black shadow-xs border border-black/80">
-                    {discSet.count}
-                  </span>
-                </div>
-              ))
-            ) : (
+          {visualDiscSets.length > 0 ? (
+            visualDiscSets.slice(0, 2).map((discSet) => (
               <div
-                className="flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center text-[11px] font-mono text-zinc-500"
-                title={t('teamBuilder.noSets')}
+                key={discSet.setId}
+                className={cn(
+                  'relative flex size-7 sm:size-8 shrink-0 items-center justify-center',
+                  hasDiscConflict &&
+                    'ring-1.5 ring-destructive/80 bg-destructive/15 rounded-lg border border-destructive/40 p-0.5',
+                )}
+                title={`${discSet.name} (${t('gear.pieces', { count: discSet.count })})`}
               >
-                {t('teams.noDiscsShort')}
+                {discSet.iconUrl ? (
+                  <img
+                    src={discSet.iconUrl}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    draggable={false}
+                    className="size-full object-contain select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]"
+                  />
+                ) : (
+                  <Disc className="size-3.5 sm:size-4 text-muted-foreground/60" />
+                )}
+                <span className="absolute -bottom-0.5 -right-1 flex size-3.5 items-center justify-center rounded-full border border-black bg-amber-400 font-mono text-[8px] font-black leading-none text-black">
+                  {discSet.count}
+                </span>
               </div>
-            )}
-
-            {hasDiscConflict && discSlotsStr && (
-              <span
-                className="flex items-center gap-0.5 rounded bg-destructive px-1 py-0.5 font-mono text-[8px] font-black text-white shadow-xs"
-                title={t('conflicts.slotConflictBadge', { slot: discSlotsStr })}
-              >
-                #{discSlotsStr}
-              </span>
-            )}
-          </div>
-
-          {/* Slot position badge */}
-          <span className="rounded border border-white/20 bg-black/75 px-2 py-0.5 font-mono text-[11px] font-bold text-zinc-300 transition-colors group-hover/slot:border-primary/40 group-hover/slot:text-primary">
-            {slot}P
-          </span>
-
-          {/* Action buttons: Replace (visual hint) + Clear (X) */}
-          <div className="flex items-center gap-1.5 pl-1.5 border-l border-white/12">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                setPickerOpen(true)
-              }}
-              aria-label={t('teamBuilder.replaceAgent')}
-              title={t('teamBuilder.replaceAgent')}
-              className="group/edit hidden xs:flex size-7.5 items-center justify-center rounded-lg border border-white/20 bg-[#161d28] text-zinc-300 shadow-xs hover:border-primary/60 hover:bg-[#1c2432] hover:text-primary hover:shadow-[0_0_12px_rgba(201,242,75,0.15)] active:scale-[0.98] transition-all cursor-pointer"
+            ))
+          ) : (
+            <div
+              className="flex size-7 sm:size-8 shrink-0 items-center justify-center text-[10px] font-mono text-muted-foreground/60"
+              title={t('teamBuilder.noSets')}
             >
-              <Pencil className="size-3.5 transition-colors group-hover/edit:text-primary" />
-            </button>
+              {t('teams.noDiscsShort')}
+            </div>
+          )}
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onClear()
-              }}
-              aria-label={t('teamBuilder.removeFromSquadSpecific', { agent: agentName, slot })}
-              title={t('teamBuilder.removeFromSquadSpecific', { agent: agentName, slot })}
-              className="group/del flex size-7.5 items-center justify-center rounded-lg border border-white/20 bg-[#161d28] text-zinc-300 shadow-xs hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive hover:shadow-[0_0_12px_rgba(239,68,68,0.2)] active:scale-[0.98] transition-all cursor-pointer"
+          {hasDiscConflict && discSlotsStr && (
+            <span
+              className="flex items-center gap-0.5 rounded-[4px_4px_0_4px] border border-black bg-destructive px-1 py-0.5 font-mono text-[8px] font-black text-white shadow-xs"
+              title={t('conflicts.slotConflictBadge', { slot: discSlotsStr })}
             >
-              <X className="size-3.5 sm:size-4 transition-colors group-hover/del:text-destructive" />
-            </button>
-          </div>
+              #{discSlotsStr}
+            </span>
+          )}
+        </div>
+
+        {/* Clear/Remove action — cleanly separated from gear */}
+        <div className="flex items-center shrink-0 border-l border-dashed border-white/10 pl-2 sm:pl-2.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onClear()
+            }}
+            aria-label={t('teamBuilder.removeFromSquadSpecific', { agent: agentName, slot })}
+            title={t('teamBuilder.removeFromSquadSpecific', { agent: agentName, slot })}
+            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground/45 transition-colors hover:bg-destructive/20 hover:text-destructive active:scale-95 cursor-pointer"
+          >
+            <Trash2 className="size-4" />
+          </button>
         </div>
       </div>
 

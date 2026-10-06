@@ -626,9 +626,9 @@ export function BuildPickerDialog({
                                           ) : (
                                             <span className="font-heading text-xs font-bold text-primary">W</span>
                                           )}
-                                          {wEngine.modification > 1 && (
-                                            <span className="absolute -bottom-1 -right-1 rounded bg-black/95 px-0.5 font-mono text-[7px] font-black text-amber-400 border border-amber-400/40 leading-none">
-                                              P{wEngine.modification}
+                                          {(wEngine.rarity === 'S' || wEngine.modification > 1) && (
+                                            <span className="absolute -bottom-0.5 -right-1 flex h-3.5 items-center rounded-full border border-white/20 bg-black px-1 font-sans text-[7.5px] font-black leading-none text-white">
+                                              P{wEngine.modification || 1}
                                             </span>
                                           )}
                                         </div>
@@ -664,7 +664,7 @@ export function BuildPickerDialog({
                                           ) : (
                                             <Disc className="size-3 text-muted-foreground/60" />
                                           )}
-                                          <span className="absolute -bottom-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-primary font-mono text-[8px] font-black text-black shadow-xs border border-black/80">
+                                          <span className="absolute -bottom-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-amber-400 font-mono text-[8px] font-black leading-none text-black shadow-xs border border-black">
                                             {discSet.count}
                                           </span>
                                         </div>
@@ -716,9 +716,9 @@ export function BuildPickerDialog({
                                           W
                                         </span>
                                       )}
-                                      {wEngine.modification > 1 && (
-                                        <span className="absolute -bottom-1 -right-1 rounded bg-black/95 px-1 font-mono text-[8px] font-black text-amber-400 border border-amber-400/40 leading-none shadow-xs">
-                                          P{wEngine.modification}
+                                      {(wEngine.rarity === 'S' || wEngine.modification > 1) && (
+                                        <span className="absolute -bottom-0.5 -right-1 flex h-3.5 items-center rounded-full border border-white/20 bg-black px-1 font-sans text-[8px] font-black leading-none text-white">
+                                          P{wEngine.modification || 1}
                                         </span>
                                       )}
                                     </div>
@@ -749,7 +749,7 @@ export function BuildPickerDialog({
                                           ) : (
                                             <Disc className="size-3.5 text-muted-foreground/60" />
                                           )}
-                                          <span className="absolute -bottom-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-primary font-mono text-[8px] font-black text-black shadow-xs border border-black/80">
+                                          <span className="absolute -bottom-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-amber-400 font-mono text-[8px] font-black leading-none text-black shadow-xs border border-black">
                                             {discSet.count}
                                           </span>
                                         </div>

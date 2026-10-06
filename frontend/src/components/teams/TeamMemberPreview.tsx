@@ -52,10 +52,6 @@ export function TeamMemberPreview({
             <span className="text-[11px] text-muted-foreground">{t('teams.slotLabel', { slot: slotNumber })}</span>
           </div>
         </div>
-
-        <span className="rounded-[4px_4px_0_4px] border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none text-muted-foreground transition-colors group-hover/empty:text-primary">
-          {slotNumber}P
-        </span>
       </>
     )
 
@@ -218,9 +214,11 @@ export function TeamMemberPreview({
                 W
               </span>
             )}
-            <span className="absolute -bottom-0.5 -right-1 flex h-3.5 items-center rounded-full border border-white/20 bg-black px-1 font-sans text-[8px] font-black leading-none text-white">
-              P{wEngine.modification || 1}
-            </span>
+            {(wEngine.rarity === 'S' || wEngine.modification > 1) && (
+              <span className="absolute -bottom-0.5 -right-1 flex h-3.5 items-center rounded-full border border-white/20 bg-black px-1 font-sans text-[8px] font-black leading-none text-white">
+                P{wEngine.modification || 1}
+              </span>
+            )}
           </div>
         ) : (
           <div
@@ -252,7 +250,7 @@ export function TeamMemberPreview({
               ) : (
                 <Disc className="size-3.5 sm:size-4 text-muted-foreground/60" />
               )}
-              <span className="absolute -bottom-0.5 -right-1 flex size-3.5 items-center justify-center rounded-full border border-black bg-primary font-mono text-[8px] font-black leading-none text-primary-foreground">
+              <span className="absolute -bottom-0.5 -right-1 flex size-3.5 items-center justify-center rounded-full border border-black bg-amber-400 font-mono text-[8px] font-black leading-none text-black">
                 {discSet.count}
               </span>
             </div>

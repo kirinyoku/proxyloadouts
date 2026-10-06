@@ -161,4 +161,95 @@ describe('BuildPickerDialog', () => {
     expect(html).toContain('В команде')
     expect(html).toContain('Скрыть конфликты')
   })
+
+  it('renders black superposition badge for S-rank w-engine at P1 and hides badge for A-rank at P1', () => {
+    const sRankBuild: Build = {
+      ...mockBuild1,
+      id: 'build-s-rank',
+      build_data: {
+        ...mockBuild1.build_data,
+        w_engine: {
+          id: 12001,
+          uid: 'w-s-1',
+          name: 'Глубоководный гость',
+          rarity: 'S',
+          level: 60,
+          phase: 1,
+          modification: 1,
+          specialty: 'Attack',
+          specialty_name: 'Нападение',
+          icon_url: 'https://example.com/w1.webp',
+          main_stat: { property_id: 1, name: 'ATK', value: 100, is_percent: false, rolls: 0, icon_url: '' },
+          secondary_stat: { property_id: 2, name: 'CRIT', value: 20, is_percent: true, rolls: 0, icon_url: '' },
+          passive_description: '',
+        },
+      },
+    }
+
+    const aRankBuildP1: Build = {
+      ...mockBuild2,
+      id: 'build-a-rank-p1',
+      build_data: {
+        ...mockBuild2.build_data,
+        w_engine: {
+          id: 11001,
+          uid: 'w-a-1',
+          name: 'Двигатель звездопада',
+          rarity: 'A',
+          level: 60,
+          phase: 1,
+          modification: 1,
+          specialty: 'Attack',
+          specialty_name: 'Нападение',
+          icon_url: 'https://example.com/w2.webp',
+          main_stat: { property_id: 1, name: 'ATK', value: 100, is_percent: false, rolls: 0, icon_url: '' },
+          secondary_stat: { property_id: 2, name: 'ATK%', value: 15, is_percent: true, rolls: 0, icon_url: '' },
+          passive_description: '',
+        },
+      },
+    }
+
+    const aRankBuildP5: Build = {
+      ...mockBuild2,
+      id: 'build-a-rank-p5',
+      build_data: {
+        ...mockBuild2.build_data,
+        w_engine: {
+          id: 11002,
+          uid: 'w-a-5',
+          name: 'Двигатель звездопада',
+          rarity: 'A',
+          level: 60,
+          phase: 5,
+          modification: 5,
+          specialty: 'Attack',
+          specialty_name: 'Нападение',
+          icon_url: 'https://example.com/w2.webp',
+          main_stat: { property_id: 1, name: 'ATK', value: 100, is_percent: false, rolls: 0, icon_url: '' },
+          secondary_stat: { property_id: 2, name: 'ATK%', value: 15, is_percent: true, rolls: 0, icon_url: '' },
+          passive_description: '',
+        },
+      },
+    }
+
+    const html = renderToString(
+      <BuildPickerDialog
+        open={true}
+        builds={[sRankBuild, aRankBuildP1, aRankBuildP5]}
+        onSelect={vi.fn()}
+        onOpenChange={vi.fn()}
+      />,
+    )
+
+    // S-rank with modification 1 should render black P1 badge
+    expect(html).toContain('P1')
+    expect(html).toMatch(/rounded-full\s+border\s+border-white\/20\s+bg-black[^"]*text-white/)
+
+    // A-rank with modification 5 should render P5 badge
+    expect(html).toContain('P5')
+
+    // Should not use old amber styling
+    expect(html).not.toContain('text-amber-400')
+    expect(html).not.toContain('border-amber-400/40')
+  })
 })

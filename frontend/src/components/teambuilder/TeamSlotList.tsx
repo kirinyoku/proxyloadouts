@@ -50,21 +50,31 @@ export function TeamSlotList({
     <article
       aria-label={isEditing ? t('teamBuilder.deckAriaEdit', { name: teamName || '' }) : t('teamBuilder.deckAriaNew')}
       className={cn(
-        'group relative flex flex-col justify-between space-y-3.5 rounded-2xl border p-4 sm:p-5 transition-all duration-300',
-        'border-white/15 bg-[#141922] shadow-[0_16px_40px_rgba(0,0,0,0.65)] hover:border-primary/40 hover:shadow-[0_20px_48px_rgba(0,0,0,0.8),0_0_24px_rgba(201,242,75,0.08)]',
-        hasConflict &&
-          'border-red-500/40 bg-gradient-to-b from-[#241217] to-[#1a0c10] hover:border-red-500/60 hover:shadow-[0_16px_40px_rgba(239,68,68,0.15)]',
+        'relative flex flex-col gap-3 sm:gap-3.5 rounded-(--radius-card) border-2 border-black bg-card p-3.5 sm:p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_32px_-16px_rgba(0,0,0,0.9)]',
+        hasConflict && 'bg-[color-mix(in_oklch,var(--card),var(--destructive)_7%)]',
       )}
     >
+      {/* Top rim accent sitting on the ink border */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-x-8 -top-0.5 h-0.5 bg-linear-to-r from-transparent to-transparent',
+          hasConflict ? 'via-destructive' : 'via-primary/60',
+        )}
+      />
+
       {/* Top Header: Squad Tag, Title, Conflict status and Slot counter */}
-      <div className="flex items-center justify-between gap-2.5">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-          <span className="flex h-5.5 items-center rounded-md border border-primary/40 bg-primary/15 px-2 font-mono text-xs font-bold text-primary shadow-xs">
-            {isEditing ? '#EDIT' : '#NEW'}
+      <div className="flex items-center justify-between gap-2.5 min-w-0">
+        <div className="flex min-w-0 items-center gap-2.5 flex-1">
+          {/* Skewed acid tag — mirrors the active nav tab and squad card on /teams */}
+          <span className="checker-dark inline-flex h-6 shrink-0 -skew-x-12 items-center bg-primary px-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">
+            <span className="skew-x-12 font-heading text-xs leading-none tabular-nums text-primary-foreground">
+              {isEditing ? '#EDIT' : '#NEW'}
+            </span>
           </span>
 
           <h2
-            className="truncate font-heading text-base font-bold tracking-wide text-foreground sm:text-lg"
+            className="truncate font-heading text-base sm:text-lg leading-tight tracking-wide text-foreground"
             title={teamName?.trim() || fallbackTitle}
           >
             {teamName?.trim() || fallbackTitle}
@@ -74,7 +84,7 @@ export function TeamSlotList({
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
-                  className="inline-flex shrink-0 items-center gap-1 rounded border border-destructive/40 bg-destructive/15 px-1.5 py-0.5 text-[10px] font-bold text-destructive cursor-help"
+                  className="inline-flex h-5 shrink-0 cursor-help items-center gap-1 rounded-[4px_4px_0_4px] border border-black bg-destructive px-1.5 font-heading text-[10px] leading-none tracking-wide text-white"
                 >
                   <AlertCircle className="size-3" />
                   <span className="hidden sm:inline">{t('teamBuilder.conflictBadge')}</span>
@@ -87,7 +97,7 @@ export function TeamSlotList({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/40 px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground shadow-xs shrink-0">
+        <div className="flex items-center gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shrink-0">
           <UsersRound className={cn('size-3.5 shrink-0', filledCount > 0 ? 'text-primary' : 'text-zinc-400')} />
           <span className={cn('font-bold', filledCount > 0 ? 'text-primary' : 'text-zinc-100')}>
             {filledCount}
@@ -128,19 +138,19 @@ export function TeamSlotList({
       </div>
 
       {/* Footer: Live preview of notes or interactive prompt */}
-      <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2.5 text-xs">
+      <div className="mt-auto flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border-t border-dashed border-white/10 pt-2.5 text-xs text-muted-foreground">
         <div className="min-w-0 flex-1">
           {teamDescription?.trim() ? (
             <p
-              className="truncate text-xs font-medium text-zinc-300 transition-colors hover:text-foreground"
+              className="truncate text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               title={teamDescription.trim()}
             >
-              <span className="mr-1.5 select-none font-mono font-bold text-primary">//</span>
+              <span className="mr-1.5 select-none font-heading text-primary">//</span>
               {teamDescription.trim()}
             </p>
           ) : (
-            <p className="text-xs font-medium text-zinc-400 transition-colors">
-              <span className="mr-1.5 select-none font-mono font-bold text-primary">//</span>
+            <p className="truncate text-xs font-medium text-muted-foreground transition-colors">
+              <span className="mr-1.5 select-none font-heading text-primary">//</span>
               {t('teamBuilder.deckSlotPrompt')}
             </p>
           )}

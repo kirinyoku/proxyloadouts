@@ -192,14 +192,14 @@ function setupBaseRoutes(page: any, builds: any[] = [mockEllenBuild, mockLycaonB
 }
 
 test.describe('Team Builder (/teams/new) Minimalist E2E Suite', () => {
-  test('renders 1P, 2P, 3P tactical empty slots cleanly', async ({ page }) => {
+  test('renders tactical empty slots cleanly', async ({ page }) => {
     await setupBaseRoutes(page)
     await page.goto('/teams/new')
 
     await expect(page.getByRole('heading', { name: /Новый отряд/i, level: 1 })).toBeVisible()
-    await expect(page.getByText('1P').first()).toBeVisible()
-    await expect(page.getByText('2P').first()).toBeVisible()
-    await expect(page.getByText('3P').first()).toBeVisible()
+    await expect(page.getByText('Слот 1').first()).toBeVisible()
+    await expect(page.getByText('Слот 2').first()).toBeVisible()
+    await expect(page.getByText('Слот 3').first()).toBeVisible()
 
     // 3 empty slot buttons
     await expect(page.getByRole('button', { name: /Слот 1: свободен/i })).toBeVisible()
