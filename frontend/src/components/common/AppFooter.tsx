@@ -32,9 +32,10 @@ export function AppFooter() {
             <PxlLogo size="sm" />
           </Link>
 
-          <span className="hidden text-white/20 lg:order-2 lg:inline" aria-hidden>
-            •
-          </span>
+          <div
+            aria-hidden="true"
+            className="hidden h-4 w-px shrink-0 bg-white/20 lg:order-2 lg:block"
+          />
 
           <p className="order-3 min-w-0 text-xs leading-relaxed text-muted-foreground min-[350px]:col-span-2 lg:order-3 lg:col-auto">
             {t('footer.poweredBy')}{' '}
