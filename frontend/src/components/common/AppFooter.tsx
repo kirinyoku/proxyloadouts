@@ -27,7 +27,7 @@ export function AppFooter() {
           <Link
             to="/"
             aria-label="ProxyLoadouts"
-            className="group order-1 inline-flex w-fit items-center rounded-sm outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary/70"
+            className="group order-1 inline-flex w-fit items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
           >
             <PxlLogo size="sm" />
           </Link>

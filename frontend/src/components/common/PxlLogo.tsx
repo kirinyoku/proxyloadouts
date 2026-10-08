@@ -31,7 +31,13 @@ export function PxlLogo({
   }
 
   return (
-    <div className={cn('group inline-flex flex-col text-left leading-none select-none', className)}>
+    <div
+      className={cn(
+        'group inline-flex flex-col text-left leading-none select-none',
+        'opacity-85 transition-opacity duration-200 ease-out hover:opacity-100 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none',
+        className,
+      )}
+    >
       {/* Primary brand typography */}
       <span
         role="img"
@@ -41,28 +47,12 @@ export function PxlLogo({
           titleSizes[size],
         )}
       >
-        <span
-          aria-hidden
-          className="transition-colors duration-200 group-hover:text-primary group-focus-visible:text-primary motion-reduce:transition-none"
-        >
-          P
-        </span>
-        <span
-          aria-hidden
-          className="text-primary transition-colors duration-200 group-hover:text-foreground group-focus-visible:text-foreground motion-reduce:transition-none"
-        >
+        <span aria-hidden>P</span>
+        <span aria-hidden className="text-primary">
           X
         </span>
-        <span
-          aria-hidden
-          className="transition-colors duration-200 group-hover:text-primary group-focus-visible:text-primary motion-reduce:transition-none"
-        >
-          L
-        </span>
-        <span
-          aria-hidden
-          className="text-primary transition-colors duration-200 group-hover:text-foreground group-focus-visible:text-foreground motion-reduce:transition-none"
-        >
+        <span aria-hidden>L</span>
+        <span aria-hidden className="text-primary">
           .
         </span>
       </span>
