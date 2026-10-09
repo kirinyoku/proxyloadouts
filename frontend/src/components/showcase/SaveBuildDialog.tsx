@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
 import { useSaveBuild } from '@/api/hooks'
@@ -15,17 +15,19 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { agentRoleCircleUrl } from '@/lib/agent-icons'
 import { cn } from '@/lib/utils'
 import type { Agent, GameAccount } from '@/types'
 
 const MAX_BUILDS_PER_AGENT = 5
 
-interface SaveBuildDialogProps {
+export interface SaveBuildDialogProps {
   agent: Agent | null
   targetAccount: GameAccount
   existingBuildsCount: number
   onSaved?: (agent: Agent) => void
   onOpenChange: (open: boolean) => void
+  open?: boolean
 }
 
 export function SaveBuildDialog({
@@ -34,25 +36,45 @@ export function SaveBuildDialog({
   existingBuildsCount,
   onSaved,
   onOpenChange,
+  open = true,
 }: SaveBuildDialogProps) {
   const { t } = useTranslation()
   const saveMutation = useSaveBuild()
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [isSimulatingDev, setIsSimulatingDev] = useState(false)
+
+  const isSubmitting = saveMutation.isPending || isSimulatingDev
+  const isNameEmpty = name.trim().length === 0
 
   if (!agent) return null
 
   const isLimitReached = existingBuildsCount >= MAX_BUILDS_PER_AGENT
 
   function handleSave() {
-    if (isLimitReached || !agent) return
+    const finalName = name.trim()
+    if (isLimitReached || !agent || !finalName) return
+    const finalDesc = description.trim() || null
+
+    if (targetAccount.id.startsWith('acc-dev')) {
+      setIsSimulatingDev(true)
+      setTimeout(() => {
+        setIsSimulatingDev(false)
+        setName('')
+        setDescription('')
+        onSaved?.(agent)
+        onOpenChange(false)
+      }, 350)
+      return
+    }
+
     saveMutation.mutate(
       {
         game_account_id: targetAccount.id,
         raw_agent_payload: agent,
-        name: name.trim(),
-        description: description.trim() || null,
+        name: finalName,
+        description: finalDesc,
       },
       {
         onSuccess: () => {
@@ -66,113 +88,165 @@ export function SaveBuildDialog({
   }
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <form
-          onSubmit={(event) => {
-            event.preventDefault()
+          onSubmit={(e) => {
+            e.preventDefault()
             handleSave()
           }}
           noValidate
           className="space-y-4"
         >
-          <DialogHeader>
-            <DialogTitle>
-              {t('saveBuild.title', { name: agent.name })}
-            </DialogTitle>
-            <DialogDescription>
+          {/* Header with subtle agent circle */}
+          <DialogHeader className="space-y-1.5">
+            <div className="flex items-center gap-2.5">
+              <img
+                src={agentRoleCircleUrl(agent.id) || agent.splash_art_url}
+                alt={agent.name}
+                className="size-7 rounded-full border border-border/70 bg-muted/30 object-cover shrink-0"
+              />
+              <DialogTitle className="text-base font-heading tracking-wide">
+                {t('saveBuild.title', { name: agent.name })}
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-muted-foreground leading-normal">
               {t('saveBuild.description')}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3.5">
-            {/* Game account (strictly bound to showcase UID) */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('saveBuild.accountLabel')}</Label>
-              <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card/80 px-3.5 py-2 text-xs font-mono">
+          {/* Compact Account & Builds Quota Card */}
+          <div className="rounded-xl border border-border/60 bg-card/60 px-3.5 py-2.5 space-y-2 text-xs">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground whitespace-nowrap">{t('saveBuild.accountLabel')}</span>
+              <div className="flex items-center gap-2 font-mono whitespace-nowrap">
                 <span className="font-bold text-foreground">{targetAccount.uid}</span>
-                <span className="rounded bg-subtle px-2 py-0.5 text-[11px] text-muted-foreground">
+                <span className="rounded bg-subtle px-1.5 py-0.5 text-[11px] text-muted-foreground font-sans">
                   {targetAccount.region}
                 </span>
               </div>
             </div>
 
-            {/* Agent builds quota counter */}
-            <div className="flex items-center justify-between rounded-xl border border-border/50 bg-subtle/40 px-3.5 py-2 text-xs">
-              <span className="text-muted-foreground">{t('saveBuild.buildsCount')}</span>
+            <div className="h-px bg-border/40" />
+
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground whitespace-nowrap">{t('saveBuild.buildsCount')}</span>
               <span
                 className={cn(
-                  'font-mono font-bold',
+                  'font-mono font-bold whitespace-nowrap',
                   isLimitReached ? 'text-destructive' : 'text-primary',
                 )}
               >
-                {existingBuildsCount} / {MAX_BUILDS_PER_AGENT}
+                {`${existingBuildsCount} / ${MAX_BUILDS_PER_AGENT}`}
               </span>
             </div>
+          </div>
 
-            {isLimitReached && (
-              <div className="flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-                <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-semibold">{t('saveBuild.limitReachedTitle')}</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {t('saveBuild.limitReachedDesc', {
-                      name: agent.name,
-                    })}{' '}
-                    <Link to="/roster" className="underline hover:text-foreground">
-                      {t('nav.roster')}
-                    </Link>
-                    .
-                  </p>
-                </div>
+          {/* Body: Form or Limit Reached Alert */}
+          {isLimitReached ? (
+            <div className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+              <AlertCircle className="size-4 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold">{t('saveBuild.limitReachedTitle')}</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {t('saveBuild.limitReachedDesc', { name: agent.name })}{' '}
+                  <Link to="/roster" className="underline font-medium text-foreground hover:text-primary">
+                    {t('nav.roster')}
+                  </Link>
+                  .
+                </p>
               </div>
-            )}
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              {/* Build Name */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="save-build-name" className="text-xs font-medium">
+                    {t('saveBuild.nameLabel')}
+                  </Label>
+                  <span className="font-mono text-[11px] text-muted-foreground/60 whitespace-nowrap">
+                    {`${name.length} / 100`}
+                  </span>
+                </div>
 
-            {!isLimitReached && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="save-name">{t('saveBuild.nameLabel')}</Label>
+                <div className="relative">
                   <Input
-                    id="save-name"
+                    id="save-build-name"
                     autoFocus
                     placeholder={t('saveBuild.namePlaceholder')}
                     value={name}
-                    onChange={(event) => setName(event.target.value)}
+                    onChange={(e) => setName(e.target.value)}
                     maxLength={100}
+                    className={cn('h-9 text-xs', name && 'pr-8')}
                   />
-                  <p className="text-[11px] text-muted-foreground">
-                    {t('saveBuild.nameAutoHint')}
+                  {name && (
+                    <button
+                      type="button"
+                      onClick={() => setName('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                      title="Очистить"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {isNameEmpty && (
+                  <p className="text-[11px] text-destructive font-medium">
+                    {t('saveBuild.nameRequiredHint')}
                   </p>
+                )}
+              </div>
+
+              {/* Description / Notes */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="save-build-desc" className="text-xs font-medium">
+                    {t('saveBuild.descLabel')}
+                  </Label>
+                  <span className="font-mono text-[11px] text-muted-foreground/60 whitespace-nowrap">
+                    {`${description.length} / 250`}
+                  </span>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="save-description">{t('saveBuild.descLabel')}</Label>
-                  <Input
-                    id="save-description"
-                    placeholder={t('saveBuild.descPlaceholder')}
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    maxLength={250}
-                  />
-                </div>
-              </>
-            )}
+                <Input
+                  id="save-build-desc"
+                  placeholder={t('saveBuild.descPlaceholder')}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={250}
+                  className="h-9 text-xs"
+                />
+              </div>
 
-            {saveMutation.isError && (
-              <p className="text-xs text-destructive font-medium" role="alert">
-                {saveMutation.error instanceof ApiError
-                  ? saveMutation.error.message
-                  : t('saveBuild.error')}
-              </p>
-            )}
-          </div>
+              {saveMutation.isError && (
+                <p className="text-xs text-destructive font-medium" role="alert">
+                  {saveMutation.error instanceof ApiError
+                    ? saveMutation.error.message
+                    : t('saveBuild.error')}
+                </p>
+              )}
+            </div>
+          )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          {/* Footer */}
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
               {isLimitReached ? t('saveBuild.close') : t('saveBuild.cancel')}
             </Button>
             {!isLimitReached && (
-              <Button type="submit" disabled={saveMutation.isPending}>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isNameEmpty}
+                loading={isSubmitting}
+              >
                 {t('saveBuild.submit')}
               </Button>
             )}
