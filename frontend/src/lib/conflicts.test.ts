@@ -3,6 +3,7 @@ import type { Build, ConflictReport } from '@/types'
 import {
   formatConflictMessage,
   getBuildPickerConflict,
+  getDetailedBuildPickerConflict,
   getConflictBuildNames,
   getConflictLabel,
   getConflictingDiscMeta,
@@ -277,6 +278,49 @@ describe('conflicts utilities', () => {
       const validSoukaku = createMockBuild('soukaku-1', 'Banner Support', 1031)
       expect(getBuildPickerConflict(validSoukaku, [null, undefined])).toBeNull()
       expect(getBuildPickerConflict(validSoukaku, [])).toBeNull()
+    })
+  })
+
+  describe('getDetailedBuildPickerConflict', () => {
+    const activeEllen = createMockBuild('ellen-1', 'Shark Frostbite', 1011, [
+      { slot: 1, uid: 'disc-1', setName: 'Polar Metal' },
+      { slot: 4, uid: 'disc-4', setName: 'Polar Metal' },
+    ])
+    activeEllen.agent_name = 'Эллен'
+    activeEllen.weapon_uid = 'weapon-visitor'
+
+    const squad = [activeEllen, null, null]
+
+    it('returns IN_SQUAD with slot number 1 for the exact build in slot 1', () => {
+      const result = getDetailedBuildPickerConflict(activeEllen, squad)
+      expect(result).not.toBeNull()
+      expect(result?.type).toBe('IN_SQUAD')
+      expect(result?.squadSlot).toBe(1)
+      expect(result?.conflictingAgentName).toBe('Эллен')
+    })
+
+    it('returns DUPLICATE_AGENT for another build of the same agent', () => {
+      const altEllen = createMockBuild('ellen-2', 'Shark Alternative', 1011)
+      altEllen.agent_name = 'Эллен'
+      const result = getDetailedBuildPickerConflict(altEllen, squad)
+      expect(result?.type).toBe('DUPLICATE_AGENT')
+      expect(result?.squadSlot).toBe(1)
+      expect(result?.conflictingAgentName).toBe('Эллен')
+    })
+
+    it('returns GEAR_CONFLICT with both weapon and disc collision details simultaneously', () => {
+      const corin = createMockBuild('corin-1', 'Housekeeper Saw', 1061, [
+        { slot: 1, uid: 'disc-1', setName: 'Polar Metal' },
+      ])
+      corin.agent_name = 'Корин'
+      corin.weapon_uid = 'weapon-visitor'
+
+      const result = getDetailedBuildPickerConflict(corin, squad)
+      expect(result?.type).toBe('GEAR_CONFLICT')
+      expect(result?.hasWeaponConflict).toBe(true)
+      expect(result?.conflictingDiscSlots).toEqual([1])
+      expect(result?.conflictingAgentName).toBe('Эллен')
+      expect(result?.squadSlot).toBe(1)
     })
   })
 })

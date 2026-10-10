@@ -21,9 +21,10 @@ vi.mock('react-i18next', async (importOriginal) => {
           'teamBuilder.pickerHideConflicting': 'Скрыть конфликты',
           'teamBuilder.pickerShowAll': 'Показать все',
           'teamBuilder.pickerInSquad': 'В команде',
+          'teamBuilder.pickerSelectButton': 'ВЫБРАТЬ',
           'teams.resetFilters': 'Сбросить фильтры',
         }
-        return translations[key] ?? (options?.slot != null ? `Занят диск ${options.slot}` : key)
+        return translations[key] ?? ((options?.defaultValue as string) ?? (options?.slot != null ? `Занят диск ${options.slot}` : key))
       },
     }),
   }
@@ -52,7 +53,7 @@ const mockBuild1: Build = {
   agent_id: 1011,
   agent_name: 'Эллен',
   name: 'Shark Frostbite',
-  description: '',
+  description: 'Секретная заметка к сборке',
   weapon_uid: 'w-1',
   weapon_id: 12001,
   disc_uids: [],
@@ -251,5 +252,60 @@ describe('BuildPickerDialog', () => {
     // Should not use old amber styling
     expect(html).not.toContain('text-amber-400')
     expect(html).not.toContain('border-amber-400/40')
+  })
+
+  it('renders 3-column desktop layout and contextual conflict warning ring on conflicting gear', () => {
+    const conflictingWithWEngine: Build = {
+      ...mockBuild2,
+      build_data: {
+        ...mockBuild2.build_data,
+        w_engine: {
+          id: 12001,
+          uid: 'w-1',
+          name: 'Глубоководный гость',
+          rarity: 'S',
+          level: 60,
+          phase: 1,
+          modification: 1,
+          specialty: 'Attack',
+          specialty_name: 'Нападение',
+          icon_url: 'https://example.com/w1.webp',
+          main_stat: { property_id: 1, name: 'ATK', value: 100, is_percent: false, rolls: 0, icon_url: '' },
+          secondary_stat: { property_id: 2, name: 'CRIT', value: 20, is_percent: true, rolls: 0, icon_url: '' },
+          passive_description: '',
+        },
+      },
+    }
+
+    const availableBuild: Build = {
+      ...mockBuild2,
+      id: 'build-available',
+      weapon_uid: 'w-different',
+    }
+
+    const html = renderToString(
+      <BuildPickerDialog
+        open={true}
+        builds={[mockBuild1, conflictingWithWEngine, availableBuild]}
+        squadBuilds={[mockBuild1]}
+        onSelect={vi.fn()}
+        onOpenChange={vi.fn()}
+      />,
+    )
+
+    // Contains 3-column grid definition
+    expect(html).toContain('sm:grid-cols-[1fr_auto_148px]')
+    // Contains gear conflict status badge and edge styling in red
+    expect(html).toContain('border-red-500/35')
+    expect(html).not.toContain('border-amber-500')
+    // No cyan colors used anywhere for in-squad status
+    expect(html).not.toContain('border-cyan-400')
+    expect(html).not.toContain('bg-cyan-400')
+    expect(html).not.toContain('text-cyan-300')
+    // Contains localized select button without hashtag or chevron
+    expect(html).toContain('ВЫБРАТЬ')
+    expect(html).not.toContain('#SELECT')
+    // Build description/notes are omitted, keeping only build title
+    expect(html).not.toContain('Секретная заметка к сборке')
   })
 })
