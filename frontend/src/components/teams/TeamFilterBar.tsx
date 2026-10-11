@@ -1,5 +1,7 @@
-import { ArrowDownAZ, ArrowUpDown, Search, X } from 'lucide-react'
+import { ArrowDownAZ, ArrowUpDown, Plus, Search, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -16,6 +18,7 @@ interface TeamFilterBarProps {
   onSearchChange: (value: string) => void
   sortBy: TeamSortOption
   onSortChange: (sort: TeamSortOption) => void
+  totalCount?: number
 }
 
 export function TeamFilterBar({
@@ -23,13 +26,15 @@ export function TeamFilterBar({
   onSearchChange,
   sortBy,
   onSortChange,
+  totalCount = 0,
 }: TeamFilterBarProps) {
   const { t } = useTranslation()
+  const isMaxTeams = totalCount >= 15
 
   return (
     <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-      {/* Search Input */}
-      <div className="relative flex-1">
+      {/* Search Input - compact width on tablet/desktop */}
+      <div className="relative w-full sm:max-w-xs md:max-w-sm">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
@@ -50,28 +55,48 @@ export function TeamFilterBar({
         )}
       </div>
 
-      {/* Sort Select */}
-      <div className="w-full sm:w-[170px] shrink-0">
-        <Select
-          value={sortBy}
-          onValueChange={(val) => onSortChange(val as TeamSortOption)}
-        >
-          <SelectTrigger size="sm" className="h-8.5 w-full text-xs rounded-lg border-border/60 bg-card/80">
-            <div className="flex items-center gap-1.5 truncate">
-              {sortBy === 'name' ? (
-                <ArrowDownAZ className="size-3.5 text-muted-foreground shrink-0" />
-              ) : (
-                <ArrowUpDown className="size-3.5 text-muted-foreground shrink-0" />
-              )}
-              <SelectValue placeholder={t('teams.sortLabel')} />
-            </div>
-          </SelectTrigger>
-          <SelectContent align="end">
-            <SelectItem value="newest">{t('teams.sortNewest')}</SelectItem>
-            <SelectItem value="oldest">{t('teams.sortOldest')}</SelectItem>
-            <SelectItem value="name">{t('teams.sortName')}</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Sort Select & Create Squad Button */}
+      <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+        <div className="flex-1 sm:w-[160px] sm:flex-none">
+          <Select
+            value={sortBy}
+            onValueChange={(val) => onSortChange(val as TeamSortOption)}
+          >
+            <SelectTrigger size="sm" className="h-9 w-full text-xs rounded-lg border-border/60 bg-card/80">
+              <div className="flex items-center gap-1.5 truncate">
+                {sortBy === 'name' ? (
+                  <ArrowDownAZ className="size-3.5 text-muted-foreground shrink-0" />
+                ) : (
+                  <ArrowUpDown className="size-3.5 text-muted-foreground shrink-0" />
+                )}
+                <SelectValue placeholder={t('teams.sortLabel')} />
+              </div>
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="newest">{t('teams.sortNewest')}</SelectItem>
+              <SelectItem value="oldest">{t('teams.sortOldest')}</SelectItem>
+              <SelectItem value="name">{t('teams.sortName')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {isMaxTeams ? (
+          <Button
+            disabled
+            title={t('teams.limitReachedTooltip')}
+            className="h-9 gap-1.5 shrink-0"
+          >
+            <Plus className="size-4" />
+            <span>{t('teams.createSquad')}</span>
+          </Button>
+        ) : (
+          <Button asChild className="h-9 gap-1.5 shrink-0">
+            <Link to="/teams/new">
+              <Plus className="size-4" />
+              <span>{t('teams.createSquad')}</span>
+            </Link>
+          </Button>
+        )}
       </div>
     </div>
   )

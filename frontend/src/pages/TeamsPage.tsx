@@ -70,13 +70,13 @@ export function TeamsPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-3.5 sm:space-y-4">
       {/* Page Header */}
       <TeamsHeader totalCount={totalCount} />
 
       {/* Account / Team States */}
       {accountsPending ? (
-        <div className="space-y-4" aria-busy="true">
+        <div className="space-y-3.5 sm:space-y-4" aria-busy="true">
           <TeamFilterBarSkeleton />
           <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-2">
             {Array.from({ length: 4 }, (_, index) => (
@@ -87,7 +87,7 @@ export function TeamsPage() {
       ) : accounts.length === 0 ? (
         <TeamsEmptyState variant="no-account" />
       ) : teamsQuery.isPending ? (
-        <div className="space-y-4" aria-busy="true">
+        <div className="space-y-3.5 sm:space-y-4" aria-busy="true">
           <TeamFilterBarSkeleton />
           <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-2">
             {Array.from({ length: 4 }, (_, index) => (
@@ -117,23 +117,23 @@ export function TeamsPage() {
             </div>
           )}
 
-          {/* Search & Sort Controls */}
+          {/* Search, Sort & Action Controls */}
           <TeamFilterBar
             search={search}
             onSearchChange={setSearch}
             sortBy={sortBy}
             onSortChange={setSortBy}
+            totalCount={totalCount}
           />
 
           {filteredSummaries.length === 0 ? (
             <TeamsEmptyState variant="no-results" onResetFilters={handleResetFilters} />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-2">
-              {filteredSummaries.map((summary, index) => (
+              {filteredSummaries.map((summary) => (
                 <TeamCard
                   key={summary.team.id}
                   summary={summary}
-                  index={index}
                 />
               ))}
             </div>

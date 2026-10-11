@@ -9,7 +9,6 @@ export function TeamCardSkeleton() {
       {/* Top Meta Bar Skeleton */}
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5">
-          <Skeleton className="h-6 w-11 -skew-x-12 rounded-none" />
           <Skeleton className="h-5 w-32 rounded-md sm:w-44" />
         </div>
         <div className="flex items-center gap-2">

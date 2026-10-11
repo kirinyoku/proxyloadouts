@@ -189,7 +189,7 @@ test.describe('Teams Page Characterization & Safety Net Suite', () => {
     const teamCard = page.getByRole('article', { name: 'Отряд Victoria Housekeeping' })
     await expect(teamCard).toBeVisible()
     await expect(teamCard.getByText('Без конфликтов')).not.toBeVisible()
-    await expect(teamCard.getByText('#01')).toBeVisible()
+    await expect(teamCard.getByRole('heading', { level: 2, name: 'Victoria Housekeeping' })).toBeVisible()
 
     // Agent slots are present inside the card
     await expect(teamCard.getByTitle(/Ellen Joe/i)).toBeVisible()

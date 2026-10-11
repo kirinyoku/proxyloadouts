@@ -42,10 +42,9 @@ const BuildInspectorDialog = lazy(() =>
 
 export interface TeamCardProps {
   summary: TeamSummary
-  index: number
 }
 
-export const TeamCard = memo(function TeamCard({ summary, index }: TeamCardProps) {
+export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const deleteMutation = useDeleteTeam()
@@ -60,7 +59,6 @@ export const TeamCard = memo(function TeamCard({ summary, index }: TeamCardProps
     () => [...(members ?? [])].sort((a, b) => a.slot_number - b.slot_number),
     [members],
   )
-  const squadIndex = String(index + 1).padStart(2, '0')
   const hasConflict = Boolean(report && !report.is_valid)
 
   const buildsQuery = useBuilds(team.game_account_id, { enabled: activePickerSlot !== null })
@@ -147,15 +145,8 @@ export const TeamCard = memo(function TeamCard({ summary, index }: TeamCardProps
 
       {/* Top Header: Single compact row on all screens */}
       <div className="flex items-center justify-between gap-2 min-w-0">
-        {/* Squad Index, Conflict status & Team Title */}
+        {/* Conflict status & Team Title */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          {/* Skewed acid tag — mirrors the active nav tab in AppHeader */}
-          <span className="checker-dark inline-flex h-6 shrink-0 -skew-x-12 items-center bg-primary px-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">
-            <span className="skew-x-12 font-heading text-xs leading-none tabular-nums text-primary-foreground">
-              #{squadIndex}
-            </span>
-          </span>
-
           {hasConflict && (
             <Tooltip>
               <TooltipTrigger asChild>
