@@ -33,7 +33,7 @@ function ShowcasePageSkeleton() {
   return (
     <div className="space-y-3" aria-busy="true">
       <ShowcaseProfileHeaderSkeleton />
-      <div className="flex flex-col md:flex-row items-start gap-3">
+      <div className="flex flex-col md:flex-row md:items-stretch gap-3">
         <AgentAvatarListSkeleton count={6} />
         <div className="min-w-0 flex-1 w-full">
           <AgentBuildInspectorSkeleton showDiscActions showMobileSections />
@@ -331,19 +331,26 @@ export function ShowcasePage() {
   useEffect(() => {
     if (
       typeof window === 'undefined' ||
-      typeof window.matchMedia !== 'function' ||
-      !window.matchMedia('(max-width: 767px)').matches
+      typeof window.matchMedia !== 'function'
     ) return
 
     const rail = agentRailRef.current
     const selectedTab = rail?.querySelector<HTMLElement>('[aria-selected="true"]')
     if (!rail || !selectedTab) return
 
-    const railRect = rail.getBoundingClientRect()
-    const tabRect = selectedTab.getBoundingClientRect()
-    const nextScrollLeft =
-      rail.scrollLeft + tabRect.left - railRect.left - (rail.clientWidth - tabRect.width) / 2
-    rail.scrollTo({ left: Math.max(0, nextScrollLeft), behavior: 'smooth' })
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      const railRect = rail.getBoundingClientRect()
+      const tabRect = selectedTab.getBoundingClientRect()
+      const nextScrollLeft =
+        rail.scrollLeft + tabRect.left - railRect.left - (rail.clientWidth - tabRect.width) / 2
+      rail.scrollTo({ left: Math.max(0, nextScrollLeft), behavior: 'smooth' })
+    } else {
+      const railRect = rail.getBoundingClientRect()
+      const tabRect = selectedTab.getBoundingClientRect()
+      if (tabRect.top < railRect.top || tabRect.bottom > railRect.bottom) {
+        selectedTab.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      }
+    }
   }, [selectedAgent?.id])
 
   const matchingSavedBuild = useMemo(() => {
@@ -419,24 +426,26 @@ export function ShowcasePage() {
 
           {/* Main 2-Section Body: Vertical Circle Avatars Sidebar on the left + Agent Showcase on the right */}
           {selectedAgent && (
-            <div ref={detailRef} className="scroll-mt-16 flex flex-col items-start gap-3 md:flex-row">
-              {/* Vertical Circular Agent Avatars Sidebar Container */}
+            <div ref={detailRef} className="scroll-mt-16 flex flex-col md:flex-row md:items-stretch gap-3">
+              {/* Vertical Circular Agent Avatars Sidebar Container matching card height */}
               {showcase.agents.length > 0 && (
-                <div
-                  ref={agentRailRef}
-                  role="tablist"
-                  aria-label={t('showcase.agentsRailAria')}
-                  className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-border/80 bg-gradient-to-b from-card to-background/90 p-2 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:w-auto md:flex-col md:overflow-y-auto md:overflow-x-hidden md:max-h-[calc(100vh-8rem)] md:snap-none"
-                >
-                  {showcase.agents.map((agent) => (
-                    <AgentAvatarTab
-                      key={agent.id}
-                      agent={agent}
-                      selected={agent.id === selectedAgent?.id}
-                      className="snap-start"
-                      onSelect={() => setSelectedAgentId(agent.id)}
-                    />
-                  ))}
+                <div className="w-full md:w-[70px] md:self-stretch md:shrink-0 relative">
+                  <div
+                    ref={agentRailRef}
+                    role="tablist"
+                    aria-label={t('showcase.agentsRailAria')}
+                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-border/80 bg-gradient-to-b from-card to-background/90 p-2 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-0 md:w-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                  >
+                    {showcase.agents.map((agent) => (
+                      <AgentAvatarTab
+                        key={agent.id}
+                        agent={agent}
+                        selected={agent.id === selectedAgent?.id}
+                        className="snap-start"
+                        onSelect={() => setSelectedAgentId(agent.id)}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
 

@@ -118,6 +118,10 @@ describe('RosterPage', () => {
     // Should render agent rail and showcase
     expect(html).toContain('Anby Demara')
     expect(html).toContain('Anby Stun Build')
+    // Layout should align sidebar height with showcase card
+    expect(html).toContain('md:items-stretch')
+    expect(html).toContain('md:w-[70px]')
+    expect(html).toContain('md:absolute md:inset-0')
     // Should NOT render empty filter results card
     expect(html).not.toContain('По выбранным атрибутам и специальностям агентов не найдено.')
   })

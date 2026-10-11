@@ -11,18 +11,17 @@ export function AgentAvatarListSkeleton({
   className,
 }: AgentAvatarListSkeletonProps) {
   return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        'rounded-3xl border border-border/80 bg-gradient-to-b from-card to-background/90 p-2 sm:p-2.5 shadow-xl flex md:flex-col items-center gap-2 w-full md:w-auto shrink-0 overflow-x-auto md:overflow-y-auto md:max-h-[calc(100vh-8rem)] scrollbar-thin',
-        className,
-      )}
-    >
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="relative shrink-0 p-0.5">
-          <Skeleton className="size-11 sm:size-12 rounded-full border-2 border-white/10" />
-        </div>
-      ))}
+    <div className={cn('w-full md:w-[70px] md:self-stretch md:shrink-0 relative', className)}>
+      <div
+        aria-hidden="true"
+        className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-border/80 bg-gradient-to-b from-card to-background/90 p-2 sm:p-2.5 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:absolute md:inset-0 md:w-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+      >
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i} className="relative shrink-0 p-0.5">
+            <Skeleton className="size-11 sm:size-12 rounded-full border-2 border-white/10" />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

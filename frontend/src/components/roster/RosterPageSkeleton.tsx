@@ -12,7 +12,7 @@ export function RosterPageSkeleton({ className }: RosterPageSkeletonProps) {
     <div
       aria-hidden="true"
       aria-busy="true"
-      className={cn('flex flex-col md:flex-row items-start gap-3', className)}
+      className={cn('flex flex-col md:flex-row md:items-stretch gap-3', className)}
     >
       {/* Left column: vertical list of agent avatar tabs */}
       <AgentAvatarListSkeleton count={6} />

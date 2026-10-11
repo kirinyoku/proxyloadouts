@@ -219,19 +219,26 @@ export function RosterPage({
   useEffect(() => {
     if (
       typeof window === 'undefined' ||
-      typeof window.matchMedia !== 'function' ||
-      !window.matchMedia('(max-width: 767px)').matches
+      typeof window.matchMedia !== 'function'
     ) return
 
     const rail = agentRailRef.current
     const selectedTab = rail?.querySelector<HTMLElement>('[aria-selected="true"]')
     if (!rail || !selectedTab) return
 
-    const railRect = rail.getBoundingClientRect()
-    const tabRect = selectedTab.getBoundingClientRect()
-    const nextScrollLeft =
-      rail.scrollLeft + tabRect.left - railRect.left - (rail.clientWidth - tabRect.width) / 2
-    rail.scrollTo({ left: Math.max(0, nextScrollLeft), behavior: 'smooth' })
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      const railRect = rail.getBoundingClientRect()
+      const tabRect = selectedTab.getBoundingClientRect()
+      const nextScrollLeft =
+        rail.scrollLeft + tabRect.left - railRect.left - (rail.clientWidth - tabRect.width) / 2
+      rail.scrollTo({ left: Math.max(0, nextScrollLeft), behavior: 'smooth' })
+    } else {
+      const railRect = rail.getBoundingClientRect()
+      const tabRect = selectedTab.getBoundingClientRect()
+      if (tabRect.top < railRect.top || tabRect.bottom > railRect.bottom) {
+        selectedTab.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      }
+    }
   }, [currentGroup?.agentId])
 
   function handleSelectAgent(agentId: number) {
@@ -388,26 +395,28 @@ export function RosterPage({
 
           {/* 3. Master-detail roster layout */}
           {filteredAgents > 0 && currentGroup && currentBuild && (
-            <div className="flex flex-col md:flex-row items-start gap-3">
-              {/* Left column: horizontal snap scroll rail on mobile / vertical list on desktop */}
-              <div
-                ref={agentRailRef}
-                role="tablist"
-                aria-label={t('showcase.agentsRailAria')}
-                className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2 shadow-xl backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:w-auto md:flex-col md:overflow-y-auto md:overflow-x-hidden md:max-h-[calc(100vh-8rem)] md:snap-none"
-              >
-                {filteredGroups.map((group) => (
-                  <AgentAvatarTab
-                    key={group.agentId}
-                    agentId={group.agentId}
-                    agentName={group.agentName}
-                    primaryAgent={group.builds[0]?.build_data}
-                    buildsCount={group.builds.length}
-                    selected={group.agentId === currentGroup.agentId}
-                    className="snap-start"
-                    onSelect={() => handleSelectAgent(group.agentId)}
-                  />
-                ))}
+            <div className="flex flex-col md:flex-row md:items-stretch gap-3">
+              {/* Left column: horizontal snap scroll rail on mobile / vertical list on desktop matching card height */}
+              <div className="w-full md:w-[70px] md:self-stretch md:shrink-0 relative">
+                <div
+                  ref={agentRailRef}
+                  role="tablist"
+                  aria-label={t('showcase.agentsRailAria')}
+                  className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2 shadow-xl backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-0 md:w-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                >
+                  {filteredGroups.map((group) => (
+                    <AgentAvatarTab
+                      key={group.agentId}
+                      agentId={group.agentId}
+                      agentName={group.agentName}
+                      primaryAgent={group.builds[0]?.build_data}
+                      buildsCount={group.builds.length}
+                      selected={group.agentId === currentGroup.agentId}
+                      className="snap-start"
+                      onSelect={() => handleSelectAgent(group.agentId)}
+                    />
+                  ))}
+                </div>
               </div>
 
               {/* Right column: detailed build inspector */}
