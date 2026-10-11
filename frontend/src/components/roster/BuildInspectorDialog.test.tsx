@@ -17,6 +17,7 @@ vi.mock('react-i18next', async (importOriginal) => {
           'roster.inSquad': '// В команде: ',
           'roster.updatedAt': 'Обновлено {{date}}',
           'roster.notePrefix': '// Заметка:',
+          'roster.addNote': 'Заметка',
           'common.close': 'Закрыть',
           'attributes.Fire': 'Огонь',
           'specialties.Attack': 'Нападение',
@@ -125,11 +126,13 @@ describe('BuildInspectorDialog', () => {
 
     expect(html).toContain('Эвелин')
     expect(html).toContain('Основной билд')
-    expect(html).toContain('Команда 1')
+    expect(html).not.toContain('Команда 1')
     expect(html).toContain('Фокус на крит и атаку')
-    expect(html).toContain('//')
+    expect(html).toContain('Заметка')
     expect(html).toContain('text-primary')
     expect(html).not.toContain('border-l-primary')
+    expect(html).toContain('sm:hidden')
+    expect(html).toContain('hidden sm:inline-flex')
     expect(html).toContain('/roster?build=build-evelyn-1&amp;from=teams')
     expect(html).toContain('В Ростер')
     expect(html).toContain('Закрыть')

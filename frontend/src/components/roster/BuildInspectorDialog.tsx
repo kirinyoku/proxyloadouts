@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, X } from 'lucide-react'
+import { ExternalLink, Layers, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -84,7 +84,6 @@ export function BuildInspectorDialog({
   build,
   open,
   onOpenChange,
-  teamName,
 }: BuildInspectorDialogProps) {
   const { t } = useTranslation()
   const [mobileSection, setMobileSection] = useState<MobileInspectorSection>('discs')
@@ -114,118 +113,142 @@ export function BuildInspectorDialog({
       >
         <div className="space-y-3 min-w-0">
           {/* Header */}
-          <DialogHeader className="flex flex-row items-center justify-between gap-2.5 border-b border-white/[0.08] pb-3 text-left">
-            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-              {/* Agent Circle Avatar */}
-              <div
-                className={cn(
-                  'relative size-11 sm:size-13 shrink-0 rounded-full border-2 bg-[#10151d] shadow-md',
-                  agent.rarity === 'S'
-                    ? 'border-amber-400/80 shadow-[0_0_12px_rgba(245,238,56,0.2)]'
-                    : agent.rarity === 'A'
-                      ? 'border-purple-400/80 shadow-[0_0_12px_rgba(192,132,252,0.2)]'
-                      : 'border-white/20',
-                )}
-              >
-                <span className="relative block size-full overflow-hidden rounded-full">
-                  {iconUrl ? (
-                    <img
-                      src={iconUrl}
-                      alt={agentName}
-                      width={48}
-                      height={48}
-                      loading="eager"
-                      decoding="async"
-                      className="crisp-img size-full object-cover select-none pointer-events-none"
-                    />
-                  ) : (
-                    <span className="flex size-full items-center justify-center font-heading text-xs font-bold text-foreground">
-                      {agentName.slice(0, 2)}
-                    </span>
+          <DialogHeader className="border-b border-white/[0.08] pb-3 text-left">
+            <div className="flex items-center justify-between gap-2.5 min-w-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                {/* Agent Circle Avatar */}
+                <div
+                  className={cn(
+                    'relative size-11 sm:size-13 shrink-0 rounded-full border-2 bg-[#10151d] shadow-md',
+                    agent.rarity === 'S'
+                      ? 'border-amber-400/80 shadow-[0_0_12px_rgba(245,238,56,0.2)]'
+                      : agent.rarity === 'A'
+                        ? 'border-purple-400/80 shadow-[0_0_12px_rgba(192,132,252,0.2)]'
+                        : 'border-white/20',
                   )}
-                </span>
-
-                {agent.mindscape_cinema > 0 && (
-                  <MindscapeBadge level={agent.mindscape_cinema} size="sm" />
-                )}
-              </div>
-
-              {/* Agent Titles & Build Details */}
-              <div className="min-w-0 flex-1 space-y-1">
-                {/* Line 1: Agent Name + Attribute Badge + Specialty Badge */}
-                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                  <DialogTitle className="truncate font-heading text-base sm:text-lg font-bold tracking-wide text-foreground">
-                    {agentName}
-                  </DialogTitle>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <AttributeBadge attribute={agent.attribute} label={attributeName} />
-                    <SpecialtyBadge specialty={agent.specialty} label={specialtyName} />
-                  </div>
-                </div>
-
-                {/* Line 2: Build Name + Squad Info */}
-                <div className="flex items-center gap-2 text-xs min-w-0">
-                  <span className="truncate font-mono text-[11px] sm:text-xs font-semibold leading-tight tabular-nums text-muted-foreground">
-                    {build.name}
+                >
+                  <span className="relative block size-full overflow-hidden rounded-full">
+                    {iconUrl ? (
+                      <img
+                        src={iconUrl}
+                        alt={agentName}
+                        width={48}
+                        height={48}
+                        loading="eager"
+                        decoding="async"
+                        className="crisp-img size-full object-cover select-none pointer-events-none"
+                      />
+                    ) : (
+                      <span className="flex size-full items-center justify-center font-heading text-xs font-bold text-foreground">
+                        {agentName.slice(0, 2)}
+                      </span>
+                    )}
                   </span>
 
-                  {teamName && (
-                    <span className="truncate text-muted-foreground/80 font-mono text-[11px] max-w-[120px] min-[400px]:max-w-[180px] sm:max-w-xs">
-                      {t('roster.inSquad')}<span className="text-neutral-200 font-sans font-semibold">{teamName}</span>
-                    </span>
+                  {agent.mindscape_cinema > 0 && (
+                    <MindscapeBadge level={agent.mindscape_cinema} size="sm" />
                   )}
                 </div>
+
+                {/* Agent Titles & Build Details */}
+                <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
+                  {/* Line 1: Agent Name + Attribute Badge + Specialty Badge */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <DialogTitle className="truncate font-heading text-base sm:text-lg font-bold tracking-wide text-foreground">
+                      {agentName}
+                    </DialogTitle>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <AttributeBadge
+                        attribute={agent.attribute}
+                        label={attributeName}
+                        className="size-3.5 sm:size-4"
+                      />
+                      <SpecialtyBadge
+                        specialty={agent.specialty}
+                        label={specialtyName}
+                        className="size-3.5 sm:size-4"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Line 2: Build Name (and Note on desktop sm+) */}
+                  <div className="flex items-center gap-2 sm:gap-3.5 text-xs min-w-0">
+                    <div className="inline-flex items-center gap-1.5 min-w-0 max-w-full">
+                      <Layers className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                      <span className="truncate font-mono text-xs font-semibold text-foreground">
+                        {build.name}
+                      </span>
+                    </div>
+
+                    {/* Desktop Note: inline next to build */}
+                    {build.description?.trim() && (
+                      <span
+                        className="hidden sm:inline-flex items-center gap-1.5 min-w-0 max-w-full font-mono text-xs text-muted-foreground"
+                        title={build.description.trim()}
+                      >
+                        <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
+                          {t('roster.addNote')}
+                        </span>
+                        <span className="truncate text-muted-foreground">
+                          {build.description.trim()}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions: Open in Roster + Close Button */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-2.5 sm:px-3 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95 hover:border-primary/60 hover:bg-primary/15 hover:text-primary dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground dark:hover:border-primary/60 dark:hover:bg-primary/15 dark:hover:text-primary"
+                  asChild
+                >
+                  <Link
+                    to={`/roster?build=${encodeURIComponent(build.id)}&from=teams`}
+                    title={t('roster.openInRoster')}
+                    aria-label={t('roster.openInRoster')}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <span className="hidden min-[380px]:inline sm:inline">{t('roster.openInRoster')}</span>
+                    <ExternalLink className="size-3.5 shrink-0" />
+                  </Link>
+                </Button>
+
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onOpenChange(false)}
+                    className="size-8 rounded-xl text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/10 dark:hover:text-white transition-colors cursor-pointer active:scale-95"
+                    aria-label={t('common.close', 'Close')}
+                    title={t('common.close', 'Close')}
+                  >
+                    <X className="size-4" />
+                    <span className="sr-only">{t('common.close', 'Close')}</span>
+                  </Button>
+                </DialogClose>
               </div>
             </div>
 
-            {/* Actions: Open in Roster + Close Button */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-2.5 sm:px-3 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95 hover:border-primary/60 hover:bg-primary/15 hover:text-primary dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground dark:hover:border-primary/60 dark:hover:bg-primary/15 dark:hover:text-primary"
-                asChild
+            {/* Mobile Note: full-width sub-row in header */}
+            {build.description?.trim() && (
+              <div
+                className="flex sm:hidden items-center gap-1.5 min-w-0 pt-2 font-mono text-xs text-muted-foreground"
+                title={build.description.trim()}
               >
-                <Link
-                  to={`/roster?build=${encodeURIComponent(build.id)}&from=teams`}
-                  title={t('roster.openInRoster')}
-                  aria-label={t('roster.openInRoster')}
-                  className="inline-flex items-center gap-1.5"
-                >
-                  <span className="hidden min-[380px]:inline sm:inline">{t('roster.openInRoster')}</span>
-                  <ExternalLink className="size-3.5 shrink-0" />
-                </Link>
-              </Button>
-
-              <DialogClose asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onOpenChange(false)}
-                  className="size-8 rounded-xl text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/10 dark:hover:text-white transition-colors cursor-pointer active:scale-95"
-                  aria-label={t('common.close', 'Close')}
-                  title={t('common.close', 'Close')}
-                >
-                  <X className="size-4" />
-                  <span className="sr-only">{t('common.close', 'Close')}</span>
-                </Button>
-              </DialogClose>
-            </div>
-          </DialogHeader>
-
-          {/* Description / Note if present */}
-          {build.description?.trim() && (
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs min-w-0 w-full overflow-hidden">
-              <p className="min-w-0 break-words [overflow-wrap:anywhere] [word-break:break-word] leading-relaxed text-neutral-200">
-                <span className="font-mono font-bold text-primary mr-1.5 select-none" aria-hidden="true">
-                  //
+                <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
+                  {t('roster.addNote')}
                 </span>
-                <span className="sr-only">{t('roster.notePrefix')} </span>
-                {build.description.trim()}
-              </p>
-            </div>
-          )}
+                <span className="truncate text-muted-foreground">
+                  {build.description.trim()}
+                </span>
+              </div>
+            )}
+          </DialogHeader>
 
           {/* On mobile screens: W-Engine card is displayed above the section tabs */}
           <div className="lg:hidden">

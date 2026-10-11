@@ -28,7 +28,7 @@ export function AttributeBadge({ attribute, label, className }: AttributeBadgePr
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center justify-center transition-transform hover:scale-110',
+        'inline-flex size-5.5 shrink-0 items-center justify-center transition-transform hover:scale-110',
         className,
       )}
       title={title}
@@ -38,7 +38,7 @@ export function AttributeBadge({ attribute, label, className }: AttributeBadgePr
         <img
           src={iconUrl}
           alt=""
-          className="size-5.5 object-contain select-none pointer-events-none drop-shadow-xs"
+          className="size-full object-contain select-none pointer-events-none drop-shadow-xs"
         />
       ) : (
         <span className="size-2.5 rounded-full bg-current" />
@@ -67,7 +67,7 @@ export function SpecialtyBadge({ specialty, label, className }: SpecialtyBadgePr
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center justify-center transition-transform hover:scale-110',
+        'inline-flex size-5.5 shrink-0 items-center justify-center transition-transform hover:scale-110',
         className,
       )}
       title={title}
@@ -77,7 +77,7 @@ export function SpecialtyBadge({ specialty, label, className }: SpecialtyBadgePr
         <img
           src={iconUrl}
           alt=""
-          className="size-5.5 object-contain select-none pointer-events-none drop-shadow-xs"
+          className="size-full object-contain select-none pointer-events-none drop-shadow-xs"
         />
       ) : (
         <span className="font-heading text-xs font-bold">{specialty.slice(0, 2)}</span>
