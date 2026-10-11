@@ -300,12 +300,12 @@ test.describe('Team Builder (/teams/new) Minimalist E2E Suite', () => {
     await expect(corinOption).toBeDisabled()
     // The badge is rendered twice (mobile + desktop layout variants); the
     // first match is the mobile-only copy hidden at this viewport.
-    const corinBadge = corinOption.getByText('Амплификатор занят').last()
+    const corinBadge = corinOption.getByText('КОНФЛИКТ').last()
     await expect(corinBadge).toBeVisible()
 
     // Hovering the conflict badge immediately reveals the styled tooltip without the native 2s delay
     await corinBadge.hover()
-    await expect(page.getByText(/Амплификатор уже занят сборкой «Shark Frostbite»/i)).toBeVisible()
+    await expect(page.getByText(/Амплификатор «Deep Sea Visitor» занят агентом Ellen Joe/i)).toBeVisible()
 
     // Ellen option in picker is also disabled (already in team)
     const ellenOption = dialog.getByRole('option', { name: /Shark Frostbite/i })
