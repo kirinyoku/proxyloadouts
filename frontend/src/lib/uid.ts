@@ -53,6 +53,8 @@ export function getRegionShortCode(region?: string | null): string {
     case 'tw/hk':
     case 'tw':
       return 'TW/HK'
+    case 'cht':
+      return 'CHT'
     case 'china':
     case 'cn':
       return 'CN'

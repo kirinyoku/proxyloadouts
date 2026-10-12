@@ -70,6 +70,8 @@ describe('uid utilities', () => {
       expect(getRegionShortCode('TW/HK/MO')).toBe('TW/HK')
       expect(getRegionShortCode('tw/hk')).toBe('TW/HK')
       expect(getRegionShortCode('TW')).toBe('TW/HK')
+      expect(getRegionShortCode('CHT')).toBe('CHT')
+      expect(getRegionShortCode('cht')).toBe('CHT')
       expect(getRegionShortCode('China')).toBe('CN')
       expect(getRegionShortCode('china')).toBe('CN')
       expect(getRegionShortCode('CN')).toBe('CN')

@@ -18,89 +18,108 @@ const REGION_CONFIGS: Record<string, RegionConfig> = {
   Europe: {
     code: 'EU',
     label: 'Europe',
-    className: 'border-sky-500/40 bg-sky-500/15 text-sky-400 dark:text-sky-300 shadow-[0_0_8px_-2px_rgba(56,189,248,0.25)]',
+    className: 'bg-sky-600',
   },
   europe: {
     code: 'EU',
     label: 'Europe',
-    className: 'border-sky-500/40 bg-sky-500/15 text-sky-400 dark:text-sky-300 shadow-[0_0_8px_-2px_rgba(56,189,248,0.25)]',
+    className: 'bg-sky-600',
   },
   EU: {
     code: 'EU',
     label: 'Europe',
-    className: 'border-sky-500/40 bg-sky-500/15 text-sky-400 dark:text-sky-300 shadow-[0_0_8px_-2px_rgba(56,189,248,0.25)]',
+    className: 'bg-sky-600',
   },
   America: {
     code: 'NA',
     label: 'America',
-    className: 'border-rose-500/40 bg-rose-500/15 text-rose-400 dark:text-rose-300 shadow-[0_0_8px_-2px_rgba(244,63,94,0.25)]',
+    className: 'bg-[#e05666]',
   },
   america: {
     code: 'NA',
     label: 'America',
-    className: 'border-rose-500/40 bg-rose-500/15 text-rose-400 dark:text-rose-300 shadow-[0_0_8px_-2px_rgba(244,63,94,0.25)]',
+    className: 'bg-[#e05666]',
   },
   USA: {
     code: 'NA',
     label: 'America',
-    className: 'border-rose-500/40 bg-rose-500/15 text-rose-400 dark:text-rose-300 shadow-[0_0_8px_-2px_rgba(244,63,94,0.25)]',
+    className: 'bg-[#e05666]',
   },
   NA: {
     code: 'NA',
     label: 'America',
-    className: 'border-rose-500/40 bg-rose-500/15 text-rose-400 dark:text-rose-300 shadow-[0_0_8px_-2px_rgba(244,63,94,0.25)]',
+    className: 'bg-[#e05666]',
   },
   Asia: {
     code: 'ASIA',
     label: 'Asia',
-    className: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 dark:text-emerald-300 shadow-[0_0_8px_-2px_rgba(16,185,129,0.25)]',
+    className: 'bg-emerald-600',
   },
   asia: {
     code: 'ASIA',
     label: 'Asia',
-    className: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 dark:text-emerald-300 shadow-[0_0_8px_-2px_rgba(16,185,129,0.25)]',
+    className: 'bg-emerald-600',
   },
   ASIA: {
     code: 'ASIA',
     label: 'Asia',
-    className: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 dark:text-emerald-300 shadow-[0_0_8px_-2px_rgba(16,185,129,0.25)]',
+    className: 'bg-emerald-600',
   },
   'TW/HK/MO': {
     code: 'TW/HK',
     label: 'TW/HK/MO',
-    className: 'border-purple-500/40 bg-purple-500/15 text-purple-400 dark:text-purple-300 shadow-[0_0_8px_-2px_rgba(168,85,247,0.25)]',
+    className: 'bg-purple-600',
+  },
+  'TW/HK': {
+    code: 'TW/HK',
+    label: 'TW/HK/MO',
+    className: 'bg-purple-600',
   },
   TW: {
     code: 'TW/HK',
     label: 'TW/HK/MO',
-    className: 'border-purple-500/40 bg-purple-500/15 text-purple-400 dark:text-purple-300 shadow-[0_0_8px_-2px_rgba(168,85,247,0.25)]',
+    className: 'bg-purple-600',
+  },
+  CHT: {
+    code: 'CHT',
+    label: 'TW/HK/MO',
+    className: 'bg-purple-600',
+  },
+  cht: {
+    code: 'CHT',
+    label: 'TW/HK/MO',
+    className: 'bg-purple-600',
   },
   China: {
     code: 'CN',
     label: 'China',
-    className: 'border-amber-500/40 bg-amber-500/15 text-amber-400 dark:text-amber-300 shadow-[0_0_8px_-2px_rgba(245,158,11,0.25)]',
+    className: 'bg-amber-600',
   },
   china: {
     code: 'CN',
     label: 'China',
-    className: 'border-amber-500/40 bg-amber-500/15 text-amber-400 dark:text-amber-300 shadow-[0_0_8px_-2px_rgba(245,158,11,0.25)]',
+    className: 'bg-amber-600',
   },
   CN: {
     code: 'CN',
     label: 'China',
-    className: 'border-amber-500/40 bg-amber-500/15 text-amber-400 dark:text-amber-300 shadow-[0_0_8px_-2px_rgba(245,158,11,0.25)]',
+    className: 'bg-amber-600',
   },
 }
 
 function getRegionConfig(region: string): RegionConfig {
   const trimmed = region?.trim() ?? ''
-  return (
-    REGION_CONFIGS[trimmed] ?? {
-      code: getRegionShortCode(trimmed) || '??',
-      label: trimmed || 'Unknown',
-      className: 'border-zinc-500/40 bg-zinc-500/15 text-zinc-400 dark:text-zinc-300',
-    }
-  )
+  const direct = REGION_CONFIGS[trimmed]
+  if (direct) return direct
+  const lower = trimmed.toLowerCase()
+  const found = Object.entries(REGION_CONFIGS).find(([k]) => k.toLowerCase() === lower)
+  if (found) return found[1]
+
+  return {
+    code: getRegionShortCode(trimmed) || '??',
+    label: trimmed || 'Unknown',
+    className: 'bg-zinc-600',
+  }
 }
 
 export function RegionBadge({ region, className }: { region: string; className?: string }) {
@@ -109,7 +128,7 @@ export function RegionBadge({ region, className }: { region: string; className?:
     <span
       title={`Server: ${config.label}`}
       className={cn(
-        'inline-flex items-center rounded-[3px_3px_0_3px] border px-1.5 py-0.5 font-heading text-[9px] leading-none font-bold tracking-wider uppercase select-none shadow-xs',
+        'inline-flex items-center rounded-[3px_3px_0_3px] border border-black/70 px-1.5 py-0.5 font-mono text-[9.5px] leading-none font-bold tracking-wider uppercase text-white select-none shadow-[0_1px_2px_rgba(0,0,0,0.35)]',
         config.className,
         className
       )}
