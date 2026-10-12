@@ -396,13 +396,13 @@ export function RosterPage({
           {/* 3. Master-detail roster layout */}
           {filteredAgents > 0 && currentGroup && currentBuild && (
             <div className="flex flex-col md:flex-row md:items-stretch gap-3">
-              {/* Left column: horizontal snap scroll rail on mobile / vertical list on desktop matching card height */}
+              {/* Left column: horizontal snap scroll rail on mobile / dynamic vertical list on desktop capped at card height */}
               <div className="w-full md:w-[70px] md:self-stretch md:shrink-0 relative">
                 <div
                   ref={agentRailRef}
                   role="tablist"
                   aria-label={t('showcase.agentsRailAria')}
-                  className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2 shadow-xl backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-0 md:w-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                  className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2 shadow-xl backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
                 >
                   {filteredGroups.map((group) => (
                     <AgentAvatarTab

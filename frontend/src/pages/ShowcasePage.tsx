@@ -426,14 +426,14 @@ export function ShowcasePage() {
           {/* Main 2-Section Body: Vertical Circle Avatars Sidebar on the left + Agent Showcase on the right */}
           {selectedAgent && (
             <div ref={detailRef} className="scroll-mt-16 flex flex-col md:flex-row md:items-stretch gap-3">
-              {/* Vertical Circular Agent Avatars Sidebar Container matching card height */}
+              {/* Dynamic vertical circular agent avatars sidebar capped at card height */}
               {showcase.agents.length > 0 && (
                 <div className="w-full md:w-[70px] md:self-stretch md:shrink-0 relative">
                   <div
                     ref={agentRailRef}
                     role="tablist"
                     aria-label={t('showcase.agentsRailAria')}
-                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-border/80 bg-gradient-to-b from-card to-background/90 p-2 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-0 md:w-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-border/80 bg-gradient-to-b from-card to-background/90 p-2 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
                   >
                     {showcase.agents.map((agent) => (
                       <AgentAvatarTab
