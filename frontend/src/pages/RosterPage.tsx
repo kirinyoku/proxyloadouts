@@ -37,7 +37,7 @@ function MobileSectionTabs({
   ]
 
   return (
-    <div className="sticky top-14 z-30 -mx-2.5 sm:-mx-3 border-b border-white/[0.06] bg-[#0d121a]/95 px-3 py-1 backdrop-blur-md lg:hidden">
+    <div className="sticky top-14 z-30 -mx-2.5 sm:-mx-3 border-b border-white/[0.06] bg-[#0d121a]/95 px-3 py-1 backdrop-blur-sm lg:hidden">
       <div
         role="tablist"
         aria-label={t('showcase.agentSectionsAria')}
@@ -313,7 +313,7 @@ export function RosterPage({
       {accountsPending ? (
         <RosterPageSkeleton />
       ) : accounts.length === 0 ? (
-        <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-12 shadow-lg backdrop-blur-xl">
+        <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 text-center">
             <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-primary shadow-xs">
               <Plus className="size-6" />
@@ -351,7 +351,7 @@ export function RosterPage({
 
           {/* Roster is empty state */}
           {buildsQuery.isSuccess && totalBuilds === 0 && (
-            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-12 shadow-lg backdrop-blur-xl">
+            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
               <div className="flex flex-col items-center gap-3 text-center">
                 <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-muted-foreground shadow-xs">
                   <Search className="size-6 text-muted-foreground/80" />
@@ -372,7 +372,7 @@ export function RosterPage({
 
           {/* Search yielded no results state */}
           {buildsQuery.isSuccess && totalBuilds > 0 && filteredAgents === 0 && searchNorm !== '' && (
-            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-12 shadow-lg backdrop-blur-xl">
+            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
               <div className="flex flex-col items-center justify-center gap-3 text-center">
                 <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-muted-foreground shadow-xs">
                   <Search className="size-6 text-muted-foreground/80" />
@@ -402,7 +402,7 @@ export function RosterPage({
                   ref={agentRailRef}
                   role="tablist"
                   aria-label={t('showcase.agentsRailAria')}
-                  className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2 shadow-xl backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                  className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/96 p-2 shadow-xl backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
                 >
                   {filteredGroups.map((group) => (
                     <AgentAvatarTab
@@ -421,7 +421,7 @@ export function RosterPage({
 
               {/* Right column: detailed build inspector */}
               <div className="min-w-0 flex-1 w-full">
-                <div className="relative rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2.5 md:py-3 md:px-3.5 shadow-2xl backdrop-blur-xl">
+                <div className="relative rounded-3xl border border-white/[0.08] bg-[#111620]/96 p-2.5 md:py-3 md:px-3.5 shadow-2xl backdrop-blur-sm">
                   <div className="space-y-2.5">
                     {/* Build management toolbar */}
                     <RosterBuildToolbar

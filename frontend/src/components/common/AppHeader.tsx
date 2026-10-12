@@ -4,6 +4,7 @@ import { useMe } from '@/api/hooks'
 import { Button } from '@/components/ui/button'
 import { UserMenu } from '@/components/common/UserMenu'
 import { PxlLogo } from '@/components/common/PxlLogo'
+import { preloadRoute } from '@/lib/route-preload'
 import { cn } from '@/lib/utils'
 
 function NavTab({
@@ -21,6 +22,8 @@ function NavTab({
     <NavLink
       to={to}
       end={end}
+      onMouseEnter={() => preloadRoute(to)}
+      onFocus={() => preloadRoute(to)}
       className={cn(
         'group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         fullWidth ? 'flex-1 min-w-0 flex' : 'inline-flex',
@@ -58,7 +61,7 @@ export function AppHeader() {
   ] as const
 
   return (
-    <header className="sticky top-0 z-40 border-b-2 border-black bg-background/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b-2 border-black bg-background/95 backdrop-blur-sm">
       <div aria-hidden className="crosshatch absolute inset-x-0 top-0 h-1 opacity-90" style={{ backgroundColor: 'var(--primary)' }} />
       <div className="mx-auto max-w-6xl px-3 sm:px-4">
         <div className="relative flex h-14 items-center justify-between gap-2 sm:gap-4">

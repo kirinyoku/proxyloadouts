@@ -23,7 +23,7 @@ export function AgentStatsPanelSkeleton({ compact = false, className }: AgentSta
     <div
       aria-hidden="true"
       className={cn(
-        'rounded-2xl border border-white/[0.2] bg-card/90 p-3 shadow-md backdrop-blur-md',
+        'rounded-2xl border border-white/[0.2] bg-card/96 p-3 shadow-md backdrop-blur-sm',
         className,
       )}
     >

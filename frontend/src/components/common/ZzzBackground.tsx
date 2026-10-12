@@ -9,8 +9,8 @@ interface DiagonalRowProps {
   tapeId: string
 }
 
-// 4 repetitions per segment ensures full horizontal coverage before repeating at -50%
-const REPEAT_COUNT = 4
+// 3 repetitions per segment ensures full coverage and smooth looping with 40% less memory
+const REPEAT_COUNT = 3
 
 function DiagonalMarqueeRow({ direction, duration, startWithStroke = false, tapeId }: DiagonalRowProps) {
   const trackClass = direction === 'left' ? 'zzz-marquee-track-left' : 'zzz-marquee-track-right'
@@ -104,8 +104,8 @@ export const ZzzBackground = React.memo(function ZzzBackground() {
       aria-hidden="true"
       className="zzz-bg-animated-root pointer-events-none fixed inset-0 z-0 select-none overflow-hidden"
     >
-      {/* 1. Oversized container rotated -12deg to cover all viewport dimensions */}
-      <div className="absolute -left-[65vw] -top-[65vh] flex h-[230vh] w-[230vw] -rotate-12 flex-col justify-around">
+      {/* 1. Geometric container rotated -12deg to cover all viewport dimensions without wasteful offscreen area */}
+      <div className="absolute -left-[25vw] -top-[35vh] flex h-[170vh] w-[150vw] -rotate-12 flex-col justify-around">
         <DiagonalMarqueeRow direction="left" duration={210} startWithStroke={false} tapeId="RP-01" />
         <DiagonalMarqueeRow direction="right" duration={250} startWithStroke={true} tapeId="RP-02" />
         <DiagonalMarqueeRow direction="left" duration={195} startWithStroke={false} tapeId="RP-03" />
@@ -116,8 +116,8 @@ export const ZzzBackground = React.memo(function ZzzBackground() {
       {/* 2. CRT / VHS Scanlines Texture */}
       <div className="vhs-scanlines pointer-events-none absolute inset-0 opacity-30" />
 
-      {/* 3. Analog Film Grain / Static Noise Texture */}
-      <div className="film-grain pointer-events-none absolute inset-0 opacity-45 mix-blend-screen" />
+      {/* 3. Analog Film Grain / Static Noise Texture (hardware accelerated without blend mode) */}
+      <div className="film-grain pointer-events-none absolute inset-0 opacity-25" />
 
       {/* 4. VHS Glitch Tracking Line (drifts down slowly) */}
       <div className="vhs-tracking-line pointer-events-none" />

@@ -52,7 +52,7 @@ export function PrivacyPage() {
       {/* Content Container */}
       <div className="space-y-6">
         {/* Section 1: Overview & Operator */}
-        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/60 p-6 sm:p-7 backdrop-blur-sm">
+        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/95 p-6 sm:p-7 shadow-xs">
           <h2 className="mb-3 font-heading text-base text-foreground flex items-center gap-2">
             <Globe className="size-4 text-primary" />
             {t('privacy.sections.overview.title')}
@@ -79,7 +79,7 @@ export function PrivacyPage() {
         </section>
 
         {/* Section 2: Terms of Service & Acceptable Use */}
-        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/60 p-6 sm:p-7 backdrop-blur-sm">
+        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/95 p-6 sm:p-7 shadow-xs">
           <h2 className="mb-3 font-heading text-base text-foreground flex items-center gap-2">
             <Gavel className="size-4 text-primary" />
             {t('privacy.sections.terms.title')}
@@ -105,7 +105,7 @@ export function PrivacyPage() {
         </section>
 
         {/* Section 3: Intellectual Property & HoYoverse Policy */}
-        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/60 p-6 sm:p-7 backdrop-blur-sm">
+        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/95 p-6 sm:p-7 shadow-xs">
           <div className="flex items-start gap-3">
             <Scale className="size-5 shrink-0 text-muted-foreground mt-0.5" />
             <div className="space-y-3">
@@ -123,7 +123,7 @@ export function PrivacyPage() {
         </section>
 
         {/* Section 4: Data We Collect & Legal Bases */}
-        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/60 p-6 sm:p-7 backdrop-blur-sm">
+        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/95 p-6 sm:p-7 shadow-xs">
           <h2 className="mb-4 font-heading text-base text-foreground flex items-center gap-2">
             <Database className="size-4 text-primary" />
             {t('privacy.sections.collected.title')}
@@ -169,7 +169,7 @@ export function PrivacyPage() {
         </section>
 
         {/* Section 5: Cookies & LocalStorage */}
-        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/60 p-6 sm:p-7 backdrop-blur-sm">
+        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/95 p-6 sm:p-7 shadow-xs">
           <h2 className="mb-3 font-heading text-base text-foreground flex items-center gap-2">
             <Cookie className="size-4 text-primary" />
             {t('privacy.sections.cookies.title')}
@@ -210,7 +210,7 @@ export function PrivacyPage() {
         </section>
 
         {/* Section 7: Retention Periods */}
-        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/60 p-6 sm:p-7 backdrop-blur-sm">
+        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/95 p-6 sm:p-7 shadow-xs">
           <h2 className="mb-3 font-heading text-base text-foreground flex items-center gap-2">
             <Clock className="size-4 text-primary" />
             {t('privacy.sections.retention.title')}
@@ -233,7 +233,7 @@ export function PrivacyPage() {
         </section>
 
         {/* Section 8: GDPR User Rights */}
-        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/60 p-6 sm:p-7 backdrop-blur-sm">
+        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/95 p-6 sm:p-7 shadow-xs">
           <div className="flex items-start gap-3">
             <ShieldAlert className="size-5 shrink-0 text-primary mt-0.5" />
             <div className="space-y-4 w-full">
@@ -266,7 +266,7 @@ export function PrivacyPage() {
         </section>
 
         {/* Section 9: Third-Party Services */}
-        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/60 p-6 sm:p-7 backdrop-blur-sm">
+        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/95 p-6 sm:p-7 shadow-xs">
           <h2 className="mb-3 font-heading text-base text-foreground flex items-center gap-2">
             <Lock className="size-4 text-primary" />
             {t('privacy.sections.thirdParty.title')}
@@ -295,7 +295,7 @@ export function PrivacyPage() {
         </section>
 
         {/* Section 10: Contacts & Legal Inquiries */}
-        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/60 p-6 sm:p-7 backdrop-blur-sm">
+        <section className="rounded-[12px_12px_0_12px] border border-white/10 bg-card/95 p-6 sm:p-7 shadow-xs">
           <div className="flex items-start gap-3">
             <Mail className="size-5 shrink-0 text-primary mt-0.5" />
             <div className="space-y-2">

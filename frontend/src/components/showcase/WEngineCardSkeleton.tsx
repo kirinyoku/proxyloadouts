@@ -10,7 +10,7 @@ export function WEngineCardSkeleton({ className }: WEngineCardSkeletonProps) {
     <div
       aria-hidden="true"
       className={cn(
-        'relative rounded-2xl border border-white/[0.2] bg-card/90 p-3 shadow-md backdrop-blur-md',
+        'relative rounded-2xl border border-white/[0.2] bg-card/96 p-3 shadow-md backdrop-blur-sm',
         className,
       )}
     >

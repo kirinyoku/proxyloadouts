@@ -1,7 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { ApiError } from '@/api/client'
 import { AppLayout } from '@/components/common/AppLayout'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
@@ -12,14 +12,29 @@ import { PageLoader } from '@/components/common/PageLoader'
 import { ZzzBackground } from '@/components/common/ZzzBackground'
 import { HomePage } from '@/pages/HomePage'
 
-const ShowcasePage = lazy(() => import('@/pages/ShowcasePage').then(m => ({ default: m.ShowcasePage })))
-const LoginPage = lazy(() => import('@/pages/LoginPage').then(m => ({ default: m.LoginPage })))
-const AuthCallbackPage = lazy(() => import('@/pages/AuthCallbackPage').then(m => ({ default: m.AuthCallbackPage })))
-const RosterPage = lazy(() => import('@/pages/RosterPage').then(m => ({ default: m.RosterPage })))
-const TeamsPage = lazy(() => import('@/pages/TeamsPage').then(m => ({ default: m.TeamsPage })))
-const TeamBuilderPage = lazy(() => import('@/pages/TeamBuilderPage').then(m => ({ default: m.TeamBuilderPage })))
-const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
-const PrivacyPage = lazy(() => import('@/pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })))
+import {
+  loadAuthCallbackPage,
+  loadLoginPage,
+  loadPrivacyPage,
+  loadRosterPage,
+  loadSettingsPage,
+  loadShowcasePage,
+  loadTeamBuilderPage,
+  loadTeamsPage,
+  preloadCoreRoutes,
+} from '@/lib/route-preload'
+
+const ShowcasePage = lazy(loadShowcasePage)
+const LoginPage = lazy(loadLoginPage)
+const AuthCallbackPage = lazy(loadAuthCallbackPage)
+const RosterPage = lazy(loadRosterPage)
+const TeamsPage = lazy(loadTeamsPage)
+const TeamBuilderPage = lazy(loadTeamBuilderPage)
+const SettingsPage = lazy(loadSettingsPage)
+const PrivacyPage = lazy(loadPrivacyPage)
+const DevModalsPage = import.meta.env.DEV
+  ? lazy(() => import('@/pages/DevModalsPage').then(m => ({ default: m.DevModalsPage })))
+  : null
 
 function BuildRouteRedirect() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -48,7 +63,28 @@ const queryClient = new QueryClient({
   },
 })
 
+function DevFloatingWidget() {
+  const location = useLocation()
+  if (!import.meta.env.DEV || location.pathname.startsWith('/dev/')) return null
+  return (
+    <div className="fixed bottom-3 right-3 z-50">
+      <Link
+        to="/dev/modals"
+        className="flex items-center gap-1.5 rounded-full border-2 border-black bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-2xl transition-all hover:scale-105 active:scale-95 select-none"
+        title="Песочница всплывающих окон"
+      >
+        <span>🛠️</span>
+        <span>Окна</span>
+      </Link>
+    </div>
+  )
+}
+
 function App() {
+  useEffect(() => {
+    preloadCoreRoutes()
+  }, [])
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -65,6 +101,9 @@ function App() {
                     <Route path="/showcase" element={<ShowcasePage />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
+                    {import.meta.env.DEV && DevModalsPage && (
+                      <Route path="/dev/modals" element={<DevModalsPage />} />
+                    )}
                     <Route element={<ProtectedRoute />}>
                       <Route path="/roster" element={<RosterPage />} />
                       <Route path="/builds/:buildId" element={<BuildRouteRedirect />} />
@@ -81,6 +120,7 @@ function App() {
             </div>
           </ErrorBoundary>
           <Toaster />
+          <DevFloatingWidget />
         </TooltipProvider>
       </BrowserRouter>
     </QueryClientProvider>

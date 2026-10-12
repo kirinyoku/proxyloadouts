@@ -136,7 +136,7 @@ export function AgentStatsPanel({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-white/[0.2] bg-card/90 p-3 shadow-md backdrop-blur-md transition-all',
+        'rounded-2xl border border-white/[0.2] bg-card/96 p-3 shadow-md backdrop-blur-sm transition-all',
         className,
       )}
     >

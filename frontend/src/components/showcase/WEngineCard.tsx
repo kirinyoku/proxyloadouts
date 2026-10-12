@@ -50,7 +50,7 @@ export function WEngineCard({ wEngine, className, headingLevel = 3 }: WEngineCar
   return (
     <div
       className={cn(
-        'relative rounded-2xl border border-white/[0.2] bg-[#111722]/90 p-3 shadow-md backdrop-blur-md transition-all',
+        'relative rounded-2xl border border-white/[0.2] bg-[#111722]/96 p-3 shadow-md backdrop-blur-sm transition-all',
         className,
       )}
     >

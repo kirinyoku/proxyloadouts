@@ -355,7 +355,7 @@ export function ShowcaseProfileHeader({
   onRefresh,
 }: ShowcaseProfileHeaderProps) {
   return (
-    <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-3 sm:px-4 sm:py-2 shadow-lg backdrop-blur-xl">
+    <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-3 sm:px-4 sm:py-2 shadow-lg backdrop-blur-sm">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         {/* Profile Identity: avatar, IL level, nickname, server badge, UID copy */}
         <div className="flex min-w-0 items-center gap-2.5">

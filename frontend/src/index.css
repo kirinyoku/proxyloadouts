@@ -331,10 +331,18 @@
   }
 }
 
+.zzz-bg-animated-root {
+  contain: strict;
+  isolation: isolate;
+  pointer-events: none;
+}
+
 .zzz-marquee-track-left {
   display: flex;
   width: max-content;
   will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   animation: zzz-marquee-left linear infinite;
 }
 
@@ -342,6 +350,8 @@
   display: flex;
   width: max-content;
   will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   animation: zzz-marquee-right linear infinite;
 }
 
@@ -413,29 +423,30 @@
   text-shadow: 0 0 6px color-mix(in oklch, var(--primary) 45%, transparent);
 }
 
-/* Analog film grain / noise pattern */
+/* Analog film grain / noise pattern — static GPU-accelerated raster tile without expensive SVG filters */
 .film-grain {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.035'/%3E%3C/svg%3E");
+  background-image: url("/noise.png");
+  background-repeat: repeat;
 }
 
 /* Slow VHS tracking drift bar */
 @keyframes vhs-tracking-drift {
   0% {
-    transform: translateY(-30vh);
+    transform: translateY(-30vh) translateZ(0);
     opacity: 0;
   }
   4% {
     opacity: 0.16;
   }
   14% {
-    transform: translateY(120vh);
+    transform: translateY(120vh) translateZ(0);
     opacity: 0.10;
   }
   18% {
     opacity: 0;
   }
   100% {
-    transform: translateY(120vh);
+    transform: translateY(120vh) translateZ(0);
     opacity: 0;
   }
 }
@@ -443,17 +454,17 @@
 .vhs-tracking-line {
   position: absolute;
   inset-inline: 0;
-  height: 12px;
+  height: 14px;
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.1) 40%,
-    rgba(201, 242, 75, 0.07) 70%,
+    rgba(255, 255, 255, 0.08) 35%,
+    rgba(201, 242, 75, 0.08) 55%,
     transparent 100%
   );
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.04);
   animation: vhs-tracking-drift 18s ease-in-out infinite;
-  will-change: transform, opacity;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* Analog shutter bar sweeping across a horizontal 35mm film strip */

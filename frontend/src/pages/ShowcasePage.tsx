@@ -68,7 +68,7 @@ function MobileSectionTabs({
   ]
 
   return (
-    <div className="sticky top-14 z-30 -mx-4 border-b border-white/[0.06] bg-background/95 px-4 py-1 backdrop-blur-md lg:hidden">
+    <div className="sticky top-14 z-30 -mx-4 border-b border-white/[0.06] bg-background/95 px-4 py-1 backdrop-blur-sm lg:hidden">
       <div
         role="tablist"
         aria-label={t('showcase.agentSectionsAria')}
@@ -153,7 +153,7 @@ function AgentShowcaseSection({
   }
 
   return (
-    <div className="relative rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-3 shadow-xl backdrop-blur-xl md:p-4">
+    <div className="relative rounded-3xl border border-white/[0.08] bg-[#111620]/96 p-3 shadow-xl backdrop-blur-sm md:p-4">
       <div className="space-y-3">
         {/* Agent identity and the primary build action */}
         <div className="flex items-center justify-between gap-2 border-b border-white/[0.08] pb-2">
@@ -223,9 +223,17 @@ export function ShowcasePage() {
 
   const urlUid = searchParams.get('uid') ?? ''
   const hasValidUrlUid = UID_PATTERN.test(urlUid)
-  const scannedUid = hasValidUrlUid ? urlUid : ''
 
   const { activeAccount, accounts, isPending: accountsPending } = useActiveAccount({ enabled: isAuthed })
+
+  const initialFallbackUid = useMemo(() => {
+    if (hasValidUrlUid) return urlUid
+    const last = readLastUid()
+    return last && UID_PATTERN.test(last) ? last : ''
+  }, [hasValidUrlUid, urlUid])
+
+  const scannedUid = hasValidUrlUid ? urlUid : (activeAccount?.uid || initialFallbackUid)
+
   const matchingAccount = useMemo(() => {
     return accounts.find((a) => a.uid === scannedUid) ?? null
   }, [accounts, scannedUid])
@@ -395,7 +403,7 @@ export function ShowcasePage() {
 
           {/* Empty State when showcase has 0 agents */}
           {showcase.agents.length === 0 && (
-            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-12 shadow-lg backdrop-blur-xl">
+            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
               <div className="flex flex-col items-center justify-center space-y-3 max-w-md mx-auto text-center">
                 <Users className="size-8 text-muted-foreground" />
                 <div className="space-y-1">
@@ -428,7 +436,7 @@ export function ShowcasePage() {
                     ref={agentRailRef}
                     role="tablist"
                     aria-label={t('showcase.agentsRailAria')}
-                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2 shadow-xl backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/96 p-2 shadow-xl backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
                   >
                     {showcase.agents.map((agent) => (
                       <AgentAvatarTab

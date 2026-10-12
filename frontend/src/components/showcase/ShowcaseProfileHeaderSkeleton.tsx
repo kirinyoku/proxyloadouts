@@ -12,7 +12,7 @@ export function ShowcaseProfileHeaderSkeleton({
     <div
       aria-hidden="true"
       className={cn(
-        'relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-3 sm:px-4 sm:py-2 shadow-lg backdrop-blur-xl',
+        'relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-3 sm:px-4 sm:py-2 shadow-lg backdrop-blur-sm',
         className,
       )}
     >

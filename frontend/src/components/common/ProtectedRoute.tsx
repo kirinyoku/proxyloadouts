@@ -9,7 +9,7 @@ export function ProtectedRoute() {
   const location = useLocation()
 
   if (isPending) {
-    return <PageLoader label={t('common.loading')} />
+    return <PageLoader fixed={false} label={t('common.loading')} />
   }
 
   if (!me) {

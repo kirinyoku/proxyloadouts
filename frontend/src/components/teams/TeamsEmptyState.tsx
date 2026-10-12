@@ -26,7 +26,7 @@ export function TeamsEmptyState(props: TeamsEmptyStateProps) {
 
   if (props.variant === 'no-account') {
     return (
-      <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-12 shadow-lg backdrop-blur-xl">
+      <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
         <div className="flex flex-col items-center gap-3 text-center">
           <Link2 className="size-8 text-muted-foreground" />
           <p className="max-w-md text-sm text-muted-foreground">
@@ -45,7 +45,7 @@ export function TeamsEmptyState(props: TeamsEmptyStateProps) {
 
   if (props.variant === 'no-results') {
     return (
-      <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-10 shadow-lg backdrop-blur-xl">
+      <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-10 shadow-lg backdrop-blur-sm">
         <div className="flex flex-col items-center gap-3 text-center">
           <FilterX className="size-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
@@ -61,7 +61,7 @@ export function TeamsEmptyState(props: TeamsEmptyStateProps) {
   }
 
   return (
-    <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-10 shadow-lg backdrop-blur-xl">
+    <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-10 shadow-lg backdrop-blur-sm">
       <div className="flex flex-col items-center gap-3 text-center">
         <UsersRound className="size-8 text-muted-foreground" />
         <p className="max-w-md text-sm text-muted-foreground">
