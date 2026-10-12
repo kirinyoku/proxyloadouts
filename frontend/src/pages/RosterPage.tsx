@@ -11,6 +11,7 @@ import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/common/EmptyState'
 import { InterknotTerminalError } from '@/components/common/InterknotTerminalError'
 import { RosterPageSkeleton } from '@/components/roster/RosterPageSkeleton'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
@@ -313,23 +314,20 @@ export function RosterPage({
       {accountsPending ? (
         <RosterPageSkeleton />
       ) : accounts.length === 0 ? (
-        <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-primary shadow-xs">
-              <Plus className="size-6" />
-            </div>
-            <h3 className="font-heading text-lg font-bold">{t('roster.linkUidTitle')}</h3>
-            <p className="max-w-md text-sm text-muted-foreground">
-              {t('roster.linkUidDesc')}
-            </p>
-            <Button asChild className="mt-2">
+        <EmptyState
+          icon={Plus}
+          iconBadgeClassName="text-primary"
+          title={t('roster.linkUidTitle')}
+          description={t('roster.linkUidDesc')}
+          action={
+            <Button asChild className="gap-1.5">
               <Link to="/settings">
                 <Plus className="size-4" />
                 {t('roster.linkUidButton')}
               </Link>
             </Button>
-          </div>
-        </div>
+          }
+        />
       ) : (
         <>
           {/* Builds loading state */}
@@ -351,35 +349,27 @@ export function RosterPage({
 
           {/* Roster is empty state */}
           {buildsQuery.isSuccess && totalBuilds === 0 && (
-            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
-              <div className="flex flex-col items-center gap-3 text-center">
-                <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-muted-foreground shadow-xs">
-                  <Search className="size-6 text-muted-foreground/80" />
-                </div>
-                <h3 className="font-heading text-lg font-bold">{t('roster.emptyTitle')}</h3>
-                <p className="max-w-md text-sm text-muted-foreground">
-                  {t('roster.emptyDesc')}
-                </p>
-                <Button asChild className="mt-2">
+            <EmptyState
+              icon={Layers}
+              title={t('roster.emptyTitle')}
+              description={t('roster.emptyDesc')}
+              action={
+                <Button asChild className="gap-1.5">
                   <Link to="/showcase">
                     <ScanLine className="size-4" />
                     {t('roster.goToShowcase')}
                   </Link>
                 </Button>
-              </div>
-            </div>
+              }
+            />
           )}
 
           {/* Search yielded no results state */}
           {buildsQuery.isSuccess && totalBuilds > 0 && filteredAgents === 0 && searchNorm !== '' && (
-            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
-              <div className="flex flex-col items-center justify-center gap-3 text-center">
-                <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-muted-foreground shadow-xs">
-                  <Search className="size-6 text-muted-foreground/80" />
-                </div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  {t('roster.noSearchResults')}
-                </p>
+            <EmptyState
+              icon={Search}
+              title={t('roster.noSearchResults')}
+              action={
                 <Button
                   variant="outline"
                   size="sm"
@@ -389,8 +379,8 @@ export function RosterPage({
                   <RotateCcw className="size-3.5" />
                   {t('roster.clearSearchButton')}
                 </Button>
-              </div>
-            </div>
+              }
+            />
           )}
 
           {/* 3. Master-detail roster layout */}

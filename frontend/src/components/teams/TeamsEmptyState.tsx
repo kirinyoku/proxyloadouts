@@ -1,6 +1,7 @@
 import { FilterX, Link2, Plus, RotateCcw, UsersRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/button'
 
 interface TeamsNoAccountStateProps {
@@ -26,54 +27,51 @@ export function TeamsEmptyState(props: TeamsEmptyStateProps) {
 
   if (props.variant === 'no-account') {
     return (
-      <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Link2 className="size-8 text-muted-foreground" />
-          <p className="max-w-md text-sm text-muted-foreground">
-            {t('teams.noAccountDesc')}
-          </p>
+      <EmptyState
+        icon={Link2}
+        title={t('teams.noAccountTitle')}
+        description={t('teams.noAccountDesc')}
+        action={
           <Button asChild className="gap-1.5">
             <Link to="/settings">
               <Plus className="size-4" />
               {t('teams.linkUid')}
             </Link>
           </Button>
-        </div>
-      </div>
+        }
+      />
     )
   }
 
   if (props.variant === 'no-results') {
     return (
-      <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-10 shadow-lg backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <FilterX className="size-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            {t('teams.noResultsDesc')}
-          </p>
+      <EmptyState
+        icon={FilterX}
+        title={t('teams.noResultsTitle')}
+        description={t('teams.noResultsDesc')}
+        action={
           <Button variant="outline" size="sm" onClick={props.onResetFilters} className="gap-1.5">
             <RotateCcw className="size-3.5" />
             {t('teams.resetFilters')}
           </Button>
-        </div>
-      </div>
+        }
+      />
     )
   }
 
   return (
-    <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-10 shadow-lg backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <UsersRound className="size-8 text-muted-foreground" />
-        <p className="max-w-md text-sm text-muted-foreground">
-          {t('teams.noTeamsDesc')}
-        </p>
+    <EmptyState
+      icon={UsersRound}
+      title={t('teams.noTeamsTitle')}
+      description={t('teams.noTeamsDesc')}
+      action={
         <Button asChild className="gap-1.5">
           <Link to="/teams/new">
             <Plus className="size-4" />
             {t('teams.createSquad')}
           </Link>
         </Button>
-      </div>
-    </div>
+      }
+    />
   )
 }

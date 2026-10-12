@@ -3,6 +3,7 @@ import {
   Disc,
   Layers,
   RotateCcw,
+  ScanLine,
   Search,
   ShieldAlert,
   UsersRound,
@@ -220,7 +221,7 @@ export function BuildPickerDialog({
               </p>
               <Button variant="outline" asChild className="border-primary/40 text-primary hover:bg-primary/10">
                 <Link to="/showcase">
-                  <Search className="size-4" />
+                  <ScanLine className="size-4" />
                   {t('teamBuilder.pickerScanShowcase')}
                 </Link>
               </Button>

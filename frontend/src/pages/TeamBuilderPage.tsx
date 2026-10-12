@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, Link2, Plus } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
@@ -21,7 +21,7 @@ import { TeamBuilderHeaderSkeleton } from '@/components/teambuilder/TeamBuilderH
 import { TeamBuilderSidebarSkeleton } from '@/components/teambuilder/TeamBuilderSidebarSkeleton'
 import { TeamSlotListSkeleton } from '@/components/teambuilder/TeamSlotListSkeleton'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/common/EmptyState'
 import { InterknotTerminalError } from '@/components/common/InterknotTerminalError'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
 import { getDetailedSlotConflicts, getSlotConflicts } from '@/lib/conflicts'
@@ -363,19 +363,19 @@ export function TeamBuilderPage() {
 
   if (!isEditing && !accountsPending && accounts.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-          <p className="text-sm text-muted-foreground">
-            {t('teams.noAccountDesc')}
-          </p>
+      <EmptyState
+        icon={Link2}
+        title={t('teams.noAccountTitle')}
+        description={t('teams.noAccountDesc')}
+        action={
           <Button asChild className="gap-1.5">
             <Link to="/settings">
               <Plus className="size-4" />
               {t('teams.linkUid')}
             </Link>
           </Button>
-        </CardContent>
-      </Card>
+        }
+      />
     )
   }
 

@@ -16,6 +16,7 @@ import { AgentAvatarListSkeleton } from '@/components/showcase/AgentAvatarListSk
 import { AgentBuildInspectorSkeleton } from '@/components/showcase/AgentBuildInspectorSkeleton'
 import { ShowcaseProfileHeaderSkeleton } from '@/components/showcase/ShowcaseProfileHeaderSkeleton'
 import { InterknotTerminalError } from '@/components/common/InterknotTerminalError'
+import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/button'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { getAttributeLabel, getSpecialtyLabel } from '@/lib/design-tokens'
@@ -403,27 +404,23 @@ export function ShowcasePage() {
 
           {/* Empty State when showcase has 0 agents */}
           {showcase.agents.length === 0 && (
-            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-8 sm:py-12 shadow-lg backdrop-blur-sm">
-              <div className="flex flex-col items-center justify-center space-y-3 max-w-md mx-auto text-center">
-                <Users className="size-8 text-muted-foreground" />
-                <div className="space-y-1">
-                  <h3 className="font-heading text-base font-bold text-foreground">{t('showcase.emptyTitle')}</h3>
-                  <p className="text-xs leading-relaxed text-muted-foreground max-w-prose">
-                    {t('showcase.emptyDesc')}
-                  </p>
-                </div>
+            <EmptyState
+              icon={Users}
+              title={t('showcase.emptyTitle')}
+              description={t('showcase.emptyDesc')}
+              action={
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => void showcaseQuery.refetch()}
                   loading={showcaseQuery.isRefetching}
-                  className="mt-2"
+                  className="gap-1.5"
                 >
-                  {!showcaseQuery.isRefetching && <RefreshCw className="size-3.5 mr-1.5" />}
+                  {!showcaseQuery.isRefetching && <RefreshCw className="size-3.5" />}
                   {t('showcase.refreshShowcase')}
                 </Button>
-              </div>
-            </div>
+              }
+            />
           )}
 
           {/* Main 2-Section Body: Vertical Circle Avatars Sidebar on the left + Agent Showcase on the right */}
