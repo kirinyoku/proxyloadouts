@@ -7,14 +7,14 @@ export const CONFLICT_LABELS_RU: Record<ConflictCode, string> = {
   DUPLICATE_AGENT: 'Дубликат агента в отряде',
   ITEM_REUSE: 'Драйв-диск занят в двух сборках',
   WEAPON_REUSE: 'Амплификатор занят в двух сборках',
-  ACCOUNT_MISMATCH: 'Агенты с разных аккаунтов Прокси',
+  ACCOUNT_MISMATCH: 'Агенты с разных аккаунтов',
 }
 
 export const CONFLICT_LABELS_EN: Record<ConflictCode, string> = {
   DUPLICATE_AGENT: 'Duplicate agent in squad',
   ITEM_REUSE: 'Drive Disc used in two builds',
   WEAPON_REUSE: 'W-Engine used in two builds',
-  ACCOUNT_MISMATCH: 'Agents from different Proxy accounts',
+  ACCOUNT_MISMATCH: 'Agents from different accounts',
 }
 
 export function getConflictLabel(code: ConflictCode): string {

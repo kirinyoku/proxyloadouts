@@ -57,7 +57,7 @@ describe('i18n interpolation integrity', () => {
 
   it('correctly substitutes {{uid}} in toasts.accountLinked', () => {
     const ruResult = i18n.t('toasts.accountLinked', { lng: 'ru', uid: '1504687050' })
-    expect(ruResult).toBe('Аккаунт Прокси 1504687050 привязан')
+    expect(ruResult).toBe('Аккаунт 1504687050 привязан')
   })
 
   it('correctly substitutes {{name}} in toasts.teamSaved and teamUpdated', () => {

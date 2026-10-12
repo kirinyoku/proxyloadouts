@@ -22,7 +22,7 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     await expect(showcaseHeading).toBeVisible()
 
     // 3. Assert: Public showcase search input and action button exist
-    const uidInput = page.getByLabel('UID Прокси')
+    const uidInput = page.getByLabel('Игровой UID')
     await expect(uidInput).toBeVisible()
 
     const scanButton = page.getByRole('button', { name: 'Сканировать' })
@@ -33,7 +33,7 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
   test('validates UID input format and enables scan button on valid 10 digits', async ({ page }) => {
     await page.goto('/')
 
-    const uidInput = page.getByLabel('UID Прокси')
+    const uidInput = page.getByLabel('Игровой UID')
     const scanButton = page.getByRole('button', { name: 'Сканировать' })
 
     // Typing less than 9 digits leaves button disabled

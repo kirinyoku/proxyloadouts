@@ -14,7 +14,7 @@ vi.mock('react-i18next', async (importOriginal) => {
           'teamBuilder.pickerTitleMobile': 'Выбор агента',
           'teamBuilder.pickerDesc': 'Выберите сохраненный билд агента для текущего слота команды',
           'teamBuilder.pickerTotalBuilds': 'Всего готовых билдов',
-          'teamBuilder.pickerNoBuilds': 'У активного Прокси пока нет сохраненных билдов в ростере.',
+          'teamBuilder.pickerNoBuilds': 'В вашем ростере пока нет ни одной сборки.',
           'teamBuilder.pickerSearchPlaceholder': 'Поиск по агенту или пресету…',
           'teamBuilder.pickerAll': 'Все',
           'teamBuilder.pickerReset': 'Сбросить',

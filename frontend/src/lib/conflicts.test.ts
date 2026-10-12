@@ -55,7 +55,7 @@ describe('conflicts utilities', () => {
       expect(getConflictLabel('DUPLICATE_AGENT')).toBe('Duplicate agent in squad')
       expect(getConflictLabel('ITEM_REUSE')).toBe('Drive Disc used in two builds')
       expect(getConflictLabel('WEAPON_REUSE')).toBe('W-Engine used in two builds')
-      expect(getConflictLabel('ACCOUNT_MISMATCH')).toBe('Agents from different Proxy accounts')
+      expect(getConflictLabel('ACCOUNT_MISMATCH')).toBe('Agents from different accounts')
 
       await i18n.changeLanguage('ru')
       expect(getConflictLabel('DUPLICATE_AGENT')).toBe('Дубликат агента в отряде')
@@ -253,7 +253,7 @@ describe('conflicts utilities', () => {
       })
     })
 
-    it('returns ACCOUNT_MISMATCH when candidate belongs to a different proxy account', () => {
+    it('returns ACCOUNT_MISMATCH when candidate belongs to a different account', () => {
       const otherAccountBuild = createMockBuild('other-1', 'Alien Build', 1081)
       otherAccountBuild.game_account_id = 'different-acc'
 

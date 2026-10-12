@@ -120,7 +120,7 @@ test.describe('Teams Page Characterization & Safety Net Suite', () => {
 
     await expect(page.getByRole('heading', { name: /ОТРЯДЫ/i })).toBeVisible()
     await expect(
-      page.getByText('Привяжите UID Прокси'),
+      page.getByText('Привяжите игровой UID'),
     ).toBeVisible()
     await expect(page.getByRole('link', { name: 'Привязать UID' })).toBeVisible()
   })

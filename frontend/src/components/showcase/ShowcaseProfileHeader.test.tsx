@@ -21,7 +21,7 @@ vi.mock('react-i18next', async (importOriginal) => {
           'showcase.readyToRefreshTooltip': 'Обновить витрину',
           'showcase.copyUidTitle': 'Скопировать UID',
           'showcase.copyUidAria': 'Скопировать UID',
-          'showcase.searchPlaceholder': 'UID Прокси…',
+          'showcase.searchPlaceholder': 'Игровой UID…',
           'showcase.searchTitle': 'Сканировать',
           'showcase.searchAria': 'Показать витрину',
           'showcase.linkUid': 'Привязать UID',

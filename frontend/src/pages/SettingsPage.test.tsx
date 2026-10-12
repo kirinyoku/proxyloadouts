@@ -29,14 +29,14 @@ vi.mock('react-i18next', async (importOriginal) => {
           'settings.bgAnimationMobileNotice': 'Отключена на мобильных устройствах для экономии ресурсов',
           'settings.accountsTitle': 'Аккаунты',
           'settings.accountsDesc': 'Активный UID используется для сохранения билдов и сборки боевых команд.',
-          'settings.noAccounts': 'Пока нет привязанных UID Прокси.',
+          'settings.noAccounts': 'Привязанных UID пока нет. Первый добавляется ниже.',
           'settings.activeBadge': 'Активный',
           'settings.addedAt': `Добавлен ${options?.date ?? ''}`,
           'settings.makeActive': 'Сделать активным',
           'settings.delete': 'Удалить',
-          'settings.deleteDialogTitle': `Удалить аккаунт Прокси ${options?.uid ?? ''}?`,
+          'settings.deleteDialogTitle': `Удалить аккаунт ${options?.uid ?? ''}?`,
           'settings.addAccountTitle': 'Привязать UID',
-          'settings.addAccountDesc': 'UID отображается в игре внизу экрана или в меню: Профиль Интернота → Данные Прокси.',
+          'settings.addAccountDesc': 'UID в игре: отображается внизу экрана или в Профиле Интернота.',
           'settings.addAccountButton': 'Привязать UID',
           'settings.uidPlaceholder': '1504687050',
           'settings.limitReachedAlert': 'Достигнут лимит аккаунтов (3 из 3).',
@@ -246,7 +246,7 @@ describe('SettingsPage', () => {
 
     const html = renderToString(<SettingsPage />)
 
-    expect(html).toContain('Пока нет привязанных UID Прокси.')
+    expect(html).toContain('Привязанных UID пока нет. Первый добавляется ниже.')
     expect(html).toContain('0 / 3')
     // The inline form stays available
     expect(html).toContain('id="uid"')
@@ -259,7 +259,7 @@ describe('SettingsPage', () => {
     const html = renderToString(<SettingsPage />)
 
     expect(html).toContain('aria-busy="true"')
-    expect(html).not.toContain('Пока нет привязанных UID Прокси.')
+    expect(html).not.toContain('Привязанных UID пока нет. Первый добавляется ниже.')
   })
 
   it('renders delete account section with destructive button and styling when authenticated', () => {
