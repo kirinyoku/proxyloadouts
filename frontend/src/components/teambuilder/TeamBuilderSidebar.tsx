@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Eraser, Plus, Save } from 'lucide-react'
+import { Eraser } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
@@ -128,10 +128,9 @@ export function TeamBuilderSidebar({
         <Button
           onClick={onSave}
           disabled={!canSave || isSaving}
-          className="w-full gap-1.5"
+          className="w-full"
           aria-describedby={saveHint ? 'team-save-hint' : undefined}
         >
-          {isEditing ? <Save className="size-4" /> : <Plus className="size-4" />}
           {isSaving
             ? isEditing
               ? t('teamBuilder.saving')

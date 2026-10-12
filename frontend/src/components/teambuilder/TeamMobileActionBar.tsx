@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Plus, Save } from 'lucide-react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import type { ConflictReport } from '@/types'
@@ -55,9 +55,8 @@ export function TeamMobileActionBar({
         <Button
           onClick={onSave}
           disabled={!canSave || isSaving}
-          className="shrink-0 gap-1.5"
+          className="shrink-0"
         >
-          {isEditing ? <Save className="size-3.5" /> : <Plus className="size-3.5" />}
           {isSaving ? t('teamBuilder.saving') : isEditing ? t('teamBuilder.mobileSave') : t('teamBuilder.mobileCreate')}
         </Button>
       </div>

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { BookmarkPlus, Check, Plus, RefreshCw, Users } from 'lucide-react'
+import { Check, Plus, RefreshCw, Users } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useBuilds, useMe, useShowcase } from '@/api/hooks'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
@@ -130,12 +130,11 @@ function AgentShowcaseSection({
       </span>
     ) : (
       <Button
-        className="h-7.5 gap-1.5 px-2.5 text-[11px] cursor-pointer sm:h-8 sm:px-3.5 sm:text-xs"
+        className="h-7.5 px-2.5 text-[11px] cursor-pointer sm:h-8 sm:px-3.5 sm:text-xs"
         onClick={onSaveClick}
         aria-label={t('showcase.saveBuild')}
         title={t('showcase.saveBuild')}
       >
-        <BookmarkPlus className="size-3.5" />
         <span>{t('showcase.saveBuild')}</span>
       </Button>
     )
