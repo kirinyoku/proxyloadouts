@@ -152,7 +152,7 @@ test.describe('Teams Page Characterization & Safety Net Suite', () => {
 
     await expect(page.getByRole('heading', { name: /ОТРЯДЫ/i })).toBeVisible()
     await expect(
-      page.getByText('Сохранённых отрядов пока нет'),
+      page.getByRole('heading', { name: 'Отрядов пока нет' }),
     ).toBeVisible()
     await expect(page.getByRole('link', { name: 'Новый отряд' }).first()).toBeVisible()
     await expect(page.getByText('Свободный слот')).not.toBeVisible()

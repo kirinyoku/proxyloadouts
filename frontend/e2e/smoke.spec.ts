@@ -76,7 +76,7 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
 
     // 404 heading and status indicators are visible
     await expect(page.getByRole('heading', { name: 'Сектор не найден' })).toBeVisible()
-    await expect(page.getByText('404')).toBeVisible()
+    await expect(page.getByText('HTTP 404')).toBeVisible()
     await expect(page.getByText('/unknown-hollow-sector')).toBeVisible()
 
     // Primary action returns to home
