@@ -618,9 +618,9 @@ const en: TranslationSchema = {
         ruleContent:
           'User Content: Users are personally responsible for the names assigned to their builds and squads. You must not use names containing hate speech, harassment, threats, spam, or unlawful material. In compliance with DSA Art. 14, the Administration reserves the right to review, hide, or remove non-compliant content.',
         ruleTermination:
-          'Account Suspension & Termination: The Administration reserves the right to immediately suspend access or permanently delete any user account found in violation of these Terms.',
+          'Account Suspension, Termination & Discontinuation: The Administration reserves the right at any time, without prior notice or liability, to suspend access, delete any user account found in violation of these Terms, or temporarily suspend or permanently shut down the Service entirely (terminate servers and decommission the project) without any obligation or compensation to users.',
         ruleLiability:
-          'Disclaimer of Warranties & Limitation of Liability: The Service is provided on an "as is" and "as available" basis without warranties of any kind. The Administration assumes no liability for downtime of third-party gateways (EnkaNetwork, Discord), in-game API/server updates, or loss of user configurations.',
+          'Disclaimer of Warranties & Limitation of Liability: The Service is provided on an "as is" and "as available" basis without warranties of any kind, express or implied. The Administration does not guarantee uninterrupted operation or data preservation and assumes no liability for any loss, corruption, or deletion of user data (including saved builds, teams, and preferences), hardware or database failures, service shutdown, downtime of third-party gateways (EnkaNetwork, Discord), in-game API/server updates, or force majeure events. The Service assumes no obligation to back up data; users are solely responsible for maintaining their own copies of any important information.',
       },
       ip: {
         title: '3. Intellectual Property & Fan-Content Policy (HoYoverse)',
