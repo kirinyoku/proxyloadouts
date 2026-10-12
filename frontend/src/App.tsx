@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { ApiError } from '@/api/client'
 import { AppLayout } from '@/components/common/AppLayout'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
@@ -32,9 +32,6 @@ const TeamsPage = lazy(loadTeamsPage)
 const TeamBuilderPage = lazy(loadTeamBuilderPage)
 const SettingsPage = lazy(loadSettingsPage)
 const PrivacyPage = lazy(loadPrivacyPage)
-const DevModalsPage = import.meta.env.DEV
-  ? lazy(() => import('@/pages/DevModalsPage').then(m => ({ default: m.DevModalsPage })))
-  : null
 
 function BuildRouteRedirect() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -63,23 +60,6 @@ const queryClient = new QueryClient({
   },
 })
 
-function DevFloatingWidget() {
-  const location = useLocation()
-  if (!import.meta.env.DEV || location.pathname.startsWith('/dev/')) return null
-  return (
-    <div className="fixed bottom-3 right-3 z-50">
-      <Link
-        to="/dev/modals"
-        className="flex items-center gap-1.5 rounded-full border-2 border-black bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-2xl transition-all hover:scale-105 active:scale-95 select-none"
-        title="Песочница всплывающих окон"
-      >
-        <span>🛠️</span>
-        <span>Окна</span>
-      </Link>
-    </div>
-  )
-}
-
 function App() {
   useEffect(() => {
     preloadCoreRoutes()
@@ -101,9 +81,6 @@ function App() {
                     <Route path="/showcase" element={<ShowcasePage />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
-                    {import.meta.env.DEV && DevModalsPage && (
-                      <Route path="/dev/modals" element={<DevModalsPage />} />
-                    )}
                     <Route element={<ProtectedRoute />}>
                       <Route path="/roster" element={<RosterPage />} />
                       <Route path="/builds/:buildId" element={<BuildRouteRedirect />} />
@@ -120,7 +97,6 @@ function App() {
             </div>
           </ErrorBoundary>
           <Toaster />
-          <DevFloatingWidget />
         </TooltipProvider>
       </BrowserRouter>
     </QueryClientProvider>

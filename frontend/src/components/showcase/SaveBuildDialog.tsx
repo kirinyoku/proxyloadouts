@@ -43,9 +43,8 @@ export function SaveBuildDialog({
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [isSimulatingDev, setIsSimulatingDev] = useState(false)
 
-  const isSubmitting = saveMutation.isPending || isSimulatingDev
+  const isSubmitting = saveMutation.isPending
   const isNameEmpty = name.trim().length === 0
 
   if (!agent) return null
@@ -56,18 +55,6 @@ export function SaveBuildDialog({
     const finalName = name.trim()
     if (isLimitReached || !agent || !finalName) return
     const finalDesc = description.trim() || null
-
-    if (targetAccount.id.startsWith('acc-dev')) {
-      setIsSimulatingDev(true)
-      setTimeout(() => {
-        setIsSimulatingDev(false)
-        setName('')
-        setDescription('')
-        onSaved?.(agent)
-        onOpenChange(false)
-      }, 350)
-      return
-    }
 
     saveMutation.mutate(
       {
