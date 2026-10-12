@@ -163,7 +163,7 @@ const en: TranslationSchema = {
     linkUid: 'Link UID',
     linkUidTooltip: 'Link this UID in settings to save its builds',
     emptyTitle: 'Showcase is empty',
-    emptyDesc: 'No agents are set for public display on this Proxy’s Zenless Zone Zero profile. Turn on agent display in your in-game profile and refresh.',
+    emptyDesc: 'No agents are set for public display in this Zenless Zone Zero profile. Turn on agent display in your in-game profile and refresh.',
     refreshShowcase: 'Refresh showcase',
     saveBuild: 'Save',
     buildAlreadySaved: 'Saved',

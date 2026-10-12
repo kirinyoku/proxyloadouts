@@ -162,4 +162,21 @@ describe('ShowcaseProfileHeader', () => {
     // Border divider for mobile action row
     expect(html).toContain('border-t border-white/[0.06] sm:border-t-0')
   })
+
+  it('does not render link UID button in the header', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={mockShowcase}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+
+    expect(html).not.toContain('showcase.linkUid')
+    expect(html).not.toContain('Привязать UID')
+  })
 })

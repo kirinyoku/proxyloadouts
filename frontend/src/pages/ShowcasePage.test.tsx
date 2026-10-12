@@ -17,6 +17,8 @@ vi.mock('react-i18next', async (importOriginal) => {
           'showcase.saveBuild': 'Сохранить сборку',
           'showcase.buildAlreadySaved': 'Сборка сохранена',
           'showcase.refreshShowcase': 'Обновить витрину',
+          'showcase.linkUid': 'Привязать UID',
+          'showcase.linkUidTooltip': 'Привязать этот UID',
         }
         return translations[key] ?? key
       },
@@ -159,5 +161,33 @@ describe('ShowcasePage', () => {
     const html = renderToString(<ShowcasePage />)
     expect(html).toContain('В витрине этого профиля пока нет агентов')
     expect(html).not.toContain('md:max-h-[calc(100dvh-5rem)]')
+  })
+
+  it('renders link UID button on the agent card but not in the header for unowned uid when authenticated', () => {
+    mockUseMe.mockReturnValue({ data: { id: 'user-1', username: 'TestUser' } })
+    mockUseActiveAccount.mockReturnValue({
+      activeAccount: { id: 'acc-1', uid: '9999999999' },
+      accounts: [{ id: 'acc-1', uid: '9999999999' }],
+      isPending: false,
+    })
+    mockUseShowcase.mockReturnValue({
+      data: mockShowcase,
+      isPending: false,
+      isError: false,
+      isRefetching: false,
+      refetch: vi.fn(),
+    })
+    mockUseBuilds.mockReturnValue({
+      data: [],
+      isPending: false,
+    })
+
+    const html = renderToString(<ShowcasePage />)
+    // The button should be present on the agent card
+    expect(html).toContain('Привязать UID')
+    // The header before the agent card heading should not contain the link button
+    const parts = html.split(/<h2[^>]*>Anby Demara<\/h2>/)
+    expect(parts[0]).not.toContain('Привязать UID')
+    expect(parts[1]).toContain('Привязать UID')
   })
 })

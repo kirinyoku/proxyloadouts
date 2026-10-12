@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Check, Copy, Plus, RefreshCw, Search, X } from 'lucide-react'
+import { Check, Copy, RefreshCw, Search, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/lib/format'
 import { getRegionShortCode } from '@/lib/uid'
@@ -334,8 +333,6 @@ interface ShowcaseProfileHeaderProps {
   uidInput: string
   isUidValid: boolean
   isRefetching: boolean
-  isAuthed?: boolean
-  isOwnedUid?: boolean
   onScan: (uid: string) => void
   onUidInputChange: (value: string) => void
   onRefresh: () => void
@@ -345,7 +342,7 @@ interface ShowcaseProfileHeaderProps {
  * Top profile header for showcase page:
  * Displays user identity (avatar, IL, nickname, region, UID), cache freshness status, and search input.
  * Layout:
- * - Upper section: Profile identity (Avatar with IL badge, Nickname + Region, UID chip + Link button).
+ * - Upper section: Profile identity (Avatar with IL badge, Nickname + Region, UID chip).
  * - Action controls: Cache status API pill + Search input form placed side-by-side on the same row.
  */
 export function ShowcaseProfileHeader({
@@ -353,18 +350,14 @@ export function ShowcaseProfileHeader({
   uidInput,
   isUidValid,
   isRefetching,
-  isAuthed = false,
-  isOwnedUid = true,
   onScan,
   onUidInputChange,
   onRefresh,
 }: ShowcaseProfileHeaderProps) {
-  const { t } = useTranslation()
-
   return (
-    <div className="card-zzz relative p-3 sm:px-4 sm:py-2">
+    <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-3 sm:px-4 sm:py-2 shadow-lg backdrop-blur-xl">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-        {/* Profile Identity: avatar, IL level, nickname, server badge, UID copy, link */}
+        {/* Profile Identity: avatar, IL level, nickname, server badge, UID copy */}
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="relative shrink-0 pb-1">
             {showcase.avatar_url ? (
@@ -397,19 +390,6 @@ export function ShowcaseProfileHeader({
             </div>
             <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] leading-none text-muted-foreground">
               <UidCopyChip uid={showcase.uid} />
-              {isAuthed && !isOwnedUid && (
-                <>
-                  <span aria-hidden className="size-[3px] rounded-full bg-muted-foreground/60 hidden sm:inline-block" />
-                  <Link
-                    to="/settings"
-                    title={t('showcase.unlinkedBanner', { uid: showcase.uid })}
-                    className="inline-flex h-6 min-h-[24px] cursor-pointer items-center gap-1 rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-amber-300 transition-all hover:border-amber-400/70 hover:bg-amber-400/20 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 select-none"
-                  >
-                    <Plus className="size-3 shrink-0 text-amber-400" />
-                    <span>{t('showcase.linkUid')}</span>
-                  </Link>
-                </>
-              )}
             </div>
           </div>
         </div>

@@ -17,7 +17,6 @@ import { AgentBuildInspectorSkeleton } from '@/components/showcase/AgentBuildIns
 import { ShowcaseProfileHeaderSkeleton } from '@/components/showcase/ShowcaseProfileHeaderSkeleton'
 import { InterknotTerminalError } from '@/components/common/InterknotTerminalError'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { getAttributeLabel, getSpecialtyLabel } from '@/lib/design-tokens'
 import { useTranslation } from 'react-i18next'
@@ -154,7 +153,7 @@ function AgentShowcaseSection({
   }
 
   return (
-    <div className="relative rounded-3xl border border-border/80 bg-gradient-to-b from-card to-background p-3 shadow-xl md:p-4">
+    <div className="relative rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-3 shadow-xl backdrop-blur-xl md:p-4">
       <div className="space-y-3">
         {/* Agent identity and the primary build action */}
         <div className="flex items-center justify-between gap-2 border-b border-white/[0.08] pb-2">
@@ -387,8 +386,6 @@ export function ShowcasePage() {
             uidInput={uidInput}
             isUidValid={isInputValid}
             isRefetching={showcaseQuery.isRefetching}
-            isAuthed={isAuthed}
-            isOwnedUid={isOwnedUid}
             onScan={scan}
             onUidInputChange={setUidInput}
             onRefresh={() => void showcaseQuery.refetch()}
@@ -398,12 +395,10 @@ export function ShowcasePage() {
 
           {/* Empty State when showcase has 0 agents */}
           {showcase.agents.length === 0 && (
-            <Card className="card-zzz">
-              <CardContent className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-3">
-                <div className="flex size-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-subtle text-muted-foreground shadow-inner">
-                  <Users className="size-7 opacity-70" />
-                </div>
-                <div className="space-y-1 max-w-md">
+            <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-8 sm:py-12 shadow-lg backdrop-blur-xl">
+              <div className="flex flex-col items-center justify-center space-y-3 max-w-md mx-auto text-center">
+                <Users className="size-8 text-muted-foreground" />
+                <div className="space-y-1">
                   <h3 className="font-heading text-base font-bold text-foreground">{t('showcase.emptyTitle')}</h3>
                   <p className="text-xs leading-relaxed text-muted-foreground max-w-prose">
                     {t('showcase.emptyDesc')}
@@ -419,8 +414,8 @@ export function ShowcasePage() {
                   {!showcaseQuery.isRefetching && <RefreshCw className="size-3.5 mr-1.5" />}
                   {t('showcase.refreshShowcase')}
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Main 2-Section Body: Vertical Circle Avatars Sidebar on the left + Agent Showcase on the right */}
@@ -433,7 +428,7 @@ export function ShowcasePage() {
                     ref={agentRailRef}
                     role="tablist"
                     aria-label={t('showcase.agentsRailAria')}
-                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-border/80 bg-gradient-to-b from-card to-background/90 p-2 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2 shadow-xl backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
                   >
                     {showcase.agents.map((agent) => (
                       <AgentAvatarTab

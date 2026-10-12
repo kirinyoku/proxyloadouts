@@ -110,7 +110,7 @@ export function InterknotTerminalError({
       <div
         role="alert"
         className={cn(
-          'card-zzz relative w-full overflow-hidden border-2 border-black bg-[#10151c] shadow-md',
+          'relative w-full overflow-hidden rounded-xl border border-white/[0.08] bg-[#111620]/90 shadow-md backdrop-blur-xl',
           className,
         )}
       >
@@ -168,7 +168,7 @@ export function InterknotTerminalError({
       <div
         role="alert"
         className={cn(
-          'card-zzz relative w-full max-w-3xl overflow-hidden border-2 border-black bg-[#10151c] shadow-2xl',
+          'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111620]/90 shadow-2xl backdrop-blur-xl',
           className,
         )}
       >
@@ -276,7 +276,7 @@ export function InterknotTerminalError({
       <div
         role="alert"
         className={cn(
-          'card-zzz relative w-full max-w-3xl overflow-hidden border-2 border-black bg-[#10151c] shadow-2xl',
+          'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111620]/90 shadow-2xl backdrop-blur-xl',
           className,
         )}
       >
@@ -389,7 +389,7 @@ export function InterknotTerminalError({
     <div
       role="alert"
       className={cn(
-        'card-zzz relative w-full max-w-3xl overflow-hidden border-2 border-black bg-[#10151c] shadow-2xl',
+        'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111620]/90 shadow-2xl backdrop-blur-xl',
         className,
       )}
     >

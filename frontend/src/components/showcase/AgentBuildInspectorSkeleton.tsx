@@ -21,7 +21,7 @@ export function AgentBuildInspectorSkeleton({
     <div
       aria-hidden="true"
       className={cn(
-        'relative rounded-3xl border border-white/[0.08] bg-gradient-to-b from-[#121722]/95 via-[#0f141d]/95 to-[#0b0e14]/98 p-2.5 md:py-3 md:px-3.5 shadow-2xl backdrop-blur-xl',
+        'relative rounded-3xl border border-white/[0.08] bg-[#111620]/90 p-2.5 md:py-3 md:px-3.5 shadow-2xl backdrop-blur-xl',
         className,
       )}
     >
