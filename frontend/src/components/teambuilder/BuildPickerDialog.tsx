@@ -1,11 +1,12 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 import {
+  AlertTriangle,
+  ChevronDown,
   Disc,
   Layers,
   RotateCcw,
   ScanLine,
   Search,
-  ShieldAlert,
   UsersRound,
   X,
 } from 'lucide-react'
@@ -15,6 +16,7 @@ import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -71,6 +73,7 @@ export function BuildPickerDialog({
   const [selectedAttribute, setSelectedAttribute] = useState<Attribute | 'ALL'>('ALL')
   const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | 'ALL'>('ALL')
   const [hideConflicting, setHideConflicting] = useState(false)
+  const [expandedConflictBuildId, setExpandedConflictBuildId] = useState<string | null>(null)
   const deferredQuery = useDeferredValue(query)
 
   const getConflict = useMemo(() => {
@@ -176,21 +179,16 @@ export function BuildPickerDialog({
       }}
     >
       <DialogContent
+        showCloseButton={false}
         className={cn(
           'flex flex-col gap-3 sm:gap-3.5 overflow-hidden border border-white/12 bg-[#0c1015] text-white shadow-[0_24px_64px_rgba(0,0,0,0.85),0_0_36px_rgba(201,242,75,0.08)] duration-200 outline-none',
-          // Mobile Bottom Sheet (< sm): anchored to bottom, full width, rounded top, max-h 92dvh, safe area padding
-          'inset-x-0 bottom-0 top-auto left-0 translate-x-0 translate-y-0 w-full max-w-full max-h-[92dvh] rounded-t-[28px] rounded-b-none border-x-0 border-b-0 p-3.5 pb-6',
+          // Mobile Fullscreen (< sm): full viewport, zero gap, safe area insets
+          'fixed inset-0 top-0 left-0 right-0 bottom-0 z-50 h-dvh max-h-dvh w-full max-w-full translate-x-0 translate-y-0 rounded-none border-0 p-3.5 pt-[max(0.875rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]',
           // Desktop Modal (sm+): centered, max-w-2xl, max-h 85vh, rounded-2xl
-          'sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-2xl sm:max-h-[85vh] sm:rounded-2xl sm:border sm:p-5',
+          'sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-auto sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-2xl sm:border sm:border-white/12 sm:p-5',
         )}
       >
         <TooltipProvider delayDuration={100} skipDelayDuration={300}>
-          {/* Mobile Sheet Drag Handle Indicator */}
-          <div
-            className="mx-auto w-10 h-1 rounded-full bg-white/20 -mt-0.5 mb-1 sm:hidden shrink-0"
-            aria-hidden="true"
-          />
-
           {/* Header with ZZZ badge */}
           <DialogHeader className="flex flex-row items-center justify-between pb-2.5 sm:pb-3 border-b border-white/10 shrink-0">
             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 pr-2">
@@ -205,12 +203,24 @@ export function BuildPickerDialog({
             <DialogDescription className="sr-only">
               {t('teamBuilder.pickerDesc')}
             </DialogDescription>
-            <div
-              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-xs font-bold text-foreground/90 shrink-0 mr-8 sm:mr-7"
-              title={t('teamBuilder.pickerTotalBuilds')}
-            >
-              <Layers className="size-3.5 text-primary" />
-              <span>{totalBuildsCount}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <div
+                className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-xs font-bold text-foreground/90"
+                title={t('teamBuilder.pickerTotalBuilds')}
+              >
+                <Layers className="size-3.5 text-primary" />
+                <span>{totalBuildsCount}</span>
+              </div>
+              <DialogClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-white cursor-pointer"
+                  aria-label={t('teams.closeModalAria', { defaultValue: 'Close' })}
+                >
+                  <X className="size-4" />
+                </Button>
+              </DialogClose>
             </div>
           </DialogHeader>
 
@@ -337,38 +347,21 @@ export function BuildPickerDialog({
                       type="button"
                       onClick={() => setHideConflicting((prev) => !prev)}
                       className={cn(
-                        'flex items-center justify-between sm:justify-start w-full sm:w-auto gap-2 rounded-lg border px-2.5 py-1.5 sm:py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer select-none',
+                        'h-8 w-full sm:w-auto px-3 rounded-lg border font-mono text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer select-none inline-flex items-center justify-center active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 shrink-0',
                         hideConflicting
-                          ? 'border-destructive/40 bg-destructive/15 text-destructive shadow-xs'
+                          ? 'border-primary/50 bg-primary/15 text-primary shadow-[0_0_12px_rgba(201,242,75,0.12)] hover:bg-primary/20 hover:border-primary/70'
                           : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:border-white/20 hover:bg-white/[0.08] hover:text-white',
                       )}
                       title={
                         hideConflicting
                           ? t('teamBuilder.pickerShowAll')
-                          : t('teamBuilder.pickerHideConflicting')}
+                          : t('teamBuilder.pickerHideConflicting')
+                      }
                       aria-pressed={hideConflicting}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <ShieldAlert className="size-3.5 text-destructive shrink-0" />
-                        <span className="text-[11px]">
-                          {hideConflicting
-                            ? t('teamBuilder.pickerShowAll')
-                            : t('teamBuilder.pickerHideConflicting')}
-                        </span>
-                      </div>
-
-                      <span
-                        className={cn(
-                          'sm:hidden rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider',
-                          hideConflicting
-                            ? 'bg-destructive/25 text-destructive border border-destructive/40'
-                            : 'bg-white/8 text-muted-foreground/80 border border-white/10',
-                        )}
-                      >
-                        {hideConflicting
-                          ? t('teamBuilder.pickerHiddenShort')
-                          : t('teamBuilder.pickerAllShort')}
-                      </span>
+                      {hideConflicting
+                        ? t('teamBuilder.pickerShowAll')
+                        : t('teamBuilder.pickerHideConflicting')}
                     </button>
                   </div>
                 )}
@@ -474,17 +467,19 @@ export function BuildPickerDialog({
                             const setBonuses = driveDiscs?.set_bonuses ?? []
                             const discs = driveDiscs?.slots ?? []
 
-                            const visualDiscSets = setBonuses.map((bonus) => {
-                              const matchingDisc = discs.find(
-                                (d) => d.set.id === bonus.set.id && d.icon_path,
-                              )
-                              return {
-                                setId: bonus.set.id,
-                                name: bonus.set.name,
-                                count: bonus.count,
-                                iconUrl: matchingDisc?.icon_path,
-                              }
-                            })
+                            const visualDiscSets = setBonuses
+                              .map((bonus) => {
+                                const matchingDisc = discs.find(
+                                  (d) => d.set.id === bonus.set.id && d.icon_path,
+                                )
+                                return {
+                                  setId: bonus.set.id,
+                                  name: bonus.set.name,
+                                  count: bonus.count,
+                                  iconUrl: matchingDisc?.icon_path,
+                                }
+                              })
+                              .sort((a, b) => b.count - a.count)
 
                             // Build state classification
                             const isCurrentInSquad = conflict?.type === 'IN_SQUAD'
@@ -493,20 +488,29 @@ export function BuildPickerDialog({
                             const hasWeaponConflict = conflict?.hasWeaponConflict ?? false
                             const conflictingDiscSlots = conflict?.conflictingDiscSlots ?? []
 
+                            const isExpanded = expandedConflictBuildId === build.id
+
                             return (
                               <button
                                 key={build.id}
                                 type="button"
                                 role="option"
                                 aria-selected={false}
-                                disabled={isDisabled}
+                                aria-expanded={isGearConflict ? isExpanded : undefined}
+                                disabled={isDisabled && !isGearConflict}
                                 aria-disabled={isDisabled}
                                 onClick={() => {
+                                  if (isGearConflict) {
+                                    setExpandedConflictBuildId((prev) =>
+                                      prev === build.id ? null : build.id,
+                                    )
+                                    return
+                                  }
                                   if (isDisabled) return
                                   handlePick(build.id)
                                 }}
                                 className={cn(
-                                  'group/build relative w-full rounded-xl border p-2.5 sm:px-3 sm:py-2.5 text-left transition-all duration-200 select-none overflow-hidden',
+                                  'group/build relative flex flex-col w-full rounded-xl border p-2.5 sm:px-3 sm:py-2.5 text-left transition-all duration-200 select-none overflow-hidden',
                                   // Base & Status Styling with Edge Indicator
                                   isCurrentInSquad && [
                                     'border-l-4 border-l-white/25 border-white/[0.08] bg-[#11141c]/90 cursor-not-allowed opacity-75',
@@ -516,7 +520,7 @@ export function BuildPickerDialog({
                                     'border-l-4 border-l-slate-500 border-white/[0.08] bg-[#11141c]/80 cursor-not-allowed opacity-75',
                                   ],
                                   isGearConflict && [
-                                    'border-l-4 border-l-red-500/80 border-red-500/25 bg-[#181315] cursor-not-allowed',
+                                    'border-l-4 border-l-red-500/80 border-red-500/25 bg-[#181315] cursor-pointer',
                                     'shadow-[inset_0_1px_0_rgba(239,68,68,0.06)]',
                                   ],
                                   !isDisabled && [
@@ -527,166 +531,145 @@ export function BuildPickerDialog({
                                   ],
                                 )}
                               >
-                                {/* MOBILE LAYOUT (< sm): 2-Tier Stacked Card */}
-                                <div className="flex flex-col gap-2 w-full sm:hidden">
-                                  {/* Top Row: Build Name + Status / Select Hint */}
-                                  <div className="flex items-center justify-between gap-2 min-w-0">
-                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                      <span
-                                        className={cn(
-                                          'truncate font-heading text-sm font-bold tracking-wide transition-colors',
-                                          isCurrentInSquad && 'text-white/70',
-                                          isDuplicateAgent && 'text-white/60',
-                                          isGearConflict && 'text-white/90',
-                                          !isDisabled && 'text-white group-hover/build:text-primary',
-                                        )}
+                                {/* MOBILE LAYOUT (< sm): Media Object with W-Engine on the left */}
+                                <div className="flex items-center gap-2.5 w-full sm:hidden">
+                                  {/* Left: W-Engine Avatar Anchor (larger icon, no box background) */}
+                                    {wEngine ? (
+                                      <div
+                                        className="relative flex size-12 shrink-0 items-center justify-center"
+                                        title={`W-Engine: ${wEngineName} (P${wEngine.modification || 1})`}
                                       >
-                                        {build.name}
-                                      </span>
-                                    </div>
-
-                                    {/* Mobile Status Tag */}
-                                    {isCurrentInSquad && (
-                                      <span className="inline-flex shrink-0 items-center rounded-md border border-white/15 bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white/70">
-                                        <span>
-                                          {conflict?.squadSlot
-                                            ? `${t('teamBuilder.pickerInSquad')} • ${conflict.squadSlot}P`
-                                            : t('teamBuilder.pickerInSquad')}
-                                        </span>
-                                      </span>
-                                    )}
-
-                                    {isDuplicateAgent && (
-                                      <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-white/15 bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                        <UsersRound className="size-3" />
-                                        <span>
-                                          {conflict?.squadSlot
-                                            ? `${t('teamBuilder.pickerAgentInSquad')} (${conflict.squadSlot}P)`
-                                            : t('teamBuilder.pickerAgentInSquad')}
-                                        </span>
-                                      </span>
-                                    )}
-
-                                    {isGearConflict && (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <span className="inline-flex shrink-0 items-center rounded-md border border-red-500/35 bg-red-500/12 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-red-300 cursor-help">
-                                            <span>
-                                              {t('teamBuilder.pickerConflictBadge', { defaultValue: 'CONFLICT' })}
-                                            </span>
+                                        {wEngine.icon_url ? (
+                                          <img
+                                            src={wEngine.icon_url}
+                                            alt={wEngineName}
+                                            loading="lazy"
+                                            decoding="async"
+                                            draggable={false}
+                                            className="size-full object-contain select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]"
+                                          />
+                                        ) : (
+                                          <span className="font-heading text-sm font-bold text-primary">W</span>
+                                        )}
+                                        {(wEngine.rarity === 'S' || wEngine.modification > 1) && (
+                                          <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 items-center rounded-full border border-white/20 bg-black px-1 font-sans text-[7.5px] font-black leading-none text-white shadow-xs">
+                                            P{wEngine.modification || 1}
                                           </span>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" align="end" className="text-xs max-w-xs space-y-1">
-                                          <p className="font-semibold text-red-400">
-                                            {t('teamBuilder.pickerGearConflictTitle', { defaultValue: 'Конфликт экипировки:' })}
-                                          </p>
-                                          {hasWeaponConflict && (
-                                            <p>
-                                              {t('teamBuilder.pickerWEngineBusy', {
-                                                agent: conflict?.conflictingAgentName ?? '',
-                                                defaultValue: `• Амплификатор занят агентом ${conflict?.conflictingAgentName ?? ''}`,
-                                              })}
-                                            </p>
-                                          )}
-                                          {conflictingDiscSlots.length > 0 && (
-                                            <p>
-                                              {t('teamBuilder.pickerDiscBusy', {
-                                                slot: conflictingDiscSlots.join(', '),
-                                                agent: conflict?.conflictingAgentName ?? '',
-                                                defaultValue: `• Драйв-диск [${conflictingDiscSlots.join(', ')}] занят агентом ${conflict?.conflictingAgentName ?? ''}`,
-                                              })}
-                                            </p>
-                                          )}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    )}
-
-                                    {!isDisabled && (
-                                      <div className="flex items-center text-primary/70 group-hover/build:text-primary transition-colors shrink-0">
-                                        <span className="font-mono text-[10px] font-bold uppercase tracking-wider">
-                                          {t('teamBuilder.pickerSelectButton', { defaultValue: 'SELECT' })}
-                                        </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex size-12 shrink-0 items-center justify-center font-mono text-xs text-muted-foreground/30">
+                                        —
                                       </div>
                                     )}
-                                  </div>
 
-                                  {/* Bottom Row: Gear Section */}
-                                  <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/[0.08]">
-                                    {/* W-Engine Info with conflict ring */}
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                      {wEngine ? (
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                          <div
-                                            className="relative flex size-7 shrink-0 items-center justify-center transition-all"
-                                            title={`W-Engine: ${wEngineName} (P${wEngine.modification || 1})`}
-                                          >
-                                            {wEngine.icon_url ? (
-                                              <img
-                                                src={wEngine.icon_url}
-                                                alt=""
-                                                loading="lazy"
-                                                decoding="async"
-                                                draggable={false}
-                                                className="size-full object-contain select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-                                              />
-                                            ) : (
-                                              <span className="font-heading text-xs font-bold text-primary">W</span>
-                                            )}
-                                            {(wEngine.rarity === 'S' || wEngine.modification > 1) && (
-                                              <span className="absolute -bottom-0.5 -right-1 flex h-3.5 items-center rounded-full border border-white/20 bg-black px-1 font-sans text-[7.5px] font-black leading-none text-white">
-                                                P{wEngine.modification || 1}
-                                              </span>
-                                            )}
-                                          </div>
-                                          <span className="text-xs text-foreground/80 font-medium truncate max-w-[140px]">
-                                            {wEngineName}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <span className="text-[11px] font-mono text-muted-foreground/40">
-                                          {t('teams.noWEngineShort')}
+                                    {/* Right: Content Column (Top: Build Name, Bottom: Discs + Action) */}
+                                    <div className="flex flex-col justify-between min-w-0 flex-1 gap-1">
+                                      {/* Top Row: Build Name */}
+                                      <div className="min-w-0">
+                                        <span
+                                          className={cn(
+                                            'truncate block font-heading text-sm font-bold tracking-wide transition-colors',
+                                            isCurrentInSquad && 'text-white/70',
+                                            isDuplicateAgent && 'text-white/60',
+                                            isGearConflict && 'text-white/90',
+                                            !isDisabled && 'text-white group-hover/build:text-primary',
+                                          )}
+                                        >
+                                          {build.name}
                                         </span>
-                                      )}
-                                    </div>
+                                      </div>
 
-                                    {/* Drive Discs */}
-                                    <div className="flex items-center gap-1.5 shrink-0 pl-1.5">
-                                      {visualDiscSets.length > 0 ? (
-                                        <div className="flex items-center gap-1">
-                                          {visualDiscSets.slice(0, 2).map((discSet) => (
-                                            <div
-                                              key={discSet.setId}
-                                              className="relative flex size-7 shrink-0 items-center justify-center"
-                                              title={`${discSet.name} (${t('gear.pieces', { count: discSet.count })})`}
-                                            >
-                                              {discSet.iconUrl ? (
-                                                <img
-                                                  src={discSet.iconUrl}
-                                                  alt=""
-                                                  loading="lazy"
-                                                  decoding="async"
-                                                  draggable={false}
-                                                  className="size-full object-contain select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-                                                />
-                                              ) : (
-                                                <Disc className="size-3 text-muted-foreground/60" />
+                                      {/* Bottom Row: Discs & Select Button / Status */}
+                                      <div className="flex items-center justify-between gap-2 min-w-0">
+                                        {/* Drive Discs (smaller compact sets) */}
+                                        {visualDiscSets.length > 0 ? (
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            {visualDiscSets.slice(0, 2).map((discSet) => (
+                                              <div
+                                                key={discSet.setId}
+                                                className="relative flex size-5 shrink-0 items-center justify-center"
+                                                title={`${discSet.name} (${t('gear.pieces', { count: discSet.count })})`}
+                                              >
+                                                {discSet.iconUrl ? (
+                                                  <img
+                                                    src={discSet.iconUrl}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    draggable={false}
+                                                    className="size-full object-contain select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                                                  />
+                                                ) : (
+                                                  <Disc className="size-2.5 text-muted-foreground/60" />
+                                                )}
+                                                <span className="absolute -bottom-0.5 -right-0.5 flex size-3 items-center justify-center rounded-full bg-amber-400 font-mono text-[7px] font-black leading-none text-black shadow-xs border border-black">
+                                                  {discSet.count}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0">
+                                            {t('teams.noDiscsShort')}
+                                          </span>
+                                        )}
+
+                                        {/* Right: Select Action or Conflict Status Badge */}
+                                        <div className="flex items-center shrink-0">
+                                          {isCurrentInSquad && (
+                                            <span className="inline-flex items-center rounded-md border border-white/15 bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white/70">
+                                              <span>
+                                                {conflict?.squadSlot
+                                                  ? `${t('teamBuilder.pickerInSquad')} • ${conflict.squadSlot}P`
+                                                  : t('teamBuilder.pickerInSquad')}
+                                              </span>
+                                            </span>
+                                          )}
+
+                                          {isDuplicateAgent && (
+                                            <span className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                              <UsersRound className="size-3" />
+                                              <span>
+                                                {conflict?.squadSlot
+                                                  ? `${t('teamBuilder.pickerAgentInSquad')} (${conflict.squadSlot}P)`
+                                                  : t('teamBuilder.pickerAgentInSquad')}
+                                              </span>
+                                            </span>
+                                          )}
+
+                                          {isGearConflict && (
+                                            <span
+                                              className={cn(
+                                                'inline-flex items-center gap-1 rounded-md border border-red-500/35 bg-red-500/12 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-red-300 transition-colors',
+                                                isExpanded && 'border-red-500/60 bg-red-500/25 text-red-200',
                                               )}
-                                              <span className="absolute -bottom-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-amber-400 font-mono text-[8px] font-black leading-none text-black shadow-xs border border-black">
-                                                {discSet.count}
+                                            >
+                                              <span>
+                                                {t('teamBuilder.pickerConflictBadge', { defaultValue: 'CONFLICT' })}
+                                              </span>
+                                              <ChevronDown
+                                                className={cn(
+                                                  'size-2.5 transition-transform duration-200',
+                                                  isExpanded && 'rotate-180',
+                                                )}
+                                              />
+                                            </span>
+                                          )}
+
+                                          {!isDisabled && (
+                                            <div className="flex items-center rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary group-hover/build:border-primary group-hover/build:bg-primary group-hover/build:text-primary-foreground transition-all">
+                                              <span>
+                                                {t('teamBuilder.pickerSelectButton', { defaultValue: 'SELECT' })}
                                               </span>
                                             </div>
-                                          ))}
+                                          )}
                                         </div>
-                                      ) : (
-                                        <span className="text-[11px] font-mono text-muted-foreground/40">
-                                          {t('teams.noDiscsShort')}
-                                        </span>
-                                      )}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
 
-                                {/* DESKTOP LAYOUT (sm+): 3-Column Grid */}
+                                  {/* DESKTOP LAYOUT (sm+): 3-Column Grid */}
                                 <div className="hidden sm:grid sm:grid-cols-[1fr_auto_148px] items-center gap-3 w-full">
                                   {/* Column 1: Build Name */}
                                   <div className="flex flex-col justify-center min-w-0 pr-2">
@@ -813,38 +796,24 @@ export function BuildPickerDialog({
                                     )}
 
                                     {isGearConflict && (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className="flex w-full items-center justify-center rounded-lg border border-red-500/35 bg-red-500/12 px-2.5 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-red-300 cursor-help transition-colors hover:bg-red-500/18 shadow-xs">
-                                            <span className="truncate">
-                                              {t('teamBuilder.pickerConflictBadge', { defaultValue: 'CONFLICT' })}
-                                            </span>
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" align="end" className="text-xs max-w-xs space-y-1">
-                                          <p className="font-semibold text-red-400">
-                                            {t('teamBuilder.pickerGearConflictTitle', { defaultValue: 'Конфликт экипировки:' })}
-                                          </p>
-                                          {hasWeaponConflict && (
-                                            <p>
-                                              {t('teamBuilder.pickerWEngineBusyWithTitle', {
-                                                name: conflict?.conflictingWeaponName ?? '',
-                                                agent: conflict?.conflictingAgentName ?? '',
-                                                defaultValue: `• Амплификатор «${conflict?.conflictingWeaponName ?? ''}» занят агентом ${conflict?.conflictingAgentName ?? ''}`,
-                                              })}
-                                            </p>
+                                      <div
+                                        className={cn(
+                                          'flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/35 bg-red-500/12 px-2.5 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-red-300 transition-colors shadow-xs',
+                                          isExpanded
+                                            ? 'border-red-500/60 bg-red-500/25 text-red-200'
+                                            : 'hover:bg-red-500/18 hover:border-red-500/50',
+                                        )}
+                                      >
+                                        <span className="truncate">
+                                          {t('teamBuilder.pickerConflictBadge', { defaultValue: 'CONFLICT' })}
+                                        </span>
+                                        <ChevronDown
+                                          className={cn(
+                                            'size-3 shrink-0 transition-transform duration-200',
+                                            isExpanded && 'rotate-180',
                                           )}
-                                          {conflictingDiscSlots.length > 0 && (
-                                            <p>
-                                              {t('teamBuilder.pickerDiscBusy', {
-                                                slot: conflictingDiscSlots.join(', '),
-                                                agent: conflict?.conflictingAgentName ?? '',
-                                                defaultValue: `• Драйв-диск [${conflictingDiscSlots.join(', ')}] занят агентом ${conflict?.conflictingAgentName ?? ''}`,
-                                              })}
-                                            </p>
-                                          )}
-                                        </TooltipContent>
-                                      </Tooltip>
+                                        />
+                                      </div>
                                     )}
 
                                     {!isDisabled && (
@@ -854,6 +823,38 @@ export function BuildPickerDialog({
                                     )}
                                   </div>
                                 </div>
+
+                                {/* Inline Conflict Details (Accordion on tap/click for BOTH mobile and desktop) */}
+                                {isGearConflict && isExpanded && (
+                                  <div className="mt-2.5 pt-2 border-t border-red-500/20 text-xs space-y-1.5 animate-in fade-in-50 duration-150 w-full">
+                                    <p className="flex items-center gap-1.5 font-semibold text-red-400 text-[11px] sm:text-xs">
+                                      <AlertTriangle className="size-3 sm:size-3.5 shrink-0" />
+                                      <span>
+                                        {t('teamBuilder.pickerGearConflictTitle', { defaultValue: 'Конфликт экипировки:' })}
+                                      </span>
+                                    </p>
+                                    <div className="space-y-1 text-[11px] sm:text-xs pl-4.5 sm:pl-5 text-red-200/80">
+                                      {hasWeaponConflict && (
+                                        <p>
+                                          {t('teamBuilder.pickerWEngineBusyWithTitle', {
+                                            name: conflict?.conflictingWeaponName ?? '',
+                                            agent: conflict?.conflictingAgentName ?? '',
+                                            defaultValue: `• Амплификатор «${conflict?.conflictingWeaponName ?? ''}» занят агентом ${conflict?.conflictingAgentName ?? ''}`,
+                                          })}
+                                        </p>
+                                      )}
+                                      {conflictingDiscSlots.length > 0 && (
+                                        <p>
+                                          {t('teamBuilder.pickerDiscBusy', {
+                                            slot: conflictingDiscSlots.join(', '),
+                                            agent: conflict?.conflictingAgentName ?? '',
+                                            defaultValue: `• Драйв-диск [${conflictingDiscSlots.join(', ')}] занят агентом ${conflict?.conflictingAgentName ?? ''}`,
+                                          })}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </button>
                             )
                           })}

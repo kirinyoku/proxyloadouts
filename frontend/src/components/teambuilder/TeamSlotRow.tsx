@@ -124,17 +124,19 @@ export function TeamSlotRow({
   // Visual Disc Sets (Icons + counts)
   const setBonuses = agent.drive_discs?.set_bonuses ?? []
   const discs = agent.drive_discs?.slots ?? []
-  const visualDiscSets = setBonuses.map((bonus) => {
-    const matchingDisc = discs.find(
-      (d) => d.set.id === bonus.set.id && d.icon_path,
-    )
-    return {
-      setId: bonus.set.id,
-      name: bonus.set.name,
-      count: bonus.count,
-      iconUrl: matchingDisc?.icon_path,
-    }
-  })
+  const visualDiscSets = setBonuses
+    .map((bonus) => {
+      const matchingDisc = discs.find(
+        (d) => d.set.id === bonus.set.id && d.icon_path,
+      )
+      return {
+        setId: bonus.set.id,
+        name: bonus.set.name,
+        count: bonus.count,
+        iconUrl: matchingDisc?.icon_path,
+      }
+    })
+    .sort((a, b) => b.count - a.count)
 
   return (
     <>

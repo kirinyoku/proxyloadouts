@@ -22,6 +22,8 @@ vi.mock('react-i18next', async (importOriginal) => {
           'teamBuilder.pickerShowAll': 'Показать все',
           'teamBuilder.pickerInSquad': 'В команде',
           'teamBuilder.pickerSelectButton': 'ВЫБРАТЬ',
+          'teamBuilder.pickerConflictBadge': 'КОНФЛИКТ',
+          'teamBuilder.pickerGearConflictTitle': 'Конфликт экипировки:',
           'teams.resetFilters': 'Сбросить фильтры',
         }
         return translations[key] ?? ((options?.defaultValue as string) ?? (options?.slot != null ? `Занят диск ${options.slot}` : key))
@@ -39,6 +41,7 @@ vi.mock('react-router-dom', () => ({
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
     open ? <div data-slot="dialog">{children}</div> : null,
+  DialogClose: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
@@ -135,7 +138,7 @@ describe('BuildPickerDialog', () => {
     expect(html).not.toContain('Сбросить')
   })
 
-  it('renders mobile-adapted bottom sheet drawer and 2-tier stacked build cards', () => {
+  it('renders mobile-adapted fullscreen modal and 2-tier stacked build cards', () => {
     const html = renderToString(
       <BuildPickerDialog
         open={true}
@@ -146,9 +149,9 @@ describe('BuildPickerDialog', () => {
       />,
     )
 
-    // Contains bottom sheet styling classes
-    expect(html).toContain('rounded-t-[28px]')
-    expect(html).toContain('max-h-[92dvh]')
+    // Contains fullscreen mobile styling classes
+    expect(html).toContain('h-dvh')
+    expect(html).toContain('rounded-none')
 
     // Contains both mobile and desktop title variants
     expect(html).toContain('Выбор агента')
@@ -308,4 +311,88 @@ describe('BuildPickerDialog', () => {
     // Build description/notes are omitted, keeping only build title
     expect(html).not.toContain('Секретная заметка к сборке')
   })
+
+  it('renders drive disc sets sorted with 4-piece set before 2-piece set regardless of input order', () => {
+    const buildWithUnsortedSets: Build = {
+      ...mockBuild1,
+      id: 'build-unsorted-sets',
+      build_data: {
+        ...mockBuild1.build_data,
+        drive_discs: {
+          slots: [
+            {
+              id: 20101,
+              uid: 'disc-201-1',
+              slot: 1,
+              level: 15,
+              rarity: 'S',
+              icon_path: 'https://example.com/disc2.webp',
+              set: { id: 201, name: 'Woodpecker Electro' },
+              main_stat: { property_id: 1, name: 'CRIT', value: 24, is_percent: true, rolls: 0, icon_url: '' },
+              sub_stats: [],
+            },
+            {
+              id: 20201,
+              uid: 'disc-202-1',
+              slot: 2,
+              level: 15,
+              rarity: 'S',
+              icon_path: 'https://example.com/disc4.webp',
+              set: { id: 202, name: 'Hormone Punk' },
+              main_stat: { property_id: 2, name: 'ATK', value: 30, is_percent: true, rolls: 0, icon_url: '' },
+              sub_stats: [],
+            },
+          ],
+          // Deliberately put 2-piece bonus first and 4-piece bonus second
+          set_bonuses: [
+            { count: 2, set: { id: 201, name: 'Woodpecker Electro' }, effects: [] },
+            { count: 4, set: { id: 202, name: 'Hormone Punk' }, effects: [] },
+          ],
+        },
+      },
+    }
+
+    const html = renderToString(
+      <BuildPickerDialog
+        open={true}
+        builds={[buildWithUnsortedSets]}
+        squadBuilds={[]}
+        onSelect={vi.fn()}
+        onOpenChange={vi.fn()}
+      />,
+    )
+
+    // The 4-piece set (Hormone Punk) should appear before the 2-piece set (Woodpecker Electro)
+    const index4pc = html.indexOf('Hormone Punk')
+    const index2pc = html.indexOf('Woodpecker Electro')
+    expect(index4pc).toBeGreaterThan(-1)
+    expect(index2pc).toBeGreaterThan(-1)
+    expect(index4pc).toBeLessThan(index2pc)
+  })
+
+  it('renders conflict badge with chevron indicator and aria-expanded attribute for gear conflict across mobile and desktop', () => {
+    const conflictingWithWEngine: Build = {
+      ...mockBuild2,
+      id: 'build-weapon-conflict',
+      weapon_uid: 'w-1',
+    }
+
+    const html = renderToString(
+      <BuildPickerDialog
+        open={true}
+        builds={[mockBuild1, conflictingWithWEngine]}
+        squadBuilds={[mockBuild1]}
+        onSelect={vi.fn()}
+        onOpenChange={vi.fn()}
+      />,
+    )
+
+    // Conflict badge with chevron indicator exists for touch affordance
+    expect(html).toContain('КОНФЛИКТ')
+    expect(html).toContain('lucide-chevron-down')
+    // Option is marked with aria-disabled and aria-expanded="false"
+    expect(html).toContain('aria-disabled="true"')
+    expect(html).toContain('aria-expanded="false"')
+  })
 })
+

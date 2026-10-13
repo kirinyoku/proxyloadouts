@@ -221,4 +221,64 @@ describe('TeamSlotRow w-engine superposition badge', () => {
     expect(html).toContain('P5')
     expect(html).toMatch(/rounded-full\s+border\s+border-white\/20\s+bg-black[^"]*text-white/)
   })
+
+  it('renders drive disc sets sorted with 4-piece set before 2-piece set regardless of input order', () => {
+    const buildWithUnsortedSets: Build = {
+      ...baseBuild,
+      build_data: {
+        ...baseBuild.build_data,
+        drive_discs: {
+          slots: [
+            {
+              id: 20101,
+              uid: 'disc-201-1',
+              slot: 1,
+              level: 15,
+              rarity: 'S',
+              icon_path: 'https://example.com/disc2.webp',
+              set: { id: 201, name: 'Woodpecker Electro' },
+              main_stat: { property_id: 1, name: 'CRIT', value: 24, is_percent: true, rolls: 0, icon_url: '' },
+              sub_stats: [],
+            },
+            {
+              id: 20201,
+              uid: 'disc-202-1',
+              slot: 2,
+              level: 15,
+              rarity: 'S',
+              icon_path: 'https://example.com/disc4.webp',
+              set: { id: 202, name: 'Hormone Punk' },
+              main_stat: { property_id: 2, name: 'ATK', value: 30, is_percent: true, rolls: 0, icon_url: '' },
+              sub_stats: [],
+            },
+          ],
+          // Deliberately put 2-piece bonus first and 4-piece bonus second
+          set_bonuses: [
+            { count: 2, set: { id: 201, name: 'Woodpecker Electro' }, effects: [] },
+            { count: 4, set: { id: 202, name: 'Hormone Punk' }, effects: [] },
+          ],
+        },
+      },
+    }
+
+    const html = renderToString(
+      <TeamSlotRow
+        slot={1}
+        selected={buildWithUnsortedSets}
+        builds={[buildWithUnsortedSets]}
+        usedBuildIds={new Set(['build-1'])}
+        conflictCodes={[]}
+        onSelect={vi.fn()}
+        onClear={vi.fn()}
+      />,
+    )
+
+    // The 4-piece set (Hormone Punk) should appear before the 2-piece set (Woodpecker Electro)
+    const index4pc = html.indexOf('Hormone Punk')
+    const index2pc = html.indexOf('Woodpecker Electro')
+    expect(index4pc).toBeGreaterThan(-1)
+    expect(index2pc).toBeGreaterThan(-1)
+    expect(index4pc).toBeLessThan(index2pc)
+  })
 })
+
