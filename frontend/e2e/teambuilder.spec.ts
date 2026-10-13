@@ -303,8 +303,10 @@ test.describe('Team Builder (/teams/new) Minimalist E2E Suite', () => {
     const corinBadge = corinOption.getByText('КОНФЛИКТ').last()
     await expect(corinBadge).toBeVisible()
 
-    // Hovering the conflict badge immediately reveals the styled tooltip without the native 2s delay
-    await corinBadge.hover()
+    // Clicking the conflicting build toggles the conflict details accordion
+    await expect(corinOption).toHaveAttribute('aria-expanded', 'false')
+    await corinOption.click({ force: true })
+    await expect(corinOption).toHaveAttribute('aria-expanded', 'true')
     await expect(page.getByText(/Амплификатор «Deep Sea Visitor» занят агентом Ellen Joe/i)).toBeVisible()
 
     // Ellen option in picker is also disabled (already in team)
