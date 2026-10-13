@@ -76,4 +76,20 @@ describe('InterknotTerminalError component', () => {
     expect(html).toContain('Failed to load teams list')
     expect(html).toContain('terminalError.retry')
   })
+
+  it('renders custom query, host, and actions slot in full 404 mode', () => {
+    const html = renderToString(
+      <InterknotTerminalError
+        status={404}
+        query="/custom-path"
+        host="test.proxyloadouts.app"
+        actions={<button type="button">Custom Home</button>}
+      />
+    )
+
+    expect(html).toContain('role="alert"')
+    expect(html).toContain('/custom-path')
+    expect(html).toContain('test.proxyloadouts.app')
+    expect(html).toContain('Custom Home')
+  })
 })

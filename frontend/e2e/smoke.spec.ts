@@ -70,4 +70,19 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     await expect(page.getByRole('heading', { name: 'Менеджмент сборок' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Менеджмент отрядов' })).toBeVisible()
   })
+
+  test('renders 404 not found page with ZZZ terminal for unknown routes', async ({ page }) => {
+    await page.goto('/unknown-hollow-sector')
+
+    // 404 heading and status indicators are visible
+    await expect(page.getByRole('heading', { name: 'Сектор не найден' })).toBeVisible()
+    await expect(page.getByText('404')).toBeVisible()
+    await expect(page.getByText('/unknown-hollow-sector')).toBeVisible()
+
+    // Primary action returns to home
+    const homeButton = page.getByRole('link', { name: 'Вернуться на базу' })
+    await expect(homeButton).toBeVisible()
+    await homeButton.click()
+    await expect(page).toHaveURL('/')
+  })
 })

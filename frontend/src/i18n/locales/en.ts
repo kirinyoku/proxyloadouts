@@ -706,6 +706,38 @@ const en: TranslationSchema = {
       },
     },
   },
+  notFoundPage: {
+    pageTitle: '404 — Hollow Signal Lost | ProxyLoadouts',
+    badge: 'SIGNAL_LOST // 404',
+    statusSub: 'HOLLOW ZONE // CORRUPTED SECTOR',
+    systemStatus: 'SYS: SIGNAL LOST',
+    errorCode: 'ERR_HOLLOW_ZONE_NOT_FOUND',
+    title: 'Sector Not Found',
+    description: 'The requested sector was not found or the route is corrupted. Please check the URL or return to the home page.',
+    diagnostic: {
+      title: 'SIGNAL_DIAGNOSTIC',
+      status: 'SIGNAL_LOST',
+      targetPath: 'ROUTE:',
+      statusLabel: 'STATUS: 404_ZONE_CORRUPTED',
+      etherCorruption: 'ETHER_CORRUPTION: CRITICAL',
+      recordsReturned: '0 NODES RETURNED',
+      advisory: 'ADVISORY: EVACUATE',
+      radarStatus: 'NO CARROT SIGNAL',
+    },
+    actions: {
+      home: 'Return to Base',
+      back: 'Go Back',
+    },
+    quickLinks: {
+      title: 'Quick Inter-Knot Routes',
+      showcaseTitle: 'Agent Showcase',
+      showcaseDesc: 'Scan equipment & stats by game UID',
+      rosterTitle: 'Build Roster',
+      rosterDesc: 'Saved gear sets & character builds',
+      teamsTitle: 'Squad Manager',
+      teamsDesc: 'Build squads with automatic conflict detection',
+    },
+  },
 }
 
 export default en

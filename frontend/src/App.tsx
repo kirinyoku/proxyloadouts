@@ -15,6 +15,7 @@ import { HomePage } from '@/pages/HomePage'
 import {
   loadAuthCallbackPage,
   loadLoginPage,
+  loadNotFoundPage,
   loadPrivacyPage,
   loadRosterPage,
   loadSettingsPage,
@@ -32,6 +33,7 @@ const TeamsPage = lazy(loadTeamsPage)
 const TeamBuilderPage = lazy(loadTeamBuilderPage)
 const SettingsPage = lazy(loadSettingsPage)
 const PrivacyPage = lazy(loadPrivacyPage)
+const NotFoundPage = lazy(loadNotFoundPage)
 
 function BuildRouteRedirect() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -90,8 +92,8 @@ function App() {
                       <Route path="/teams/:teamId" element={<Navigate to="/teams" replace />} />
                       <Route path="/teams/:teamId/edit" element={<TeamBuilderPage />} />
                     </Route>
+                    <Route path="*" element={<NotFoundPage />} />
                   </Route>
-                  <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
             </div>

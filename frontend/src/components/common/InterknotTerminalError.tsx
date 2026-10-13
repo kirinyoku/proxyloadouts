@@ -22,6 +22,14 @@ export interface InterknotTerminalErrorProps {
   status?: number
   /** Targeted UID if applicable (for showcase lookup) */
   uid?: string
+  /** Targeted query / path if not a UID */
+  query?: string
+  /** Targeted host name (default: api.enka.network) */
+  host?: string
+  /** Custom status tag for header */
+  statusTag?: string
+  /** Custom screen status for CRT monitor */
+  screenStatus?: string
   /** Callback when user submits a new/corrected UID */
   onScanUid?: (newUid: string) => void
   /** Retry callback */
@@ -34,6 +42,8 @@ export interface InterknotTerminalErrorProps {
   description?: string
   /** Error code badge string for compact mode */
   errorCode?: string
+  /** Custom actions to render in the action panel */
+  actions?: React.ReactNode
   className?: string
 }
 
@@ -42,12 +52,17 @@ export function InterknotTerminalError({
   error,
   status: explicitStatus,
   uid = '',
+  query,
+  host,
+  statusTag: customStatusTag,
+  screenStatus: customScreenStatus,
   onScanUid,
   onRetry,
   isRetrying: propIsRetrying,
   title: customTitle,
   description: customDescription,
   errorCode = '500_ERR',
+  actions,
   className,
 }: InterknotTerminalErrorProps) {
   const { t } = useTranslation()
@@ -379,9 +394,9 @@ export function InterknotTerminalError({
   // FULL VARIANT: 404 NOT FOUND (or Default with UID Search)
   // ==========================================================================
   const is404 = status === 404 || !status
-  const statusTag = is404 ? t('terminalError.notFound.statusTag') : t('terminalError.default.statusTag')
+  const statusTag = customStatusTag ?? (is404 ? t('terminalError.notFound.statusTag') : t('terminalError.default.statusTag'))
   const statusSub = is404 ? t('terminalError.notFound.statusSub') : t('terminalError.default.statusSub')
-  const screenStatus = is404 ? t('terminalError.notFound.screenStatus') : t('terminalError.default.screenStatus')
+  const screenStatus = customScreenStatus ?? (is404 ? t('terminalError.notFound.screenStatus') : t('terminalError.default.screenStatus'))
   const displayTitle = customTitle ?? (is404 ? t('terminalError.notFound.title') : t('terminalError.default.title'))
   const displayDesc = customDescription ?? (is404 ? t('terminalError.notFound.desc') : t('terminalError.default.desc'))
 
@@ -440,8 +455,12 @@ export function InterknotTerminalError({
               </div>
 
               <div className="space-y-1 text-white/80 text-[10px]">
-                {currentUid && <p className="text-muted-foreground">&gt; QUERY: UID_{currentUid}</p>}
-                <p className="text-muted-foreground">&gt; HOST: api.enka.network</p>
+                {query ? (
+                  <p className="text-muted-foreground truncate">&gt; QUERY: <span className="text-primary font-bold">{query}</span></p>
+                ) : currentUid ? (
+                  <p className="text-muted-foreground">&gt; QUERY: UID_{currentUid}</p>
+                ) : null}
+                <p className="text-muted-foreground">&gt; HOST: {host ?? 'api.enka.network'}</p>
                 <p className="text-red-400 font-bold">&gt; STATUS: {screenStatus}</p>
                 <p className="text-[9px] text-white/50 pt-1">&gt; 0 RECORDS RETURNED</p>
               </div>
@@ -491,58 +510,62 @@ export function InterknotTerminalError({
           </div>
         </div>
 
-        {/* Action Panel: Integrated Inline Search + Retry */}
-        <div className="rounded-xl border-2 border-black bg-[#151b24] p-3.5 sm:p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            {/* Left: Instant Correction Form */}
-            {onScanUid ? (
-              <form onSubmit={handleScanSubmit} className="flex-1 flex items-center gap-2 max-w-md">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs select-none">
-                    UID:
-                  </span>
-                  <input
-                    type="text"
-                    value={currentUid}
-                    onChange={(e) => setEditedUid(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    placeholder={t('terminalError.correctUidPlaceholder')}
-                    className="w-full rounded-[8px_8px_0_8px] border-2 border-black bg-[#0d1117] pl-12 pr-3 py-2 font-mono text-xs font-semibold text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]"
-                  />
+        {/* Action Panel: Integrated Inline Search + Retry or Custom Actions */}
+        <div className="rounded-xl border-2 border-black bg-[#151b24] p-3.5 sm:p-4">
+          {actions ? (
+            <div className="flex flex-wrap items-center justify-center gap-3 w-full">
+              {actions}
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {onScanUid ? (
+                <form onSubmit={handleScanSubmit} className="flex-1 flex items-center gap-2 max-w-md">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs select-none">
+                      UID:
+                    </span>
+                    <input
+                      type="text"
+                      value={currentUid}
+                      onChange={(e) => setEditedUid(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder={t('terminalError.correctUidPlaceholder')}
+                      className="w-full rounded-[8px_8px_0_8px] border-2 border-black bg-[#0d1117] pl-12 pr-3 py-2 font-mono text-xs font-semibold text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    variant="default"
+                    disabled={currentUid.length < 8}
+                  >
+                    <Search className="size-3.5" />
+                    {t('terminalError.find')}
+                  </Button>
+                </form>
+              ) : (
+                <div className="flex-1 text-xs text-muted-foreground font-mono">
+                  {t('terminalError.notFound.waitNote')}
                 </div>
+              )}
 
-                <Button
-                  type="submit"
-                  variant="default"
-                  disabled={currentUid.length < 8}
-                >
-                  <Search className="size-3.5" />
-                  {t('terminalError.find')}
-                </Button>
-              </form>
-            ) : (
-              <div className="flex-1 text-xs text-muted-foreground font-mono">
-                {t('terminalError.notFound.waitNote')}
-              </div>
-            )}
-
-            {/* Right: Retry button with loading spinner */}
-            {onRetry && (
-              <div className="flex items-center gap-2 shrink-0 border-t sm:border-t-0 border-white/10 pt-2 sm:pt-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-9 font-semibold text-xs cursor-pointer"
-                  onClick={handleRetry}
-                  loading={isRetrying}
-                >
-                  {!isRetrying && <RefreshCw className="size-3.5 mr-1.5" />}
-                  {isRetrying ? t('terminalError.retrying') : t('terminalError.retry')}
-                </Button>
-              </div>
-            )}
-          </div>
-
+              {/* Right: Retry button with loading spinner */}
+              {onRetry && (
+                <div className="flex items-center gap-2 shrink-0 border-t sm:border-t-0 border-white/10 pt-2 sm:pt-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 font-semibold text-xs cursor-pointer"
+                    onClick={handleRetry}
+                    loading={isRetrying}
+                  >
+                    {!isRetrying && <RefreshCw className="size-3.5 mr-1.5" />}
+                    {isRetrying ? t('terminalError.retrying') : t('terminalError.retry')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -16,6 +16,8 @@ export const loadSettingsPage = () =>
   import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
 export const loadPrivacyPage = () =>
   import('@/pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage }))
+export const loadNotFoundPage = () =>
+  import('@/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage }))
 
 export const routePreloaders: Record<
   string,

@@ -704,6 +704,38 @@ const ru = {
       },
     },
   },
+  notFoundPage: {
+    pageTitle: '404 — Сигнал каверны потерян | ProxyLoadouts',
+    badge: 'SIGNAL_LOST // 404',
+    statusSub: 'HOLLOW ZONE // CORRUPTED SECTOR',
+    systemStatus: 'SYS: SIGNAL LOST',
+    errorCode: 'ERR_HOLLOW_ZONE_NOT_FOUND',
+    title: 'Сектор не найден',
+    description: 'Запрошенный сектор не найден или маршрут повреждён. Проверьте правильность адреса или вернитесь на главную страницу.',
+    diagnostic: {
+      title: 'SIGNAL_DIAGNOSTIC',
+      status: 'SIGNAL_LOST',
+      targetPath: 'ROUTE:',
+      statusLabel: 'STATUS: 404_ZONE_CORRUPTED',
+      etherCorruption: 'ETHER_CORRUPTION: CRITICAL',
+      recordsReturned: '0 NODES RETURNED',
+      advisory: 'ADVISORY: EVACUATE',
+      radarStatus: 'NO CARROT SIGNAL',
+    },
+    actions: {
+      home: 'Вернуться на базу',
+      back: 'Назад',
+    },
+    quickLinks: {
+      title: 'Быстрые маршруты Inter-Knot',
+      showcaseTitle: 'Витрина агентов',
+      showcaseDesc: 'Скан экипировки и статов по игровому UID',
+      rosterTitle: 'Ростер сборок',
+      rosterDesc: 'Сохранённые комплекты снаряжения агентов',
+      teamsTitle: 'Боевые отряды',
+      teamsDesc: 'Конструктор отрядов без коллизий дисков',
+    },
+  },
 } as const
 
 export type DeepString<T> = {
