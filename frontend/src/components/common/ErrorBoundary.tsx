@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { useInRouterContext, useLocation } from 'react-router-dom'
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { reportError } from '@/lib/sentry'
 import i18n from '@/i18n'
 
 export interface ErrorBoundaryProps {
@@ -37,7 +38,7 @@ export class ErrorBoundaryClass extends Component<ErrorBoundaryProps, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error in component tree:', error, errorInfo)
+    reportError(error, { componentStack: errorInfo.componentStack })
   }
 
   handleReload = () => {

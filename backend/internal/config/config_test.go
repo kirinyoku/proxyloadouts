@@ -16,6 +16,7 @@ func TestLoad_Defaults(t *testing.T) {
 	_ = os.Unsetenv("DISCORD_REDIRECT_URI")
 	_ = os.Unsetenv("SESSION_SECRET")
 	_ = os.Unsetenv("FRONTEND_URL")
+	_ = os.Unsetenv("SENTRY_DSN")
 
 	cfg, err := Load()
 	if err != nil {
@@ -33,6 +34,9 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 	if cfg.FrontendURL != "http://localhost:5173" {
 		t.Errorf("expected default FrontendURL http://localhost:5173, got %s", cfg.FrontendURL)
+	}
+	if cfg.SentryDSN != "" {
+		t.Errorf("expected default SentryDSN empty, got %s", cfg.SentryDSN)
 	}
 	if cfg.ShowcaseRateLimit != 20 {
 		t.Errorf("expected default ShowcaseRateLimit 20, got %d", cfg.ShowcaseRateLimit)

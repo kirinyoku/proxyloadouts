@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -114,6 +115,7 @@ func newFixtureWithOpts(t *testing.T, opts Options) *fixture {
 	router := NewRouter(
 		opts,
 		Deps{
+			DB:       db,
 			Auth:     authSvc,
 			Scanner:  scanner,
 			Users:    users,
@@ -272,6 +274,41 @@ func TestHealthEndpoints(t *testing.T) {
 		if body["status"] != "ok" {
 			t.Errorf("%s: expected status ok, got %v", path, body["status"])
 		}
+		if body["database"] != "connected" {
+			t.Errorf("%s: expected database connected, got %v", path, body["database"])
+		}
+	}
+}
+
+type failingPinger struct{}
+
+func (failingPinger) PingContext(ctx context.Context) error {
+	return errors.New("database locked")
+}
+
+func TestHealthEndpoints_DegradedWhenDBFails(t *testing.T) {
+	router := NewRouter(
+		Options{FrontendURL: "http://localhost:5173"},
+		Deps{DB: failingPinger{}},
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 Service Unavailable, got %d", rec.Code)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response body: %v", err)
+	}
+	if body["status"] != "degraded" {
+		t.Errorf("expected status degraded, got %v", body["status"])
+	}
+	if body["database"] != "unreachable" {
+		t.Errorf("expected database unreachable, got %v", body["database"])
 	}
 }
 

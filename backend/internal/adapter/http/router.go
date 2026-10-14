@@ -1,10 +1,12 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
 
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -29,8 +31,14 @@ type Options struct {
 	ShowcaseRateLimiter *IPRateLimiter
 }
 
+// Pinger verifies database connectivity for health probes.
+type Pinger interface {
+	PingContext(ctx context.Context) error
+}
+
 // Deps wires the application services into the transport layer.
 type Deps struct {
+	DB       Pinger
 	Auth     *authsvc.Service
 	Scanner  *scannersvc.Service
 	Users    domain.UserRepository
@@ -45,8 +53,12 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
-	r.Use(middleware.Logger)
+	r.Use(SlogRequestLogger(nil))
 	r.Use(middleware.Recoverer)
+	r.Use(sentryhttp.New(sentryhttp.Options{
+		Repanic:         true,
+		WaitForDelivery: true,
+	}).Handle)
 	r.Use(securityHeaders(opts))
 	r.Use(middleware.Timeout(60 * time.Second))
 
@@ -64,12 +76,28 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		MaxAge:           300,
 	}))
 
-	health := func(w http.ResponseWriter, _ *http.Request) {
+	health := func(w http.ResponseWriter, r *http.Request) {
+		status := "ok"
+		dbStatus := "connected"
+		statusCode := http.StatusOK
+
+		if deps.DB != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+			defer cancel()
+
+			if err := deps.DB.PingContext(ctx); err != nil {
+				status = "degraded"
+				dbStatus = "unreachable"
+				statusCode = http.StatusServiceUnavailable
+			}
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(statusCode)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status": "ok",
-			"time":   time.Now().UTC().Format(time.RFC3339),
+			"status":   status,
+			"database": dbStatus,
+			"time":     time.Now().UTC().Format(time.RFC3339),
 		})
 	}
 	r.Get("/health", health)

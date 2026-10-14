@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/kirinyoku/enkanetwork-go/client/zzz"
 	"golang.org/x/time/rate"
 
@@ -59,6 +60,21 @@ func run() error {
 	if err := cfg.ValidateProduction(); err != nil {
 		return fmt.Errorf("invalid production configuration: %w", err)
 	}
+
+	// 2.1 Initialize Sentry if configured
+	if cfg.SentryDSN != "" {
+		if err := sentry.Init(sentry.ClientOptions{
+			Dsn:              cfg.SentryDSN,
+			Environment:      cfg.Env,
+			TracesSampleRate: 0.2,
+		}); err != nil {
+			slog.Warn("failed to initialize sentry", "error", err)
+		} else {
+			slog.Info("sentry error monitoring initialized", "env", cfg.Env)
+			defer sentry.Flush(2 * time.Second)
+		}
+	}
+
 	if cfg.DiscordClientID == "" || cfg.DiscordClientSecret == "" {
 		slog.Warn("discord oauth is not configured; /api/v1/auth endpoints will not work",
 			"hint", "set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET in .env")
@@ -155,6 +171,7 @@ func run() error {
 			ShowcaseRateLimiter: showcaseLimiter,
 		},
 		httpadapter.Deps{
+			DB:       db,
 			Auth:     authSvc,
 			Scanner:  scanner,
 			Users:    users,

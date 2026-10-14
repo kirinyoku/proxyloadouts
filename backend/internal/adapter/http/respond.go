@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/teamsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
@@ -60,6 +61,7 @@ func respondDomainError(w http.ResponseWriter, err error) {
 		respondError(w, http.StatusBadGateway, err.Error())
 	default:
 		slog.Error("internal error", "error", err)
+		sentry.CaptureException(err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
 	}
 }
