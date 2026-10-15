@@ -3,6 +3,9 @@ info:
   title: ProxyLoadouts API Specification
   description: Contract-First API specification for Zenless Zone Zero loadout presets and real-time equipment conflict detection.
   version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development / embedded server
@@ -15,6 +18,7 @@ paths:
       operationId: getHealth
       tags:
         - System
+      security: []
       responses:
         '200':
           description: Service is healthy
@@ -41,6 +45,7 @@ paths:
       operationId: discordLogin
       tags:
         - Auth
+      security: []
       responses:
         '302':
           description: Redirect to Discord OAuth2
@@ -52,6 +57,7 @@ paths:
       operationId: discordCallback
       tags:
         - Auth
+      security: []
       parameters:
         - name: code
           in: query
@@ -78,6 +84,7 @@ paths:
       operationId: logout
       tags:
         - Auth
+      security: []
       responses:
         '204':
           description: Logged out successfully
@@ -197,6 +204,7 @@ paths:
       operationId: scanShowcase
       tags:
         - Showcase
+      security: []
       parameters:
         - name: uid
           in: path
@@ -635,7 +643,361 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
 
+  # -----------------------------------------------------------------------
+  # Admin surface (docs/product/PRD-admin-dashboard.md)
+  #
+  # Every /admin/* operation requires a session whose Discord ID is in the
+  # ADMIN_DISCORD_IDS allowlist. Authenticated non-admins receive 404 so the
+  # surface is not discoverable. Every mutation writes an admin_audit_log entry.
+  # -----------------------------------------------------------------------
+
+  /admin/stats:
+    get:
+      summary: Usage overview
+      description: Point-in-time usage counters and a zero-filled daily registrations series.
+      operationId: adminGetStats
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: Length of the registrations_daily series in UTC days.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 30
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStats'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/users:
+    get:
+      summary: Search users
+      description: >
+        Paginated user list, newest first. `q` matches a username substring
+        (case-insensitive), an exact Discord ID, or an exact linked ZZZ UID.
+      operationId: adminListUsers
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 64
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, active, banned]
+            default: all
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Page of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserPage'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/users/{userID}:
+    get:
+      summary: Get user detail
+      description: Profile, linked game accounts, entity counts and ban state. Never includes build or team contents.
+      operationId: adminGetUser
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminUserID'
+      responses:
+        '200':
+          description: User detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDetail'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      summary: Permanently delete a user
+      description: >
+        Deletes the user and cascades to accounts, builds and teams. Rejected with
+        409 when the target is the caller or another admin. Audited as `user.delete`.
+      operationId: adminDeleteUser
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminUserID'
+      responses:
+        '204':
+          description: User deleted
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /admin/users/{userID}/sessions/revoke:
+    post:
+      summary: Sign a user out everywhere
+      description: Increments the user's token_version, invalidating every issued session cookie. Audited as `user.sessions_revoke`.
+      operationId: adminRevokeUserSessions
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminUserID'
+      responses:
+        '204':
+          description: Sessions revoked
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/users/{userID}/ban:
+    put:
+      summary: Ban a user
+      description: >
+        Sets banned_at and ban_reason and revokes all sessions. Banned users cannot
+        complete Discord login. Idempotent: banning an already banned user updates the
+        reason. Rejected with 409 when the target is the caller or another admin.
+        Audited as `user.ban`.
+      operationId: adminBanUser
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminUserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminBanRequest'
+      responses:
+        '200':
+          description: User banned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDetail'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+    delete:
+      summary: Unban a user
+      description: Clears banned_at and ban_reason. Idempotent. Audited as `user.unban`.
+      operationId: adminUnbanUser
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminUserID'
+      responses:
+        '200':
+          description: User unbanned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDetail'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/system:
+    get:
+      summary: Runtime and storage information
+      description: Build version, uptime, SQLite file sizes, cache fill levels and non-secret configuration.
+      operationId: adminGetSystem
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: System information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSystemInfo'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/caches/{cacheName}:
+    delete:
+      summary: Clear a cache
+      description: Removes every entry from the named in-memory cache. Audited as `cache.clear`.
+      operationId: adminClearCache
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: cacheName
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/AdminCacheName'
+      responses:
+        '204':
+          description: Cache cleared
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/showcase-cache/{uid}:
+    delete:
+      summary: Purge cached showcase for a UID
+      description: >
+        Removes the UID from both the positive profile cache and the negative cache so
+        the next scan hits EnkaNetwork. Idempotent. Audited as `cache.purge_uid`.
+      operationId: adminPurgeShowcaseCache
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{9,10}$'
+      responses:
+        '204':
+          description: Cache entries purged (or were absent)
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/audit-log:
+    get:
+      summary: List admin audit entries
+      description: Append-only log of admin mutations, newest first.
+      operationId: adminListAuditLog
+      tags:
+        - Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: action
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/AdminAuditAction'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Page of audit entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuditPage'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
 components:
+  parameters:
+    AdminUserID:
+      name: userID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+
   securitySchemes:
     CookieAuth:
       type: apiKey
@@ -660,8 +1022,9 @@ components:
         username:
           type: string
         avatar_url:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         created_at:
           type: string
           format: date-time
@@ -714,6 +1077,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/GameAccount'
+        is_admin:
+          type: boolean
+          description: >
+            True when the user's Discord ID is in the server-side admin allowlist.
+            UI hint only (shows the /admin entry point); the server re-checks on every admin request.
+            Omitted by servers that predate the admin surface — treat absence as false.
 
     Build:
       type: object
@@ -744,14 +1113,17 @@ components:
           type: string
           example: "Anomaly DPS"
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         weapon_uid:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         weapon_id:
-          type: integer
-          nullable: true
+          type:
+            - integer
+            - "null"
         disc_uids:
           type: array
           items:
@@ -778,8 +1150,9 @@ components:
         name:
           type: string
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         raw_agent_payload:
           type: object
           description: Agent JSON payload from showcase
@@ -793,8 +1166,9 @@ components:
         name:
           type: string
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
 
     Team:
       type: object
@@ -815,8 +1189,9 @@ components:
           type: string
           example: "Ice Anomaly Trio"
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         created_at:
           type: string
           format: date-time
@@ -890,8 +1265,9 @@ components:
           type: string
           description: Squad preset name. If omitted or empty, auto-generated from member agent names (e.g. "Aria/Nangong Yu/Sanna").
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         build_ids:
           type: array
           minItems: 1
@@ -913,8 +1289,9 @@ components:
           type: string
           description: Squad preset name. If omitted or empty, auto-generated from member agent names (e.g. "Aria/Nangong Yu/Sanna").
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         build_ids:
           type: array
           minItems: 1
@@ -1005,6 +1382,332 @@ components:
           type: array
           items:
             type: object
+
+    # ---------------------------------------------------------------------
+    # Admin (see docs/product/PRD-admin-dashboard.md)
+    # ---------------------------------------------------------------------
+
+    AdminStats:
+      type: object
+      required:
+        - generated_at
+        - users_total
+        - users_new_24h
+        - users_new_7d
+        - users_new_30d
+        - users_banned
+        - game_accounts_total
+        - builds_total
+        - teams_total
+        - accounts_by_region
+        - registrations_daily
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        users_total:
+          type: integer
+          minimum: 0
+        users_new_24h:
+          type: integer
+          minimum: 0
+        users_new_7d:
+          type: integer
+          minimum: 0
+        users_new_30d:
+          type: integer
+          minimum: 0
+        users_banned:
+          type: integer
+          minimum: 0
+        game_accounts_total:
+          type: integer
+          minimum: 0
+        builds_total:
+          type: integer
+          minimum: 0
+        teams_total:
+          type: integer
+          minimum: 0
+        accounts_by_region:
+          type: array
+          items:
+            type: object
+            required:
+              - region
+              - count
+            properties:
+              region:
+                type: string
+                enum: [Europe, America, Asia, TW/HK/MO]
+              count:
+                type: integer
+                minimum: 0
+        registrations_daily:
+          type: array
+          description: One entry per UTC day, oldest first, zero-filled for days without registrations.
+          items:
+            type: object
+            required:
+              - date
+              - count
+            properties:
+              date:
+                type: string
+                format: date
+                example: "2026-10-13"
+              count:
+                type: integer
+                minimum: 0
+
+    AdminUserSummary:
+      type: object
+      required:
+        - id
+        - discord_id
+        - username
+        - avatar_url
+        - created_at
+        - banned_at
+        - is_admin
+        - accounts_count
+        - builds_count
+        - teams_count
+      properties:
+        id:
+          type: string
+          format: uuid
+        discord_id:
+          type: string
+        username:
+          type: string
+        avatar_url:
+          type:
+            - string
+            - "null"
+        created_at:
+          type: string
+          format: date-time
+        banned_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: Null when the user is not banned.
+        is_admin:
+          type: boolean
+        accounts_count:
+          type: integer
+          minimum: 0
+        builds_count:
+          type: integer
+          minimum: 0
+        teams_count:
+          type: integer
+          minimum: 0
+
+    AdminUserDetail:
+      allOf:
+        - $ref: '#/components/schemas/AdminUserSummary'
+        - type: object
+          required:
+            - ban_reason
+            - accounts
+          properties:
+            ban_reason:
+              type:
+                - string
+                - "null"
+            accounts:
+              type: array
+              items:
+                $ref: '#/components/schemas/GameAccount'
+
+    AdminUserPage:
+      type: object
+      required:
+        - items
+        - total
+        - page
+        - page_size
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserSummary'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+
+    AdminBanRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: "Automated scraping of showcase endpoint"
+
+    AdminCacheName:
+      type: string
+      enum:
+        - profile
+        - negative
+        - build_enrich
+
+    AdminSystemInfo:
+      type: object
+      required:
+        - version
+        - commit
+        - go_version
+        - env
+        - started_at
+        - uptime_seconds
+        - database
+        - caches
+        - config
+      properties:
+        version:
+          type: string
+          example: "1.4.0"
+        commit:
+          type: string
+          example: "9745a2b"
+        go_version:
+          type: string
+          example: "go1.26.0"
+        env:
+          type: string
+          example: "production"
+        started_at:
+          type: string
+          format: date-time
+        uptime_seconds:
+          type: integer
+          minimum: 0
+        database:
+          type: object
+          required:
+            - size_bytes
+            - wal_size_bytes
+          properties:
+            size_bytes:
+              type: integer
+              minimum: 0
+            wal_size_bytes:
+              type: integer
+              minimum: 0
+        caches:
+          type: array
+          items:
+            type: object
+            required:
+              - name
+              - entries
+              - capacity
+            properties:
+              name:
+                $ref: '#/components/schemas/AdminCacheName'
+              entries:
+                type: integer
+                minimum: 0
+              capacity:
+                type: integer
+                minimum: 0
+        config:
+          type: object
+          description: Non-secret runtime configuration only. Secrets are never exposed.
+          required:
+            - showcase_rate_limit_per_minute
+            - showcase_burst
+            - enka_timeout_seconds
+          properties:
+            showcase_rate_limit_per_minute:
+              type: integer
+            showcase_burst:
+              type: integer
+            enka_timeout_seconds:
+              type: integer
+
+    AdminAuditAction:
+      type: string
+      enum:
+        - user.delete
+        - user.ban
+        - user.unban
+        - user.sessions_revoke
+        - cache.purge_uid
+        - cache.clear
+
+    AdminAuditEntry:
+      type: object
+      required:
+        - id
+        - created_at
+        - admin_user_id
+        - admin_username
+        - action
+        - target_type
+        - target_id
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        admin_user_id:
+          type: string
+          format: uuid
+          description: Not a foreign key — the entry must survive deletion of either party.
+        admin_username:
+          type: string
+          description: Username snapshot at the time of the action.
+        action:
+          $ref: '#/components/schemas/AdminAuditAction'
+        target_type:
+          type: string
+          enum: [user, cache]
+        target_id:
+          type: string
+          description: User UUID, cache name, or ZZZ UID depending on the action.
+        metadata:
+          type: object
+          description: Action-specific details, e.g. {"reason":"..."} for bans or {"username":"..."} for deletions.
+
+    AdminAuditPage:
+      type: object
+      required:
+        - items
+        - total
+        - page
+        - page_size
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAuditEntry'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
 
     ErrorEnvelope:
       type: object

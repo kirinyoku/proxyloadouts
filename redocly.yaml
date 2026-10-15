@@ -1,0 +1,14 @@
+# Redocly OpenAPI 3.1 configuration for ProxyLoadouts (SSOT Contract)
+extends:
+  - recommended
+
+rules:
+  # Localhost is intentional for standalone / local dev specification
+  no-server-example.com: off
+  # Health check & OAuth redirects intentionally omit 4xx / 2xx symmetric requirements
+  operation-4xx-response: off
+  operation-2xx-response: off
+  # Standard RFC reusable error responses are preserved for documentation
+  no-unused-components: off
+  # Strict security enforcement: public endpoints must declare security: [] explicitly
+  security-defined: error
