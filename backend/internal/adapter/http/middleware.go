@@ -63,7 +63,7 @@ func requireAuth(auth *authsvc.Service, users domain.UserRepository, opts Option
 
 			session, err := auth.VerifySession(cookie.Value)
 			if err != nil {
-				respondDomainError(w, err)
+				respondDomainError(w, r, err)
 				return
 			}
 
@@ -73,7 +73,7 @@ func requireAuth(auth *authsvc.Service, users domain.UserRepository, opts Option
 					respondError(w, http.StatusUnauthorized, "session invalid: user not found")
 					return
 				}
-				respondDomainError(w, err)
+				respondDomainError(w, r, err)
 				return
 			}
 

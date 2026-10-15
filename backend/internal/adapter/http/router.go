@@ -57,7 +57,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 	r.Use(middleware.Recoverer)
 	r.Use(sentryhttp.New(sentryhttp.Options{
 		Repanic:         true,
-		WaitForDelivery: true,
+		WaitForDelivery: false,
 	}).Handle)
 	r.Use(securityHeaders(opts))
 	r.Use(middleware.Timeout(60 * time.Second))

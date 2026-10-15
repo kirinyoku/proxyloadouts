@@ -17,6 +17,7 @@ func TestLoad_Defaults(t *testing.T) {
 	_ = os.Unsetenv("SESSION_SECRET")
 	_ = os.Unsetenv("FRONTEND_URL")
 	_ = os.Unsetenv("SENTRY_DSN")
+	_ = os.Unsetenv("LOG_LEVEL")
 
 	cfg, err := Load()
 	if err != nil {
@@ -38,6 +39,9 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.SentryDSN != "" {
 		t.Errorf("expected default SentryDSN empty, got %s", cfg.SentryDSN)
 	}
+	if cfg.LogLevel != "info" {
+		t.Errorf("expected default LogLevel info, got %s", cfg.LogLevel)
+	}
 	if cfg.ShowcaseRateLimit != 20 {
 		t.Errorf("expected default ShowcaseRateLimit 20, got %d", cfg.ShowcaseRateLimit)
 	}
@@ -54,6 +58,7 @@ func TestLoad_Defaults(t *testing.T) {
 
 func TestLoad_CustomEnv(t *testing.T) {
 	t.Setenv("PORT", "9090")
+	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("DATABASE_PATH", "/tmp/test.db")
 	t.Setenv("DISCORD_CLIENT_ID", "test_id")
 	t.Setenv("DISCORD_CLIENT_SECRET", "test_secret")
@@ -69,6 +74,9 @@ func TestLoad_CustomEnv(t *testing.T) {
 
 	if cfg.Port != "9090" {
 		t.Errorf("expected Port 9090, got %s", cfg.Port)
+	}
+	if cfg.LogLevel != "debug" {
+		t.Errorf("expected LogLevel debug, got %s", cfg.LogLevel)
 	}
 	if cfg.DatabasePath != "/tmp/test.db" {
 		t.Errorf("expected DatabasePath /tmp/test.db, got %s", cfg.DatabasePath)

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -37,21 +38,34 @@ func main() {
 }
 
 func run() error {
-	// 1. Initialize Logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-	slog.SetDefault(logger)
-
-	// 2. Load Configuration
+	// 1. Load Configuration
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
+	// 2. Initialize Logger with configured level
+	var logLevel slog.Level
+	switch strings.ToLower(cfg.LogLevel) {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "warn":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	default:
+		logLevel = slog.LevelInfo
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+	slog.SetDefault(logger)
+
 	slog.Info("configuration loaded",
 		"port", cfg.Port,
 		"env", cfg.Env,
+		"log_level", cfg.LogLevel,
 		"db_path", cfg.DatabasePath,
 		"frontend_url", cfg.FrontendURL,
 		"enka_timeout", cfg.EnkaTimeout.String(),
@@ -63,14 +77,25 @@ func run() error {
 
 	// 2.1 Initialize Sentry if configured
 	if cfg.SentryDSN != "" {
+		release := os.Getenv("GIT_SHA")
+		if release == "" {
+			release = "proxyloadouts@prod"
+		}
 		if err := sentry.Init(sentry.ClientOptions{
-			Dsn:              cfg.SentryDSN,
-			Environment:      cfg.Env,
-			TracesSampleRate: 0.2,
+			Dsn:         cfg.SentryDSN,
+			Environment: cfg.Env,
+			Release:     release,
+			BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
+				if event.Request != nil {
+					delete(event.Request.Headers, "Cookie")
+					delete(event.Request.Headers, "Authorization")
+				}
+				return event
+			},
 		}); err != nil {
 			slog.Warn("failed to initialize sentry", "error", err)
 		} else {
-			slog.Info("sentry error monitoring initialized", "env", cfg.Env)
+			slog.Info("sentry error monitoring initialized", "env", cfg.Env, "release", release)
 			defer sentry.Flush(2 * time.Second)
 		}
 	}

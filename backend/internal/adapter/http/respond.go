@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/teamsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
@@ -34,7 +35,7 @@ func respondError(w http.ResponseWriter, status int, message string) {
 
 // respondDomainError maps an error to an HTTP response using domain sentinel
 // errors; unknown errors become 500 with details logged.
-func respondDomainError(w http.ResponseWriter, err error) {
+func respondDomainError(w http.ResponseWriter, r *http.Request, err error) {
 	var validationErr *teamsvc.ValidationError
 	if errors.As(err, &validationErr) {
 		respondJSON(w, http.StatusUnprocessableEntity, map[string]any{
@@ -60,8 +61,29 @@ func respondDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrSourceUnavailable):
 		respondError(w, http.StatusBadGateway, err.Error())
 	default:
-		slog.Error("internal error", "error", err)
-		sentry.CaptureException(err)
+		reqID := ""
+		if r != nil {
+			reqID = middleware.GetReqID(r.Context())
+			slog.ErrorContext(r.Context(), "internal server error",
+				"error", err,
+				"request_id", reqID,
+				"path", r.URL.Path,
+				"method", r.Method,
+			)
+			if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+				hub.WithScope(func(scope *sentry.Scope) {
+					if reqID != "" {
+						scope.SetTag("request_id", reqID)
+					}
+					hub.CaptureException(err)
+				})
+			} else {
+				sentry.CaptureException(err)
+			}
+		} else {
+			slog.Error("internal server error", "error", err)
+			sentry.CaptureException(err)
+		}
 		respondError(w, http.StatusInternalServerError, "internal server error")
 	}
 }

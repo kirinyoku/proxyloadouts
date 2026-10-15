@@ -93,13 +93,13 @@ func (h *TeamHandler) handleValidate(w http.ResponseWriter, r *http.Request) {
 
 	buildIDs, err := parseBuildIDsQuery(r)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
 	report, err := h.teams.Validate(r.Context(), user.ID, buildIDs)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -126,7 +126,7 @@ func (h *TeamHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	var req createTeamRequest
 	if err := decodeJSON(r, &req); err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *TeamHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		BuildIDs:      req.BuildIDs,
 	})
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	respondJSON(w, http.StatusCreated, newTeamResponse(team))
@@ -163,7 +163,7 @@ func (h *TeamHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	var req updateTeamRequest
 	if err := decodeJSON(r, &req); err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -176,7 +176,7 @@ func (h *TeamHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		BuildIDs:      req.BuildIDs,
 	})
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	respondJSON(w, http.StatusOK, newTeamResponse(team))
@@ -195,7 +195,7 @@ func (h *TeamHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	lang := extractLang(r)
 	summaries, err := h.teams.List(r.Context(), user.ID, accountID, lang)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -235,7 +235,7 @@ func (h *TeamHandler) handleCount(w http.ResponseWriter, r *http.Request) {
 
 	count, err := h.teams.CountForAccount(r.Context(), user.ID, accountID)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	respondJSON(w, http.StatusOK, teamCountResponse{Count: count})
@@ -254,7 +254,7 @@ func (h *TeamHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	lang := extractLang(r)
 	detail, err := h.teams.Get(r.Context(), user.ID, teamID, lang)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -279,7 +279,7 @@ func (h *TeamHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.teams.Delete(r.Context(), user.ID, teamID); err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

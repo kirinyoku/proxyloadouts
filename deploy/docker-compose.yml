@@ -1,0 +1,63 @@
+# ==============================================================================
+# ProxyLoadouts Minimal Self-Hosted Stack (App + Dozzle Log Viewer)
+# ==============================================================================
+# RAM Footprint: ~40-60 MB total (App ~30-40MB, Dozzle ~10-15MB)
+# Disk Log Cap: strictly bounded to 30 MB (max-size: 10m, max-file: 3)
+# ==============================================================================
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-${SENTRY_DSN:-}}
+    container_name: proxyloadouts-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENV=${ENV:-development}
+      - DATABASE_PATH=/app/data/proxyloadouts.db
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
+      - SESSION_SECRET=${SESSION_SECRET:-dev-session-secret-change-me-32chars-min}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
+      - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI:-http://localhost:8080/api/v1/auth/discord/callback}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - proxyloadouts-data:/app/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Lightweight Web Log Viewer (consumes ~10-15 MB RAM)
+  # Open in browser: http://<server-ip>:8888
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: proxyloadouts-dozzle
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - dozzle-data:/data
+    ports:
+      - "8888:8080"
+    environment:
+      # Show only proxyloadouts containers in the UI
+      - DOZZLE_FILTER=name=proxyloadouts
+      # First run will display the Setup Wizard to create an admin account
+      - DOZZLE_NO_ANALYTICS=true
+
+volumes:
+  proxyloadouts-data:
+  dozzle-data:

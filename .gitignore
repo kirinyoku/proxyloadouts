@@ -11,6 +11,8 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+deploy/.env
+!deploy/.env.monitoring.example
 *.pem
 
 # Go build & test artifacts

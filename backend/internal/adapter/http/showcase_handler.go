@@ -26,7 +26,7 @@ func (h *ShowcaseHandler) handle(w http.ResponseWriter, r *http.Request) {
 
 	showcase, err := h.scanner.ScanByUID(r.Context(), uid, lang)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	respondJSON(w, http.StatusOK, showcase)

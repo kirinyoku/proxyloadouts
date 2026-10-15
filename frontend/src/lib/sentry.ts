@@ -14,8 +14,15 @@ export function initSentry(): void {
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE || 'production',
+    release: import.meta.env.VITE_GIT_SHA || 'proxyloadouts@prod',
     enabled: Boolean(dsn),
-    tracesSampleRate: 0.1,
+    beforeSend(event) {
+      if (event.request?.headers) {
+        delete event.request.headers['Authorization']
+        delete event.request.headers['Cookie']
+      }
+      return event
+    },
   })
   console.info('[Sentry] Инициализирован для frontend')
 }

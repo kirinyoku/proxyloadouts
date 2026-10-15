@@ -27,6 +27,7 @@ type Config struct {
 	BuildEnrichMaxItems   int
 	BuildEnrichTTL        time.Duration
 	SentryDSN             string
+	LogLevel              string
 }
 
 // Load reads configuration from .env file (if present) and environment variables.
@@ -61,6 +62,7 @@ func Load(filenames ...string) (*Config, error) {
 		BuildEnrichMaxItems: getEnvInt("BUILD_ENRICH_CACHE_MAX_ITEMS", 2000),
 		BuildEnrichTTL:      time.Duration(getEnvInt("BUILD_ENRICH_CACHE_TTL_SECONDS", 900)) * time.Second,
 		SentryDSN:           getEnv("SENTRY_DSN", ""),
+		LogLevel:            getEnv("LOG_LEVEL", "info"),
 	}
 
 	return cfg, nil

@@ -1,0 +1,25 @@
+# Git
+.git
+.gitignore
+
+# Dependencies
+**/node_modules
+**/dist
+**/.turbo
+
+# Tests, coverage & reports
+**/test-results
+**/playwright-report
+**/coverage*
+
+# Backend build artifacts & local database
+backend/bin
+backend/data
+backend/coverage.out
+backend/coverage.html
+**/*.log
+
+# Environment secrets
+**/.env
+**/.env.*
+!**/.env.example

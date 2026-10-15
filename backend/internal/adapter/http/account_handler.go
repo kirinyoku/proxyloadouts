@@ -56,13 +56,13 @@ func (h *AccountHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	var req createAccountRequest
 	if err := decodeJSON(r, &req); err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
 	account, err := h.accounts.Create(r.Context(), user.ID, req.UID, req.Region)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	respondJSON(w, http.StatusCreated, newAccountResponse(account))
@@ -74,7 +74,7 @@ func (h *AccountHandler) handleList(w http.ResponseWriter, r *http.Request) {
 
 	accounts, err := h.accounts.List(r.Context(), user.ID)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	respondJSON(w, http.StatusOK, newAccountListResponse(accounts))
@@ -91,7 +91,7 @@ func (h *AccountHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.accounts.Delete(r.Context(), user.ID, accountID); err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

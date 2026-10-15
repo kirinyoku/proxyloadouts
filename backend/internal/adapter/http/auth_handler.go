@@ -30,7 +30,7 @@ func NewAuthHandler(auth *authsvc.Service, users domain.UserRepository, accounts
 func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	state, err := h.auth.GenerateState()
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -97,13 +97,13 @@ func (h *AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	user, err := h.auth.ExchangeCode(r.Context(), code)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
 	value, expiresAt, err := h.auth.IssueSession(user.ID, user.TokenVersion)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *AuthHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 
 	accounts, err := h.accounts.List(r.Context(), user.ID)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -192,7 +192,7 @@ func (h *AuthHandler) handleDeleteMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.users.Delete(r.Context(), user.ID); err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 

@@ -80,7 +80,7 @@ func (h *BuildHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	var req createBuildRequest
 	if err := decodeJSON(r, &req); err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -93,7 +93,7 @@ func (h *BuildHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		RawData:         req.RawData,
 	})
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	respondJSON(w, http.StatusCreated, newBuildResponse(build))
@@ -112,7 +112,7 @@ func (h *BuildHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	lang := extractLang(r)
 	builds, err := h.builds.ListByAccount(r.Context(), user.ID, accountID, lang)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	respondJSON(w, http.StatusOK, newBuildListResponse(builds))
@@ -131,7 +131,7 @@ func (h *BuildHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	lang := extractLang(r)
 	build, err := h.builds.Get(r.Context(), user.ID, buildID, lang)
 	if err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	respondJSON(w, http.StatusOK, newBuildResponse(build))
@@ -149,7 +149,7 @@ func (h *BuildHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	var raw map[string]json.RawMessage
 	if err := decodeJSON(r, &raw); err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 
@@ -183,17 +183,17 @@ func (h *BuildHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case hasName && hasDesc:
 		if err := h.builds.UpdateDetails(r.Context(), user.ID, buildID, name, desc); err != nil {
-			respondDomainError(w, err)
+			respondDomainError(w, r, err)
 			return
 		}
 	case hasName && !hasDesc:
 		if err := h.builds.Rename(r.Context(), user.ID, buildID, name); err != nil {
-			respondDomainError(w, err)
+			respondDomainError(w, r, err)
 			return
 		}
 	case !hasName && hasDesc:
 		if err := h.builds.UpdateDescription(r.Context(), user.ID, buildID, desc); err != nil {
-			respondDomainError(w, err)
+			respondDomainError(w, r, err)
 			return
 		}
 	}
@@ -211,7 +211,7 @@ func (h *BuildHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.builds.Delete(r.Context(), user.ID, buildID); err != nil {
-		respondDomainError(w, err)
+		respondDomainError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
