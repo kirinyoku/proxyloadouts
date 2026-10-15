@@ -30,14 +30,14 @@ describe('TeamBuilderHeader', () => {
     expect(html).not.toContain('/ 3')
   })
 
-  it('renders edit title and team name when isEditing is true', () => {
+  it('renders edit title when isEditing is true', () => {
     const html = renderToString(
       <MemoryRouter>
-        <TeamBuilderHeader isEditing={true} teamName="Ария/Наньгун Юй/Санна" />
+        <TeamBuilderHeader isEditing={true} />
       </MemoryRouter>,
     )
 
-    expect(html).toContain('Редактирование: Ария/Наньгун Юй/Санна')
+    expect(html).toContain('Редактирование')
     expect(html).not.toContain('/ 3')
   })
 })

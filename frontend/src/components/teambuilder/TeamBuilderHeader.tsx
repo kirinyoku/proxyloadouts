@@ -10,7 +10,6 @@ interface TeamBuilderHeaderProps {
 
 export function TeamBuilderHeader({
   isEditing,
-  teamName,
 }: TeamBuilderHeaderProps) {
   const { t } = useTranslation()
   return (
@@ -25,9 +24,10 @@ export function TeamBuilderHeader({
           <ArrowLeft className="size-4" />
         </Link>
       </Button>
-      <h1 className="font-heading text-xl font-black uppercase tracking-wide text-foreground sm:text-2xl">
-        {isEditing ? `${t('teamBuilder.editTitle')}: ${teamName ?? ''}` : t('teamBuilder.newTitle')}
+      <h1 className="font-heading text-lg font-black uppercase tracking-wide text-foreground sm:text-2xl">
+        {isEditing ? t('teamBuilder.editTitle') : t('teamBuilder.newTitle')}
       </h1>
     </div>
   )
 }
+

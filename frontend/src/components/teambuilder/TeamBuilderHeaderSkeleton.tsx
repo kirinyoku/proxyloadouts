@@ -12,7 +12,7 @@ export function TeamBuilderHeaderSkeleton({ className }: TeamBuilderHeaderSkelet
       className={cn('flex items-center gap-2.5', className)}
     >
       <Skeleton className="size-8 rounded-lg" />
-      <Skeleton className="h-7 w-52 rounded-md sm:h-8 sm:w-64" />
+      <Skeleton className="h-7 w-48 rounded-md sm:h-8 sm:w-60" />
     </div>
   )
 }

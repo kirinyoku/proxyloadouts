@@ -15,7 +15,6 @@ import {
 import { TeamBuilderHeader } from '@/components/teambuilder/TeamBuilderHeader'
 import { TeamBuilderSidebar } from '@/components/teambuilder/TeamBuilderSidebar'
 import { TeamConflictBanner } from '@/components/teambuilder/TeamConflictBanner'
-import { TeamMobileActionBar } from '@/components/teambuilder/TeamMobileActionBar'
 import { TeamSlotList } from '@/components/teambuilder/TeamSlotList'
 import { TeamBuilderHeaderSkeleton } from '@/components/teambuilder/TeamBuilderHeaderSkeleton'
 import { TeamBuilderSidebarSkeleton } from '@/components/teambuilder/TeamBuilderSidebarSkeleton'
@@ -237,12 +236,9 @@ function TeamBuilderForm({
   }
 
   return (
-    <div className="space-y-6 pb-20 lg:pb-6">
+    <div className="space-y-6">
       {/* Header */}
-      <TeamBuilderHeader
-        isEditing={isEditing}
-        teamName={isEditing ? (name.trim() || defaultTeamName || teamDetail?.team.name) : undefined}
-      />
+      <TeamBuilderHeader isEditing={isEditing} />
 
       {/* Main Grid Layout: Slots Deck + Analytics (Left) vs Controls Sidebar (Right) */}
       <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6 lg:space-y-0">
@@ -292,19 +288,6 @@ function TeamBuilderForm({
           onReset={handleReset}
         />
       </div>
-
-      {/* Mobile Sticky Bottom Action Bar */}
-      <TeamMobileActionBar
-        isEditing={isEditing}
-        teamName={effectiveName}
-        selectedCount={selectedIds.length}
-        report={effectiveReport}
-        isValidating={isValidating}
-        canSave={canSave}
-        isSaving={isSaving}
-        saveHint={getSaveHint()}
-        onSave={handleSave}
-      />
     </div>
   )
 }
@@ -328,7 +311,7 @@ export function TeamBuilderPage() {
 
   if (isEditing && teamQuery.isPending) {
     return (
-      <div className="space-y-6 pb-20 lg:pb-6" aria-busy="true">
+      <div className="space-y-6" aria-busy="true">
         <TeamBuilderHeaderSkeleton />
         <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6 lg:space-y-0">
           <div className="min-w-0 space-y-5">

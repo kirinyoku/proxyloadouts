@@ -54,14 +54,6 @@ export function TeamSlotList({
         hasConflict && 'bg-[color-mix(in_oklch,var(--card),var(--destructive)_7%)]',
       )}
     >
-      {/* Top rim accent sitting on the ink border */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          'pointer-events-none absolute inset-x-8 -top-0.5 h-0.5 bg-linear-to-r from-transparent to-transparent',
-          hasConflict ? 'via-destructive' : 'via-primary/60',
-        )}
-      />
 
       {/* Top Header: Squad Tag, Title, Conflict status and Slot counter */}
       <div className="flex items-center justify-between gap-2.5 min-w-0">
