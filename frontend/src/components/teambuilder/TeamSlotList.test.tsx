@@ -32,7 +32,6 @@ describe('TeamSlotList', () => {
         slots={[null, null, null]}
         selectedBuilds={emptyBuilds}
         builds={[]}
-        slotConflicts={{ 1: [], 2: [], 3: [] }}
         onSetSlot={vi.fn()}
         onClearSlot={vi.fn()}
       />,
@@ -75,7 +74,6 @@ describe('TeamSlotList', () => {
         slots={['b1', null, null]}
         selectedBuilds={filledBuilds}
         builds={[mockBuild]}
-        slotConflicts={{ 1: [], 2: [], 3: [] }}
         onSetSlot={vi.fn()}
         onClearSlot={vi.fn()}
       />,

@@ -2,19 +2,16 @@ import { useMemo, useState } from 'react'
 import { ArrowLeft, Link2, Plus } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ApiError } from '@/api/client'
 import {
   useBuilds,
   useMe,
   useSaveTeam,
   useTeam,
   useTeamCount,
-  useTeamValidationQuery,
   useUpdateTeam,
 } from '@/api/hooks'
 import { TeamBuilderHeader } from '@/components/teambuilder/TeamBuilderHeader'
 import { TeamBuilderSidebar } from '@/components/teambuilder/TeamBuilderSidebar'
-import { TeamConflictBanner } from '@/components/teambuilder/TeamConflictBanner'
 import { TeamSlotList } from '@/components/teambuilder/TeamSlotList'
 import { TeamBuilderHeaderSkeleton } from '@/components/teambuilder/TeamBuilderHeaderSkeleton'
 import { TeamBuilderSidebarSkeleton } from '@/components/teambuilder/TeamBuilderSidebarSkeleton'
@@ -23,10 +20,9 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/EmptyState'
 import { InterknotTerminalError } from '@/components/common/InterknotTerminalError'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
-import { getDetailedSlotConflicts, getSlotConflicts } from '@/lib/conflicts'
 import { generateTeamName } from '@/lib/teams'
 import { useTeamDraftStore, type SlotNumber } from '@/store/useTeamDraftStore'
-import type { Build, ConflictReport, TeamDetail } from '@/types'
+import type { Build, TeamDetail } from '@/types'
 
 /** Maximum number of saved teams per game account (mirrors the backend limit). */
 const MAX_TEAMS_PER_ACCOUNT = 15
@@ -81,7 +77,6 @@ function TeamBuilderForm({
   const [editSlots, setEditSlots] = useState<(string | null)[]>(initialEditSlots)
   const [editName, setEditName] = useState(teamDetail?.team.name ?? '')
   const [editDescription, setEditDescription] = useState(teamDetail?.team.description ?? '')
-  const [submissionReport, setSubmissionReport] = useState<ConflictReport | null>(null)
 
   const slots = isEditing ? editSlots : draftSlots
   const name = isEditing ? editName : draftName
@@ -103,18 +98,7 @@ function TeamBuilderForm({
       .map((build) => build.id)
   }, [selectedBuilds])
 
-  const { data: validationReport, isFetching: isValidating } = useTeamValidationQuery(selectedIds)
-  const effectiveReport = selectedIds.length > 0 ? (submissionReport ?? validationReport ?? null) : null
-
-  const slotConflicts = useMemo(() => {
-    return getSlotConflicts(effectiveReport, selectedBuilds)
-  }, [effectiveReport, selectedBuilds])
-  const detailedSlotConflicts = useMemo(() => {
-    return getDetailedSlotConflicts(effectiveReport, selectedBuilds)
-  }, [effectiveReport, selectedBuilds])
-
   function handleSetSlot(slot: SlotNumber, buildId: string) {
-    setSubmissionReport(null)
     if (isEditing) {
       setEditSlots((prev) => {
         const next = [...prev]
@@ -127,7 +111,6 @@ function TeamBuilderForm({
   }
 
   function handleClearSlot(slot: SlotNumber) {
-    setSubmissionReport(null)
     if (isEditing) {
       setEditSlots((prev) => {
         const next = [...prev]
@@ -170,11 +153,6 @@ function TeamBuilderForm({
           onSuccess: () => {
             navigate('/teams')
           },
-          onError: (error) => {
-            if (error instanceof ApiError && error.conflicts) {
-              setSubmissionReport(error.conflicts)
-            }
-          },
         },
       )
     } else {
@@ -190,11 +168,6 @@ function TeamBuilderForm({
           onSuccess: () => {
             resetDraft()
             navigate('/teams')
-          },
-          onError: (error) => {
-            if (error instanceof ApiError && error.conflicts) {
-              setSubmissionReport(error.conflicts)
-            }
           },
         },
       )
@@ -220,9 +193,7 @@ function TeamBuilderForm({
     effectiveName.length > 0 &&
     effectiveName.length <= 100 &&
     description.trim().length <= 500 &&
-    selectedIds.length > 0 &&
-    !isValidating &&
-    (!effectiveReport || effectiveReport.is_valid)
+    selectedIds.length > 0
 
   function getSaveHint(): string | null {
     if (!accountId) return t('teamBuilder.hintLinkAccount')
@@ -231,7 +202,6 @@ function TeamBuilderForm({
     if (!effectiveName) return t('teamBuilder.hintEnterName')
     if (effectiveName.length > 100) return t('teamBuilder.hintNameTooLong')
     if (description.trim().length > 500) return t('teamBuilder.hintDescTooLong')
-    if (effectiveReport && !effectiveReport.is_valid) return t('teamBuilder.hintResolveConflicts')
     return null
   }
 
@@ -240,7 +210,7 @@ function TeamBuilderForm({
       {/* Header */}
       <TeamBuilderHeader isEditing={isEditing} />
 
-      {/* Main Grid Layout: Slots Deck + Analytics (Left) vs Controls Sidebar (Right) */}
+      {/* Main Grid Layout: Slots Deck (Left) vs Controls Sidebar (Right) */}
       <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6 lg:space-y-0">
         <div className="min-w-0 space-y-5">
           {/* 3:4 ZZZ Character Slots Deck */}
@@ -251,23 +221,13 @@ function TeamBuilderForm({
               slots={slots}
               selectedBuilds={selectedBuilds}
               builds={builds}
-              slotConflicts={slotConflicts}
-              detailedSlotConflicts={detailedSlotConflicts}
               onSetSlot={handleSetSlot}
               onClearSlot={handleClearSlot}
               teamName={effectiveName}
               teamDescription={description}
               isEditing={isEditing}
-              hasConflict={Boolean(effectiveReport && !effectiveReport.is_valid)}
             />
           )}
-
-          {/* Conflict Engine Collision Alert (only rendered if conflict exists) */}
-          <TeamConflictBanner
-            report={effectiveReport}
-            isValidating={isValidating}
-            slots={selectedBuilds}
-          />
         </div>
 
         {/* Right Sticky Sidebar: Name, Auto-name, Description, Save CTA, Reset Modal */}
@@ -277,8 +237,6 @@ function TeamBuilderForm({
           defaultName={defaultTeamName}
           description={description}
           selectedBuilds={selectedBuilds}
-          report={effectiveReport}
-          isValidating={isValidating}
           isSaving={isSaving}
           canSave={canSave}
           saveHint={getSaveHint()}
