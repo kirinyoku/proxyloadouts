@@ -1,63 +1,106 @@
-.PHONY: help run dev build build-all test test-frontend test-race test-coverage tidy vet clean dev-frontend build-frontend lint-frontend lint-backend lint sync-static check codegen
-
 .DEFAULT_GOAL := help
+.PHONY: help \
+	dev-backend dev-frontend dev run \
+	codegen \
+	test test-backend test-frontend \
+	lint lint-contracts lint-backend lint-frontend \
+	build build-all \
+	check clean \
+	docker-build docker-up docker-down docker-logs
 
 help: ## Show this help message
-	@echo "PXL (ProxyLoadouts) - Available commands:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@echo "ProxyLoadouts (PXL) - Monorepo Orchestration"
+	@echo ""
+	@echo "Usage: make [target]"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-codegen: ## Generate frontend game constants from fairy SDK
-	cd backend && go run ./cmd/codegen
+# ==============================================================================
+# Development
+# ==============================================================================
 
-run: ## Run backend server (go run ./cmd/server)
-	cd backend && go run ./cmd/server
+dev-backend: ## Run Go backend API server (:8080)
+	go -C backend run ./cmd/server
 
-dev: run ## Alias for run backend
+dev-frontend: ## Run Vite frontend dev server with HMR (:5173)
+	npm --prefix frontend run dev
 
-dev-frontend: ## Run frontend Vite dev server (:5173)
-	cd frontend && npm run dev
+# Aliases for convenience
+dev: dev-backend
+run: dev-backend
 
-build: ## Build backend server binary into backend/bin/server
-	cd backend && mkdir -p bin && go build -o bin/server ./cmd/server
+# ==============================================================================
+# Codegen & Contract Management
+# ==============================================================================
 
-build-frontend: codegen ## Build frontend SPA into frontend/dist
-	cd frontend && npm run build
+codegen: ## Generate OpenAPI TS types and game constants
+	npm --prefix frontend run codegen:api
+	go -C backend run ./cmd/codegen
 
-sync-static: build-frontend ## Build frontend and sync clean assets into backend/internal/adapter/http/static
-	rm -rf backend/internal/adapter/http/static/assets backend/internal/adapter/http/static/index.html
-	mkdir -p backend/internal/adapter/http/static/assets
-	cp -r frontend/dist/* backend/internal/adapter/http/static/
+# ==============================================================================
+# Testing & Quality Assurance
+# ==============================================================================
 
-build-all: sync-static build ## Build full standalone binary with embedded frontend
+test-backend: ## Run backend unit & integration tests (-race)
+	go -C backend test -race ./...
 
-lint-backend: ## Run golangci-lint on backend
+test-frontend: ## Run frontend unit and component tests (Vitest)
+	npm --prefix frontend test
+
+test: test-backend test-frontend ## Run all test suites (backend -race + frontend Vitest)
+
+# ==============================================================================
+# Code Quality & Linting
+# ==============================================================================
+
+lint-contracts: ## Validate OpenAPI 3.1 specification with Redocly
+	npm --prefix frontend run lint:contracts
+
+lint-backend: ## Run golangci-lint on Go backend
 	cd backend && golangci-lint run ./...
 
-lint-frontend: ## Run Oxlint on frontend
-	cd frontend && npm run lint
+lint-frontend: ## Run oxlint on frontend
+	npm --prefix frontend run lint
 
-lint: lint-backend lint-frontend ## Run all linters (backend & frontend)
+lint: lint-contracts lint-backend lint-frontend ## Run all linters (contracts, backend, frontend)
 
-test-frontend: ## Run all frontend unit tests (Vitest)
-	cd frontend && npm test
+# ==============================================================================
+# Build & Distribution
+# ==============================================================================
 
-test: ## Run all backend tests
-	cd backend && go test ./...
+build: codegen ## Build standalone single-binary with embedded frontend (backend/bin/server)
+	npm --prefix frontend run build
+	rm -rf backend/internal/adapter/http/static/assets
+	cp -r frontend/dist/* backend/internal/adapter/http/static/
+	go -C backend build -trimpath -ldflags="-s -w" -o bin/server ./cmd/server
 
-test-race: ## Run backend tests with race detector
-	cd backend && go test -race ./...
+build-all: build
 
-test-coverage: ## Run tests and generate coverage report
-	cd backend && go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html
+# ==============================================================================
+# Continuous Integration & Cleanup
+# ==============================================================================
 
-tidy: ## Tidy Go module dependencies
-	cd backend && go mod tidy
+check: lint test build ## Run full CI-parity verification suite (lint, test, build)
 
-vet: ## Run go vet
-	cd backend && go vet ./...
+clean: ## Clean build artifacts, temporary reports, and test caches
+	rm -rf backend/bin backend/coverage.* frontend/dist
 
-check: test-race test-frontend lint-backend lint-frontend build-frontend ## Run all checks (backend race tests & lint, frontend tests & lint & build)
+# ==============================================================================
+# Docker & Deployment
+# ==============================================================================
 
-clean: ## Clean build binaries and test coverage files
-	rm -rf backend/bin backend/coverage.out backend/coverage.html frontend/dist
+COMPOSE_FILE := deploy/docker-compose.yml
+COMPOSE_OVERRIDE := $(wildcard deploy/docker-compose.override.yml)
+COMPOSE_FLAGS := -f $(COMPOSE_FILE) $(if $(COMPOSE_OVERRIDE),-f $(COMPOSE_OVERRIDE))
 
+docker-build: ## Build production Docker image (proxyloadouts:latest)
+	docker build -t proxyloadouts:latest .
+
+docker-up: ## Start full stack (app + Dozzle logs) in background via Compose
+	docker compose $(COMPOSE_FLAGS) up -d --build
+
+docker-down: ## Stop and remove Compose containers
+	docker compose $(COMPOSE_FLAGS) down
+
+docker-logs: ## Follow live logs from Compose services
+	docker compose $(COMPOSE_FLAGS) logs -f

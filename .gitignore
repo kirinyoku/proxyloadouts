@@ -12,6 +12,7 @@ Thumbs.db
 .env.local
 .env.*.local
 deploy/.env
+deploy/docker-compose.override.yml
 !deploy/.env.monitoring.example
 *.pem
 
