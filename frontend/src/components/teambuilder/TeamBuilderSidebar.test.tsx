@@ -25,6 +25,8 @@ const baseProps = {
   defaultName: '',
   description: '',
   selectedBuilds: [null, null, null] as const,
+  report: null,
+  isValidating: false,
   isSaving: false,
   canSave: false,
   saveHint: null,

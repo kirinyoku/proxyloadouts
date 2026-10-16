@@ -1,16 +1,22 @@
 import { lazy, Suspense, useState } from 'react'
-import { Disc, Trash2 } from 'lucide-react'
+import { AlertCircle, Disc, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { MindscapeBadge } from '@/components/ui/MindscapeBadge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import {
   agentRoleCircleUrl,
   agentRoleIconUrl,
   agentRoleSelectUrl,
 } from '@/lib/agent-icons'
+import { getConflictLabel, type SlotConflictDetail } from '@/lib/conflicts'
 import { cn } from '@/lib/utils'
 import type { SlotNumber } from '@/store/useTeamDraftStore'
-import type { Build } from '@/types'
+import type { Build, ConflictCode } from '@/types'
 
 const BuildPickerDialog = lazy(() =>
   import('@/components/teambuilder/BuildPickerDialog').then((module) => ({
@@ -24,6 +30,8 @@ export interface TeamSlotRowProps {
   builds: Build[]
   squadBuilds?: readonly (Build | null | undefined)[]
   usedBuildIds: ReadonlySet<string>
+  conflictCodes: ConflictCode[]
+  conflictDetail?: SlotConflictDetail
   onSelect: (buildId: string) => void
   onClear: () => void
 }
@@ -37,11 +45,26 @@ export function TeamSlotRow({
   builds,
   squadBuilds,
   usedBuildIds,
+  conflictCodes,
+  conflictDetail,
   onSelect,
   onClear,
 }: TeamSlotRowProps) {
   const { t } = useTranslation()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const hasConflict = conflictCodes.length > 0
+  const hasDiscConflict = (conflictDetail?.conflictingDiscSlots.length ?? 0) > 0
+  const discSlotsStr = conflictDetail?.conflictingDiscSlots.join(', ')
+
+  let conflictReason = conflictCodes.map((c) => getConflictLabel(c)).join(', ')
+  if (hasDiscConflict && discSlotsStr) {
+    conflictReason = conflictCodes.map((c) => {
+      if (c === 'ITEM_REUSE') {
+        return t('conflicts.slotConflictBadge', { slot: discSlotsStr })
+      }
+      return getConflictLabel(c)
+    }).join(', ')
+  }
 
   if (!selected) {
     return (
@@ -134,6 +157,7 @@ export function TeamSlotRow({
           'group/slot relative flex w-full items-center justify-between gap-2 sm:gap-3 overflow-hidden rounded-(--radius-input-lg) border-2 border-black bg-subtle px-2.5 sm:px-3.5 py-2 sm:py-2.5 text-left cursor-pointer transition-colors duration-150',
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-elevated',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card active:translate-y-px',
+          hasConflict && 'border-destructive/80 bg-[color-mix(in_oklch,var(--subtle),var(--destructive)_12%)]',
         )}
       >
         {/* Hover / focus accent strip — echoes the crosshatch acid bar of AppHeader */}
@@ -142,7 +166,7 @@ export function TeamSlotRow({
           className="pointer-events-none absolute inset-y-2 left-0 w-[3px] origin-center scale-y-0 rounded-r-full bg-primary transition-transform duration-150 group-hover/slot:scale-y-100 group-focus-visible/slot:scale-y-100"
         />
 
-        {/* Left: Avatar + Agent Name & Build Tag */}
+        {/* Left: Avatar + Agent Name & Build Tag + Conflict status */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
           {/* CircleIcon Avatar: black ink border + rarity ring */}
           <div
@@ -206,6 +230,22 @@ export function TeamSlotRow({
               <span className="truncate font-mono text-[10px] sm:text-[11px] font-semibold leading-tight tabular-nums text-muted-foreground transition-colors group-hover/slot:text-foreground">
                 {selected.name}
               </span>
+
+              {hasConflict && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className="inline-flex items-center gap-1 rounded-[4px_4px_0_4px] border border-black bg-destructive px-1.5 py-0.5 text-[9px] font-bold text-white shrink-0 cursor-help"
+                    >
+                      <AlertCircle className="size-2.5 animate-pulse" />
+                      <span>{conflictReason}</span>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs max-w-xs">
+                    {`${t('teamBuilder.conflictBadge')}: ${conflictReason}`}
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
         </div>
@@ -215,8 +255,16 @@ export function TeamSlotRow({
           {/* W-Engine */}
           {wEngine ? (
             <div
-              className="relative flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center"
-              title={`W-Engine: ${wEngineName} (P${wEngine.modification || 1})`}
+              className={cn(
+                'relative flex size-7.5 sm:size-8.5 shrink-0 items-center justify-center',
+                conflictDetail?.hasWeaponConflict &&
+                  'ring-2 ring-destructive border border-destructive/80 bg-destructive/20 rounded-lg shadow-[0_0_8px_rgba(239,68,68,0.5)]',
+              )}
+              title={
+                conflictDetail?.hasWeaponConflict
+                  ? `${t('conflicts.weaponConflictBadge')}: ${wEngineName}`
+                  : `W-Engine: ${wEngineName} (P${wEngine.modification || 1})`
+              }
             >
               {wEngine.icon_url ? (
                 <img
@@ -252,7 +300,11 @@ export function TeamSlotRow({
             visualDiscSets.slice(0, 2).map((discSet) => (
               <div
                 key={discSet.setId}
-                className="relative flex size-7 sm:size-8 shrink-0 items-center justify-center"
+                className={cn(
+                  'relative flex size-7 sm:size-8 shrink-0 items-center justify-center',
+                  hasDiscConflict &&
+                    'ring-1.5 ring-destructive/80 bg-destructive/15 rounded-lg border border-destructive/40 p-0.5',
+                )}
                 title={`${discSet.name} (${t('gear.pieces', { count: discSet.count })})`}
               >
                 {discSet.iconUrl ? (
@@ -279,6 +331,15 @@ export function TeamSlotRow({
             >
               {t('teams.noDiscsShort')}
             </div>
+          )}
+
+          {hasDiscConflict && discSlotsStr && (
+            <span
+              className="flex items-center gap-0.5 rounded-[4px_4px_0_4px] border border-black bg-destructive px-1 py-0.5 font-mono text-[8px] font-black text-white shadow-xs"
+              title={t('conflicts.slotConflictBadge', { slot: discSlotsStr })}
+            >
+              #{discSlotsStr}
+            </span>
           )}
         </div>
 

@@ -1,19 +1,28 @@
-import { UsersRound } from 'lucide-react'
+import { AlertCircle, UsersRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { TeamSlotRow } from '@/components/teambuilder/TeamSlotRow'
+import type { SlotConflictDetail } from '@/lib/conflicts'
 import { cn } from '@/lib/utils'
 import type { SlotNumber } from '@/store/useTeamDraftStore'
-import type { Build } from '@/types'
+import type { Build, ConflictCode } from '@/types'
 
 export interface TeamSlotListProps {
   slots: readonly (string | null)[]
   selectedBuilds: readonly (Build | null)[]
   builds: Build[]
+  slotConflicts: Record<SlotNumber, ConflictCode[]>
+  detailedSlotConflicts?: Record<SlotNumber, SlotConflictDetail>
   onSetSlot: (slot: SlotNumber, buildId: string) => void
   onClearSlot: (slot: SlotNumber) => void
   teamName?: string
   teamDescription?: string
   isEditing?: boolean
+  hasConflict?: boolean
 }
 
 /**
@@ -23,11 +32,14 @@ export function TeamSlotList({
   slots,
   selectedBuilds,
   builds,
+  slotConflicts,
+  detailedSlotConflicts,
   onSetSlot,
   onClearSlot,
   teamName,
   teamDescription,
   isEditing = false,
+  hasConflict = false,
 }: TeamSlotListProps) {
   const { t } = useTranslation()
   const filledCount = selectedBuilds.filter(Boolean).length
@@ -37,10 +49,13 @@ export function TeamSlotList({
   return (
     <article
       aria-label={isEditing ? t('teamBuilder.deckAriaEdit', { name: teamName || '' }) : t('teamBuilder.deckAriaNew')}
-      className="relative flex flex-col gap-3 sm:gap-3.5 rounded-(--radius-card) border-2 border-black bg-card p-3.5 sm:p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_32px_-16px_rgba(0,0,0,0.9)]"
+      className={cn(
+        'relative flex flex-col gap-3 sm:gap-3.5 rounded-(--radius-card) border-2 border-black bg-card p-3.5 sm:p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_32px_-16px_rgba(0,0,0,0.9)]',
+        hasConflict && 'bg-[color-mix(in_oklch,var(--card),var(--destructive)_7%)]',
+      )}
     >
 
-      {/* Top Header: Squad Tag, Title and Slot counter */}
+      {/* Top Header: Squad Tag, Title, Conflict status and Slot counter */}
       <div className="flex items-center justify-between gap-2.5 min-w-0">
         <div className="flex min-w-0 items-center gap-2.5 flex-1">
           {/* Skewed acid tag — mirrors the active nav tab and squad card on /teams */}
@@ -56,6 +71,22 @@ export function TeamSlotList({
           >
             {teamName?.trim() || fallbackTitle}
           </h2>
+
+          {hasConflict && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="inline-flex h-5 shrink-0 cursor-help items-center gap-1 rounded-[4px_4px_0_4px] border border-black bg-destructive px-1.5 font-heading text-[10px] leading-none tracking-wide text-white"
+                >
+                  <AlertCircle className="size-3" />
+                  <span className="hidden sm:inline">{t('teamBuilder.conflictBadge')}</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {t('teamBuilder.conflictDeckTooltip')}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shrink-0">
@@ -89,6 +120,8 @@ export function TeamSlotList({
               builds={builds}
               squadBuilds={otherSquadBuilds}
               usedBuildIds={usedElsewhere}
+              conflictCodes={slotConflicts[slotNumber] ?? []}
+              conflictDetail={detailedSlotConflicts?.[slotNumber]}
               onSelect={(buildId) => onSetSlot(slotNumber, buildId)}
               onClear={() => onClearSlot(slotNumber)}
             />

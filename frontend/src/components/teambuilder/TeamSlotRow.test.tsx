@@ -94,6 +94,7 @@ describe('TeamSlotRow w-engine superposition badge', () => {
         selected={sRankBuild}
         builds={[sRankBuild]}
         usedBuildIds={new Set(['build-1'])}
+        conflictCodes={[]}
         onSelect={vi.fn()}
         onClear={vi.fn()}
       />,
@@ -134,6 +135,7 @@ describe('TeamSlotRow w-engine superposition badge', () => {
         selected={sRankBuildP5}
         builds={[sRankBuildP5]}
         usedBuildIds={new Set(['build-1'])}
+        conflictCodes={[]}
         onSelect={vi.fn()}
         onClear={vi.fn()}
       />,
@@ -172,6 +174,7 @@ describe('TeamSlotRow w-engine superposition badge', () => {
         selected={aRankBuildP1}
         builds={[aRankBuildP1]}
         usedBuildIds={new Set(['build-1'])}
+        conflictCodes={[]}
         onSelect={vi.fn()}
         onClear={vi.fn()}
       />,
@@ -209,6 +212,7 @@ describe('TeamSlotRow w-engine superposition badge', () => {
         selected={aRankBuildP5}
         builds={[aRankBuildP5]}
         usedBuildIds={new Set(['build-1'])}
+        conflictCodes={[]}
         onSelect={vi.fn()}
         onClear={vi.fn()}
       />,
@@ -263,6 +267,7 @@ describe('TeamSlotRow w-engine superposition badge', () => {
         selected={buildWithUnsortedSets}
         builds={[buildWithUnsortedSets]}
         usedBuildIds={new Set(['build-1'])}
+        conflictCodes={[]}
         onSelect={vi.fn()}
         onClear={vi.fn()}
       />,
