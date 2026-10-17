@@ -1,5 +1,5 @@
 # ==============================================================================
-# ProxyLoadouts Minimal Self-Hosted Stack (App + Dozzle Log Viewer)
+# ProxyLoadouts Production Stack (App + Dozzle Log Viewer)
 # ==============================================================================
 # RAM Footprint: ~40-60 MB total (App ~30-40MB, Dozzle ~10-15MB)
 # Disk Log Cap: strictly bounded to 30 MB (max-size: 10m, max-file: 3)

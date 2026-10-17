@@ -1,252 +1,137 @@
+<div align="center">
+
 # ProxyLoadouts (PXL)
 
-[![CI Pipeline](https://img.shields.io/badge/CI-GitHub%20Actions-blue?logo=githubactions)](.github/workflows/ci.yml)
-[![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](backend/README.md)
-[![React Version](https://img.shields.io/badge/React-19-61DAFB?logo=react)](frontend/README.md)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Strict%206.0-3178C6?logo=typescript)](frontend/tsconfig.json)
-[![OpenAPI Contract](https://img.shields.io/badge/Contract-OpenAPI%203.1-6BA539?logo=openapiinitiative)](contracts/openapi.yaml)
-[![Database](https://img.shields.io/badge/Storage-SQLite%20WAL%20(Pure--Go)-003B57?logo=sqlite)](backend/README.md)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+**Equipment Preset Manager & Squad Planner for *Zenless Zone Zero***
 
-> A production-grade, fullstack loadout and combat squad manager for *Zenless Zone Zero* (ZZZ) with automated equipment conflict validation, public showcase synchronization, and single-binary deployment.
+[![CI Pipeline](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=flat&logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
+[![Frontend](https://img.shields.io/badge/Frontend-React_19_+_TS_6-61DAFB?style=flat&logo=react&logoColor=black)](frontend/README.md)
+[![Backend](https://img.shields.io/badge/Backend-Go_1.26_+_SQLite_WAL-00ADD8?style=flat&logo=go&logoColor=white)](backend/README.md)
+[![API Contract](https://img.shields.io/badge/Contract-OpenAPI_3.1-6BA539?style=flat&logo=openapiinitiative&logoColor=white)](contracts/openapi.yaml)
+[![License](https://img.shields.io/badge/License-MIT-brightgreen?style=flat)](LICENSE)
 
----
+[**Frontend & UI/UX Showcase**](frontend/README.md) · [**Backend Architecture**](backend/README.md) · [**OpenAPI 3.1 Spec**](contracts/openapi.yaml)
 
-## Table of Contents
-
-1. [Project Overview & Problem Statement](#project-overview--problem-statement)
-2. [Fullstack System Architecture](#fullstack-system-architecture)
-3. [Key Engineering Highlights](#key-engineering-highlights)
-4. [Monorepo Structure](#monorepo-structure)
-5. [Operational Lifecycle & Execution Modes](#operational-lifecycle--execution-modes)
-6. [Quality Assurance & Automated Verification](#quality-assurance--automated-verification)
-7. [Subsystem Documentation](#subsystem-documentation)
-8. [License](#license)
+</div>
 
 ---
 
-## Project Overview & Problem Statement
+## Why ProxyLoadouts Exists
 
-In *Zenless Zone Zero* (ZZZ), players frequently reconfigure equipment (W-Engines and 6 Drive Disc slots) across multiple characters to tackle divergent endgame combat challenges (Shiyu Defense, Deadly Assault). Managing these builds manually creates severe friction:
+*Zenless Zone Zero* still lacks built-in **equipment presets (loadouts)** for Drive Discs and W-Engines, despite long-standing player requests.
 
-- **Equipment Overlap**: Swapping discs between characters often leads to accidental duplicate assignments or broken team compositions.
-- **Roster & Gear Isolation**: Players lack an offline or quick-access interface to prototype multi-agent squads without launching the full game client.
+In endgame modes like **Shiyu Defense** and **Deadly Assault**, enemy lineups, attribute resistances, and stage buffs rotate constantly. Adapting to a specific boss or stage often requires assembling different 3-agent squads—and not every agent has a single universal build:
 
-**ProxyLoadouts** solves this by providing:
-1. **Showcase Profile Sync**: Fetching active showcase agents, W-Engines, and Drive Discs directly from the game network via [EnkaNetwork](https://enka.network/) and the [Fairy SDK](https://github.com/kirinyoku/fairy).
-2. **Build Library**: Persisting multiple alternate equipment presets per agent (e.g. Anomaly DPS, Crit DPS, Support).
-3. **Automated Conflict Engine**: Algorithmic validation ensuring that no Drive Disc (slots 1–6) or W-Engine is assigned to more than one agent in an active 3-member combat squad.
-4. **Single-Binary Portability**: The entire fullstack application (Go server + embedded React SPA + SQLite database) compiles into an autonomous static executable.
+- Depending on teammates or boss mechanics, an agent may need a **different W-Engine**, a **different 4pc/2pc Drive Disc set**, or a **different main stat on Slots 4, 5, or 6** (for example, swapping Slot 5 between *PEN Ratio* and *Attribute DMG%*, or Slot 6 between *Anomaly Mastery* and *ATK%*).
+- Over time, players accumulate hundreds of Drive Discs. Remembering which exact 6 discs belong to which setup across different teams becomes nearly impossible.
+- **Saving builds with in-game screenshots is tedious**: the in-game UI only shows a Drive Disc's substats when you click on that specific slot. You cannot view all 6 discs at once, so saving a single build takes **6–7 separate screenshots**, with no convenient way to organize which screenshots belong to which squad or boss.
 
 ---
 
-## Fullstack System Architecture
+## How ProxyLoadouts Solves This
 
-The application is structured as a modular monorepo governed by a **Contract-First (OpenAPI 3.1)** specification as the single source of truth (SSOT).
+ProxyLoadouts is a web service that gives you an external loadout library and squad planner powered by your in-game showcase:
 
-```mermaid
-flowchart TD
-    subgraph Client["Frontend Client (React 19 SPA)"]
-        direction TB
-        UI["UI Layer (Radix UI + Tailwind v4)"]
-        ClientState["State Tier (TanStack Query v5 + Zustand v5)"]
-        ClientEngine["Client Conflict Engine (src/lib/conflicts.ts)"]
-    end
+1. **One-Screen Build Capture (`Showcase`)**: Place your agents on your in-game showcase and scan your UID (powered by EnkaNetwork). Instead of taking 6 separate screenshots, you see the agent's W-Engine, total stats, and **all 6 Drive Discs with their substat rolls** on a single screen.
+2. **Multiple Presets per Agent (`Roster`)**: Save up to **5 named builds per agent** with custom notes—so you can keep dedicated presets for different teams, bosses, or combat buffs.
+3. **Squad Planner with Conflict Check (`Squads`)**: Combine saved agent presets into 3-agent squads with notes (e.g., which boss the squad targets or which disc to swap). When picking builds for a squad, ProxyLoadouts automatically warns you if two agents share the exact same W-Engine or Drive Disc.
 
-    subgraph Contract["Contract Layer (SSOT)"]
-        OpenAPI["OpenAPI 3.1 Contract (contracts/openapi.yaml)"]
-        Codegen["Codegen Pipeline (backend/cmd/codegen)"]
-    end
-
-    subgraph Server["Backend Service (Go 1.26 Monolith)"]
-        direction TB
-        Router["HTTP Router & Middleware (Chi v5)"]
-        AppServices["Application Services (Auth, Builds, Teams, Scanner)"]
-        ServerEngine["Server Conflict Engine (internal/engine/conflicts)"]
-        StaticFS["Embedded SPA FileServer (go:embed all:static)"]
-    end
-
-    subgraph Storage["Storage & Caching Layer"]
-        SQLite[("SQLite WAL (modernc.org Pure-Go)")]
-        MemoryCache["In-Memory Cache (LRU TTL + Singleflight)"]
-    end
-
-    subgraph External["External Integrations"]
-        Discord["Discord OAuth2 Identity"]
-        EnkaAPI["EnkaNetwork API / Fairy SDK"]
-    end
-
-    Contract -.->|Type Validation| Client
-    Contract -.->|DTO Alignment| Server
-    Codegen -.->|Generates Constants| Client
-
-    Client -->|HTTP / JSON API| Router
-    Router --> AppServices
-    Router --> StaticFS
-    AppServices --> ServerEngine
-    AppServices --> Storage
-    AppServices --> External
-    ClientEngine -.->|Optimistic Mirror| ServerEngine
-```
+> While you still equip Drive Discs manually in-game, you always know **exactly which W-Engine and which 6 Drive Discs** to put on each agent for any squad or boss.
 
 ---
 
-## Key Engineering Highlights
+## Documentation Structure
 
-### 1. Contract-First Governance (OpenAPI 3.1 as SSOT)
-- Every endpoint, request payload, response schema, and error representation is formally specified in [`contracts/openapi.yaml`](contracts/openapi.yaml).
-- Eliminates drift between backend Go handlers and frontend TypeScript consumers.
-- The `backend/cmd/codegen` tool inspects the game catalog and automatically generates immutable TypeScript constants (`frontend/src/lib/game-constants.generated.ts`).
+Detailed technical and visual documentation is split by subsystem:
 
-### 2. Standalone Single-Binary Deployment (`go:embed`)
-- In addition to standard decoupled dev workflows, the React 19 production build is embedded directly into the Go executable via `//go:embed all:static`.
-- The server serves the embedded SPA with strict browser cache policies (`Cache-Control: public, max-age=31536000, immutable` for hashed assets) and transparent History API routing fallback.
-- Enables zero-configuration desktop distribution and single-container deployments.
-
-### 3. Pure-Go SQLite in WAL Mode
-- Persistence uses `modernc.org/sqlite` compiled with `CGO_ENABLED=0`, eliminating C-toolchain dependencies and enabling effortless cross-compilation.
-- Configured with `PRAGMA journal_mode = WAL`, `PRAGMA busy_timeout = 5000`, and `PRAGMA foreign_keys = ON`.
-- Readers execute concurrently without blocking writers; schema migrations (`backend/migrations/001_init.sql`) apply idempotently at startup within a serializable transaction.
-
-### 4. External Dependency Resiliency & Thundering Herd Defense
-- To protect upstream game APIs (EnkaNetwork) against aggressive rate limiting:
-  - **Request Coalescing (`singleflight`)**: Concurrent requests for the same player UID are collapsed into a single upstream network call.
-  - **Two-Tier In-Memory Caching**: Positive LRU cache (TTL-bounded profile snapshots) and negative cache (short-lived entries for 404/empty showcases).
-  - **Token-Bucket Rate Limiter**: Per-IP rate limiting (`golang.org/x/time/rate`) on public showcase fetch routes.
-
-### 5. Dual-Layer Conflict Detection Engine
-- A dedicated algorithmic validator ($O(N \cdot M)$ complexity) ensures equipment uniqueness across squad members.
-- Executed **optimistically on the client** ($0\text{ms}$ UI response during drag-and-drop squad assembly) and **authoritatively on the server** during database write transactions (returning HTTP 422 with structured `ConflictReport` DTOs upon violations).
-
-### 6. Defense-in-Depth Security
-- **Stateless Encrypted Sessions**: Session cookies are encrypted and authenticated with AES-256-GCM using `SESSION_SECRET`.
-- **Instant Revocation without Redis**: A database `token_version` column on `users` invalidates all issued session cookies globally upon logout.
-- **CSRF & Origin Isolation**: Strict comparison of `Origin` and `Referer` headers against `FRONTEND_URL`, complemented by mandatory `X-Requested-With` or `X-CSRF-Token` headers.
+| Document | What It Covers |
+| :--- | :--- |
+| **[Frontend & UI/UX Guide (`frontend/README.md`)](frontend/README.md)** | **Visual walkthrough with screenshots**, UI/UX design decisions (solving the 6-screenshot problem, substat roll highlighting, conflict picker UX), design tokens, and React 19 state architecture. |
+| **[Backend Architecture (`backend/README.md`)](backend/README.md)** | **Go 1.26 Hexagonal architecture**, pure-Go SQLite WAL storage, EnkaNetwork `singleflight` + LRU caching, AES-256-GCM stateless sessions, security middleware, and single-binary deployment. |
+| **[OpenAPI 3.1 Contract (`contracts/openapi.yaml`)](contracts/openapi.yaml)** | Formal REST API specification serving as the single source of truth between the Go backend and TypeScript frontend. |
 
 ---
 
-## Monorepo Structure
+## Tech Stack at a Glance
 
-```
-├── .github/
-│   └── workflows/
-│       └── ci.yml            # CI: Go race tests, golangci-lint, oxlint, E2E, standalone build
-├── contracts/
-│   └── openapi.yaml          # OpenAPI 3.1 single source of truth contract
-├── backend/                  # Go 1.26 Core Service (Clean Architecture)
-│   ├── cmd/
-│   │   ├── codegen/          # CLI generating frontend game constants from Fairy SDK
-│   │   └── server/           # Runtime entrypoint, signal handling, graceful shutdown
-│   ├── internal/
-│   │   ├── adapter/          # SQLite WAL, Chi HTTP, Discord OAuth2, Fairy SDK adapters
-│   │   ├── app/              # Application services (auth, builds, scanner, teams)
-│   │   ├── domain/           # Pure entities, domain invariants, repository interfaces
-│   │   └── engine/conflicts/ # In-memory conflict detection engine
-│   ├── migrations/           # Embedded SQL schema migrations (001_init.sql)
-│   ├── Makefile              # Backend operational Makefile
-│   └── README.md             # Detailed backend architectural specification
-├── frontend/                 # React 19 SPA (Vite + Tailwind CSS v4)
-│   ├── src/
-│   │   ├── api/              # Typed fetch client, ApiError class, TanStack Query hooks
-│   │   ├── components/       # Radix UI headless primitives & composite widgets
-│   │   ├── lib/              # Client conflict engine, formatters, generated constants
-│   │   ├── pages/            # Route views (Roster, Teams, Showcase, Settings)
-│   │   └── store/            # Zustand client draft stores (teamBuilderStore)
-│   ├── e2e/                  # Playwright end-to-end browser test suites
-│   ├── package.json          # Dependencies & build scripts
-│   └── README.md             # Detailed frontend architectural specification
-├── LICENSE                   # MIT License
-└── Makefile                  # Unified project orchestration commands
-```
+- **Frontend**: React 19, TypeScript 6.0, Vite 8, Tailwind CSS v4, Radix UI Primitives, TanStack Query v5, Zustand v5, i18next (`EN` / `RU`).
+- **Backend**: Go 1.26 (`CGO_ENABLED=0`), Chi v5 router, Pure-Go SQLite (`modernc.org/sqlite` in WAL mode), EnkaNetwork & [`fairy`](https://github.com/kirinyoku/fairy) ZZZ catalog SDK, Discord OAuth2.
+- **Deployment**: Compiles into a **single self-contained Go binary** (`//go:embed`) consuming **~35 MB of RAM**, packaged via a multi-stage non-root Docker image alongside Dozzle for live container logs.
 
 ---
 
-## Operational Lifecycle & Execution Modes
+## Development & Production Deployment
 
-### Prerequisites
+### 1. Local Development (HMR)
 
-- [Go](https://go.dev/) 1.26 or higher
-- [Node.js](https://nodejs.org/) 22.0.0 or higher & npm
-- [golangci-lint](https://golangci-lint.run/) (v1.60+)
-
-### 1. Configuration Setup
-
-Copy and inspect the backend environment configuration template:
+Requires **Go 1.26+** and **Node.js 22+**.
 
 ```bash
 cp backend/.env.example backend/.env
-```
 
-Key environment parameters:
-- `PORT`: Server port (default: `8080`).
-- `DATABASE_PATH`: SQLite file path (default: `./data/proxyloadouts.db`).
-- `FRONTEND_URL`: Allowed CORS origin and CSRF target (default: `http://localhost:5173`).
-- `SESSION_SECRET`: 32-byte AES-GCM session key (`openssl rand -hex 32`).
-- `DISCORD_CLIENT_ID` & `DISCORD_CLIENT_SECRET`: Discord OAuth credentials.
+# Terminal 1 — Go API server (:8080)
+make dev-backend
 
-### 2. Local Development Mode
-
-Run the backend and frontend dev servers concurrently:
-
-```bash
-# Terminal 1: Go backend API (:8080)
-make run
-
-# Terminal 2: Frontend Vite dev server (:5173 with HMR & /api/v1 proxy)
+# Terminal 2 — Vite dev server with HMR (:5173)
 make dev-frontend
 ```
 
-> In development (`ENV=development`), Discord OAuth credentials are optional. Public showcase fetching (`/api/v1/showcase/{uid}`) and the conflict validation engine work immediately out of the box.
+> **Note on Discord OAuth2 in Dev Mode**: In `ENV=development`, the backend starts without `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` so you can immediately work on public pages and UID showcase scanning (`/api/v1/showcase/{uid}`). To test authenticated flows (`Roster`, `Squads`, `Settings`) in the browser, add your Discord OAuth2 dev credentials to `backend/.env`.
 
-### 3. Standalone Single-Binary Compilation
+### 2. Production Deployment (Docker Compose)
 
-Compile the entire fullstack application into a single self-contained executable:
-
-```bash
-make build-all
-```
-
-The resulting binary (`backend/bin/server`) serves both the REST API and the embedded React SPA on a single port:
+For deploying on a server, configure the required production variables (`SESSION_SECRET`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `FRONTEND_URL`) in `deploy/.env`:
 
 ```bash
-./backend/bin/server
-# Open http://localhost:8080 in your browser
+cp deploy/.env.example deploy/.env
+# Fill in required production secrets in deploy/.env
+make docker-up
+
+# App UI & API:     http://localhost:8080
+# Dozzle Live Logs: http://localhost:8888
 ```
+
+You can also compile the production single binary directly (`frontend/dist` embedded into `backend/bin/server` via `//go:embed`) with `make build`.
+
+### Common `Makefile` Commands
+
+| Command | Description |
+| :--- | :--- |
+| `make dev-backend` | Start Go backend API server (`:8080`) |
+| `make dev-frontend` | Start Vite frontend dev server with HMR (`:5173`) |
+| `make codegen` | Generate TypeScript API types (`openapi-typescript`) & game constants |
+| `make lint` | Run all linters (`redocly`, `golangci-lint`, `oxlint`) |
+| `make test` | Run all tests (Go `-race` suite + Frontend Vitest suite) |
+| `make build` | Build standalone single binary with embedded frontend (`backend/bin/server`) |
+| `make check` | Full CI quality gate (`lint` + `test` + `build`) |
+| `make docker-up` | Build and start production Docker stack (App + Dozzle) |
+| `make docker-down` | Stop and remove Docker Compose containers |
 
 ---
 
-## Quality Assurance & Automated Verification
+## Repository Structure
 
-The repository enforces automated verification across the entire stack via the root `Makefile` and GitHub Actions CI:
-
-```bash
-# Run all quality checks across backend and frontend
-make check
+```text
+proxyloadouts/
+├── contracts/
+│   └── openapi.yaml        # OpenAPI 3.1 API specification (SSOT)
+├── backend/                # Go 1.26 backend service (see backend/README.md)
+│   ├── cmd/                # Server entrypoint & game catalog codegen CLI
+│   ├── internal/           # Domain, conflict engine, use cases, adapters
+│   └── migrations/         # Embedded SQLite schema migrations
+├── frontend/               # React 19 SPA client (see frontend/README.md)
+│   ├── src/                # UI components, pages, hooks, stores, i18n
+│   └── e2e/                # Playwright E2E tests
+├── deploy/                 # Production Docker Compose stack & env template
+├── docs/images/            # Interface screenshots referenced in frontend/README.md
+├── Dockerfile              # Multi-stage static binary build
+└── Makefile                # Monorepo orchestration commands
 ```
-
-Execution breakdown:
-
-| Suite | Scope | Toolchain | Invariants Checked |
-|---|---|---|---|
-| **Backend Race Tests** | `backend/` | `go test -v -race ./...` | Concurrency safety, SQLite WAL transactions, cache eviction, zero data races |
-| **Backend Static Analysis** | `backend/` | `golangci-lint run ./...` | 30+ strict linters: `govet`, `staticcheck`, `gosec`, `bodyclose`, `sloglint` |
-| **Frontend Static Analysis** | `frontend/` | `npm run lint` (`oxlint`) | React 19 hook invariants, JSX accessibility, TypeScript hygiene (0 warnings) |
-| **Frontend Unit Tests** | `frontend/` | `npm run test` (`vitest`) | 226 unit & integration tests covering components, hooks, formatters, and conflict logic |
-| **Frontend Typecheck & Build** | `frontend/` | `npm run build` (`tsc -b && vite`) | Strict TypeScript compile check, Rollup vendor code-splitting |
-| **End-to-End User Journeys** | `frontend/` | `npm run test:e2e` (`playwright`) | Headless Chromium browser automation testing routing, squad assembly, and conflict alerts |
-
----
-
-## Subsystem Documentation
-
-For deep architectural dives, design rationale, and internal package taxonomy:
-
-- [Backend Architecture & Engine Specification](backend/README.md)
-- [Frontend Client & State Architecture](frontend/README.md)
-- [OpenAPI 3.1 REST Contract](contracts/openapi.yaml)
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+Licensed under the [MIT License](LICENSE).
+
+> **Disclaimer**: *ProxyLoadouts is an independent fan-made project and is not affiliated with or endorsed by HoYoverse / COGNOSPHERE PTE. LTD. All Zenless Zone Zero game assets and trademarks belong to their respective owners.*

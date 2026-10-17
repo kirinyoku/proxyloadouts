@@ -1,260 +1,198 @@
-# ProxyLoadouts — Frontend Client Architecture
+# ProxyLoadouts — Frontend UI/UX & Client Architecture
 
 [![React Version](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict%206.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Bundler](https://img.shields.io/badge/Bundler-Vite%208-646CFF?logo=vite)](https://vite.dev/)
 [![Styling](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38B2AC?logo=tailwindcss)](https://tailwindcss.com/)
-[![Testing](https://img.shields.io/badge/Unit%20Tests-Vitest%20(226%20passed)-729B1B?logo=vitest)](package.json)
+[![Testing](https://img.shields.io/badge/Unit%20Tests-Vitest-729B1B?logo=vitest)](package.json)
 [![E2E Testing](https://img.shields.io/badge/E2E-Playwright-2EAD33?logo=playwright)](playwright.config.ts)
-[![Linter](https://img.shields.io/badge/Linter-Oxlint%20(0%20warnings)-blue)](.oxlintrc.json)
 
-The frontend client for **ProxyLoadouts (PXL)** is a high-performance Single Page Application (SPA) designed for managing *Zenless Zone Zero* (ZZZ) agent builds, inspecting drive disc distributions, and assembling 3-agent combat squads with real-time conflict feedback.
+The frontend client of **ProxyLoadouts (PXL)** is a React 19 Single Page Application designed around a single goal: making it effortless for *Zenless Zone Zero* players to capture, organize, and reference equipment presets (W-Engines and Drive Discs) across rotating endgame bosses and combat squads.
+
+[**Root Project Overview**](../README.md) · [**Backend Architecture**](../backend/README.md) · [**OpenAPI 3.1 Contract**](../contracts/openapi.yaml)
 
 ---
 
 ## Table of Contents
 
-1. [Architectural Overview & Component Topology](#architectural-overview--component-topology)
-2. [Key Engineering Decisions & Trade-Offs](#key-engineering-decisions--trade-offs)
-   - [Strict 4-Tier State Separation: TanStack Query & Zustand](#1-strict-4-tier-state-separation-tanstack-query--zustand)
-   - [Optimistic Conflict Engine Mirroring](#2-optimistic-conflict-engine-mirroring)
-   - [Accessible Headless UI Architecture (Radix Primitives)](#3-accessible-headless-ui-architecture-radix-primitives)
-   - [Tailwind CSS v4 & Cyberpunk Design System](#4-tailwind-css-v4--cyberpunk-design-system)
-   - [Single-Origin Topology & Zero-Secret Client Bundle](#5-single-origin-topology--zero-secret-client-bundle)
-   - [Deterministic Rollup Chunk Grouping](#6-deterministic-rollup-chunk-grouping)
-3. [Component & Directory Taxonomy](#component--directory-taxonomy)
-4. [Contract-First API Integration & Code Generation](#contract-first-api-integration--code-generation)
-5. [Development & Operational Workflows](#development--operational-workflows)
-6. [Testing & Quality Verification](#testing--quality-verification)
+1. [UI/UX Walkthrough & Product Design Decisions](#uiux-walkthrough--product-design-decisions)
+   - [1. Landing & Frictionless UID Scanning (`HomePage`)](#1-landing--frictionless-uid-scanning-homepage)
+   - [2. Single-Screen Build View (`Showcase`) — Solving the "6 Screenshots" Problem](#2-single-screen-build-view-showcase--solving-the-6-screenshots-problem)
+   - [3. Agent Preset Library (`Roster`) — Multiple Builds per Agent](#3-agent-preset-library-roster--multiple-builds-per-agent)
+   - [4. Squad Overview (`Squads`) — Boss & Team Context at a Glance](#4-squad-overview-squads--boss--team-context-at-a-glance)
+   - [5. Squad Editor & Proactive Conflict Detection (`TeamBuilder` & `BuildPickerDialog`)](#5-squad-editor--proactive-conflict-detection-teambuilder--buildpickerdialog)
+2. [Design System & Visual Ergonomics](#design-system--visual-ergonomics)
+3. [Frontend Architecture & State Management](#frontend-architecture--state-management)
+4. [Directory Structure](#directory-structure)
+5. [Development & Testing](#development--testing)
 
 ---
 
-## Architectural Overview & Component Topology
+## UI/UX Walkthrough & Product Design Decisions
 
-The client application follows unidirectional data flow, separating server cache, local UI draft state, and presentation layers.
+### 1. Landing & Frictionless UID Scanning (`HomePage`)
+
+![Landing Page](../docs/images/01-landing-hero.png)
+
+- **Scan Before Login**: Players can immediately enter their 10-digit *Zenless Zone Zero* UID on the home screen to inspect their showcase without being forced through an authentication wall first.
+- **5-Step Visual Onboarding**: A concise horizontal pipeline (`Game Showcase` → `Scan by UID` → `Discord Login` → `Build Management` → `Squad Management`) explains how in-game showcase syncing translates into saved presets and squads.
+
+---
+
+### 2. Single-Screen Build View (`Showcase`) — Solving the "6 Screenshots" Problem
+
+![Agent Showcase](../docs/images/04-agent-showcase.png)
+
+- **Why This Layout Exists**: In *Zenless Zone Zero*'s in-game menu, you cannot view the substats of all 6 equipped Drive Discs simultaneously—you must click each disc slot one by one. Saving a build with screenshots requires taking **6–7 separate screenshots**.
+- **Unified Equipment Card**: ProxyLoadouts consolidates the entire build into a single scannable view:
+  - **Left Column**: Equipped W-Engine (level, refinement phase `P1`–`P5`, base ATK, and secondary stat) above the agent's aggregated combat stats.
+  - **Right 2×3 Grid**: All 6 Drive Disc slots (`[1]`–`[6]`) displayed side-by-side in their natural slot order, showing set icon, level, main stat, and all 4 substats.
+  - **Bottom Roll Summary Bar**: Aggregates total substat upgrade rolls across all 6 discs (e.g., `60.0% +20` ATK, `135 +15` Anomaly Proficiency) to evaluate overall build quality at a glance.
+- **1:1 Visual Parity & Roll Highlighting (Fast In-Game Inventory Navigation)**:
+  - **The Inventory Swapping Problem**: To equip a build seen on the site, players must manually find the exact discs in their in-game inventory among dozens of candidates.
+  - **1:1 In-Game Mirroring**: Disc cards replicate the in-game UI 1:1—preserving identical substat ordering, authentic highlight colors, and roll upgrade badges (`+1` through `+5`).
+  - **Instant Pattern Recognition**: Players don't need to read every stat line; clicking through the in-game inventory, they can spot the target disc in seconds by visual pattern alone (e.g., recognizing that the 1st and 3rd substats have `+2` and `+3` rolls).
+
+---
+
+### 3. Agent Preset Library (`Roster`) — Multiple Builds per Agent
+
+![Roster Management](../docs/images/05-roster-management.png)
+
+- **Why Presets Matter**: Because endgame modes (*Shiyu Defense*, *Deadly Assault*) rotate bosses and stage buffs, many agents aren't universal—they need different W-Engines, 4pc/2pc disc combinations, or Slot 4/5/6 main stats depending on the team or enemy.
+- **Up to 5 Named Presets per Agent**:
+  - The vertical agent rail on the left displays a stack badge (e.g., `2`) when an agent has multiple saved presets, plus Mindscape Cinema badges (`M1`–`M6`).
+  - The top preset bar lets players switch between saved presets (`1/5`), give each preset a recognizable shorthand name (e.g., `30 + 6`), and attach an inline **Note** (`NOTE #1395 zfae`) to remember why that specific disc combination is used.
+
+---
+
+### 4. Squad Overview (`Squads`) — Boss & Team Context at a Glance
+
+![Squads Management](../docs/images/06-teams-management.png)
+
+- **Compact Loadout Summary**: Each 3-agent squad card displays the chosen preset name under each agent alongside their W-Engine icon (`P1`–`P5`) and active 4pc + 2pc Drive Disc set badges.
+- **Tactical Squad Notes**: Players can attach a short note to any squad (such as `// miyabi 6th disc atk`) as a reminder of boss-specific adjustments or manual disc swaps before entering combat.
+
+---
+
+### 5. Squad Editor & Proactive Conflict Detection (`TeamBuilder` & `BuildPickerDialog`)
+
+![Squad Editor](../docs/images/02-teambuilder.png)
+
+![Proactive Conflict Detection](../docs/images/03-conflict-detected.png)
+
+- **Preventing Accidental Gear Sharing**: When two agents in the same squad rely on the same unique W-Engine or Drive Disc, you only discover the problem in-game when one agent ends up unequipped.
+- **Proactive Detection in the Build Picker**: Instead of letting users assemble an invalid squad and failing on save, conflict checking happens **directly inside the `SELECT AGENT FOR SQUAD` modal** (`BuildPickerDialog`):
+  - Candidate presets that share a W-Engine UID or Drive Disc UID with an agent already in the squad are marked with a red `CONFLICT` badge.
+  - Expanding the conflict row lists the exact shared items (e.g., `W-Engine "Neon Fantasies" is used by Nangong Yu`, `Drive Disc [1] is used by Nangong Yu`).
+  - A **`HIDE CONFLICTS`** toggle lets players filter the list down to only compatible presets.
+
+---
+
+## Design System & Visual Ergonomics
+
+Defined in [`src/index.css`](src/index.css) using **Tailwind CSS v4** (`@theme inline`) and semantic CSS custom properties:
+
+1. **Semantic Token Theming & Multi-Palette Architecture**:
+   - **Data-Driven Theming**: The interface is built entirely on semantic tokens (`--background`, `--card`, `--primary`, `--border`, etc.) controlled by the `data-palette` attribute on `<html>`. Adding future themes requires only defining a new `[data-palette="..."]` block in `src/index.css` without modifying component styles.
+   - **Zero-FOUC Initialization**: Active palette preference (`proxyloadouts_color_palette` in `localStorage`) is applied via a blocking inline script in `<head>` before React hydrates, dynamically adjusting `<meta name="theme-color">` for mobile browsers and PWA.
+   - **Available Color Themes**:
+     - **Acid Lime (Default)**: Authentic *Zenless Zone Zero* urban-tactical aesthetic with low-glare dark graphite surfaces (`#0c0f13` background, `#141920` cards) and high-contrast acid-lime neon accents (`#c9f24b`).
+     - **Champagne & Bronze**: Warm, refined luxury aesthetic with warm onyx/basalt surfaces (`#0c0b0a` with a 3% brass tint), champagne gold accents (`#eab308`), and rebalanced semantic status indicators (tactical orange warning).
+2. **Signature Asymmetric Corner Geometry**:
+   - Cards and inputs use *Zenless Zone Zero*'s characteristic 3-rounded / 1-chamfered corner silhouette (`--radius-card: 20px 20px 0 20px`, `--radius-input: 10px 10px 0 10px`).
+   - Users can switch between `rounded` (signature ZZZ asymmetric) and `sharp` corner styles in Settings, initialized synchronously in `<head>` to avoid Flash of Unstyled Content (FOUC).
+3. **3-Tier Typographic Hierarchy & Tabular Figures**:
+   - **Display / Headings**: `Unbounded Variable` and `Russo One` for bold urban-tactical titles.
+   - **UI Body**: `Inter Variable` for readable descriptions, notes, and dialogs.
+   - **Monospace & Numeric Tables**: `JetBrains Mono Variable` with `tabular-nums` so stat columns, UIDs, and substat percentages align vertically down to the pixel.
+4. **Accessible Headless Primitives**:
+   - Interactive dialogs, selects, tooltips, and dropdowns are built on **Radix UI Primitives** + **Class Variance Authority (`cva`)** + `tailwind-merge`, providing full keyboard navigation (`Tab`, `ArrowKeys`, `Escape`), focus trapping, and WAI-ARIA compliance.
+
+---
+
+## Frontend Architecture & State Management
 
 ```mermaid
-flowchart TD
-    subgraph Routing["Routing & Shell (React Router v7)"]
-        Router["BrowserRouter & Protected Routes"]
-        Shell["AppLayout (Header, Navigation, Background)"]
+flowchart LR
+    subgraph UI["Presentation Layer"]
+        Pages["Pages (Showcase, Roster, Squads, TeamBuilder)"]
+        Widgets["Composite Widgets (DriveDiscGrid, BuildPickerDialog)"]
+        Primitives["Radix UI + Tailwind v4 + CVA"]
     end
 
-    subgraph State["State Management Tier"]
-        RQ["Server Cache: TanStack Query v5"]
-        Zustand["Client UI Store: Zustand v5 (TeamBuilderDraft)"]
-        I18n["Internationalization: i18next (RU / EN)"]
+    subgraph State["4-Tier State Layer"]
+        RQ["Server Cache (TanStack Query v5)"]
+        Zustand["Squad Draft Store (Zustand v5)"]
+        Prefs["Persistent UI Prefs (localStorage + Zero-FOUC)"]
     end
 
-    subgraph Logic["Domain & Validation Layer"]
-        ConflictEngine["Client Conflict Engine (src/lib/conflicts.ts)"]
-        GeneratedConstants["Generated Catalog (src/lib/game-constants.generated.ts)"]
-        Formatters["Stat & Disc Formatters (src/lib/format.ts)"]
+    subgraph Logic["Domain & Contracts"]
+        Conflict["Proactive Conflict Checker (src/lib/conflicts.ts)"]
+        Codegen["OpenAPI DTOs & Fairy Game Constants"]
     end
 
-    subgraph UI["Component Layer"]
-        Pages["Page Views (Roster, Teams, Showcase, Settings)"]
-        Composite["Composite Widgets (TeamBuilder, DriveDiscGrid, Inspector)"]
-        Primitives["Headless Primitives (Radix UI / CVA / tailwind-merge)"]
-    end
-
-    subgraph Transport["Transport Boundary"]
-        ApiClient["HTTP API Client (Fetch Wrapper & ApiError)"]
-        ViteProxy["Vite Dev Proxy -> Go Backend (:8080)"]
-    end
-
-    Router --> Shell
-    Shell --> Pages
-    Pages --> Composite
-    Composite --> Primitives
-    Composite --> Zustand
+    Pages --> Widgets --> Primitives
     Pages --> RQ
-    Composite --> ConflictEngine
-    ConflictEngine --> GeneratedConstants
-    RQ --> ApiClient
-    ApiClient --> ViteProxy
+    Widgets --> Zustand
+    Widgets --> Conflict
+    Conflict --> Codegen
+    RQ --> Codegen
 ```
+
+- **Strict 4-Tier State Separation**:
+  1. **Server Cache (`TanStack Query v5`)**: Owns all API fetching, caching, and mutation invalidation for showcases, builds, and squads.
+  2. **Client Draft State (`Zustand v5`)**: `useTeamDraftStore` holds in-progress squad slots, name, and notes while building a new squad.
+  3. **Persistent UI Preferences**: Color palette (`acid` / `champagne`), corner style (`sharp` / `rounded`), background animation toggles, and language (`EN` / `RU` via `i18next`).
+  4. **Local Component State**: Ephemeral modal open states, search queries, and attribute/specialty filters.
+- **Contract-First Type Safety**:
+  - [`src/types/api.generated.ts`](src/types/api.generated.ts) is generated directly from [`../contracts/openapi.yaml`](../contracts/openapi.yaml) via `openapi-typescript`.
+  - [`src/lib/game-constants.generated.ts`](src/lib/game-constants.generated.ts) is generated from the Go `fairy` SDK via `make codegen`, keeping agent metadata, combat attributes, specialties, and Drive Disc set definitions synchronized.
 
 ---
 
-## Key Engineering Decisions & Trade-Offs
+## Directory Structure
 
-### 1. Strict 4-Tier State Separation: TanStack Query & Zustand
-
-**Decision**: Never duplicate server cache into client state variables.
-
-- **Tier 1 (Server Cache)**: Handled exclusively by **TanStack Query v5**. Manages asynchronous lifecycles, background cache revalidation, query invalidation on mutation, and request deduplication.
-- **Tier 2 (Client Draft State)**: Managed via **Zustand v5** (`useTeamBuilderStore`). Used strictly for multi-step interactive workflows, such as picking 3 agents, assigning builds to slots, and validating provisional equipment sets before committing to the database.
-- **Tier 3 (Persistent Preferences)**: Local storage synchronizers for corner rounding styles (`sharp` vs `rounded`) and background animation toggles (`src/lib/corner-style.ts`, `src/lib/bg-animation.ts`).
-- **Tier 4 (Ephemeral UI State)**: Scoped to React component hooks (`useState`) for modal visibility, dropdown opens, and filter inputs.
-
-### 2. Optimistic Conflict Engine Mirroring
-
-**Decision**: Re-implement the Go backend's conflict engine in pure TypeScript (`src/lib/conflicts.ts`).
-
-- **The Problem**: A user picking characters, swapping builds, and reordering squad slots requires instant feedback. Relying solely on server network roundtrips causes UI lag and latency on high-frequency changes.
-- **The Solution**: The client runs an identical $O(N \cdot M)$ conflict detection algorithm in memory on every slot mutation. It evaluates weapon and disc slot duplicates instantaneously ($< 1\text{ms}$).
-- **Server Authority**: When saving a team, the backend executes the definitive check inside a database transaction, returning HTTP `422 Unprocessable Entity` with a structured `ConflictReport` if any invariant was breached. The client's `ApiError` parser extracts these conflicts and attaches them directly to the corresponding UI slots.
-
-### 3. Accessible Headless UI Architecture (Radix Primitives)
-
-**Decision**: Author UI components using headless primitives (**Radix UI**) combined with **Class Variance Authority (`cva`)** and `tailwind-merge`.
-
-- **Accessibility (a11y)**: Interactive widgets (Dialogs, Tooltips, Selects, Dropdowns, Switches) are built on Radix UI primitives. This guarantees 100% compliance with W3C WAI-ARIA 1.2 APG standards, including focus traps inside modals, keyboard navigation (`Escape`, `ArrowKeys`, `Tab`), and screen reader status bindings (`aria-invalid`, `aria-describedby`).
-- **No Wrapper Pollution**: The Slot pattern (`asChild`) allows polymorphic element delegation without introducing redundant wrapper `<div>` nodes.
-
-### 4. Tailwind CSS v4 & Cyberpunk Design System
-
-**Decision**: Standardize on **Tailwind CSS v4** utilizing direct `@theme` integration and CSS Custom Properties.
-
-- **Zero-FOUC Theme Initialization**: A blocking script in `index.html` inspects `localStorage` for visual preferences (scanlines, custom corners) before DOM rendering, completely eliminating Flash of Unstyled Content (FOUC).
-- **ZZZ Aesthetic Integration**: Custom keyframe animations (`zzz-dual-arc-spin`), cyberpunk grid overlays, modular type scales (Unbounded, Russo One, JetBrains Mono, Inter), and high-contrast accessibility ratios.
-
-### 5. Single-Origin Topology & Zero-Secret Client Bundle
-
-**Decision**: Client communicates with `/api/v1` without public environment variables or third-party client SDK credentials.
-
-- **Development**: Vite's internal development proxy routes `/api/v1` traffic to `http://localhost:8080`.
-- **Production**: The production bundle is embedded directly into the Go executable via `//go:embed` and served from the identical origin.
-- **Security Implications**:
-  - Eliminates Cross-Origin Resource Sharing (CORS) preflight requests in production.
-  - Session cookies operate with strict `SameSite=Lax` and `Secure` attributes without subdomain cross-site exposure.
-  - Zero risk of leaking OAuth secrets or server encryption keys into the public browser bundle.
-
-### 6. Deterministic Rollup Chunk Grouping
-
-**Decision**: Configure explicit vendor code-splitting rules in `vite.config.ts`.
-
-- **The Problem**: Without explicit chunk grouping, modern bundlers place vendor runtimes into whichever dynamic import loads first, leading to arbitrarily named chunks (e.g. React landing inside `spinner-*.js`).
-- **The Configuration**:
-  ```typescript
-  codeSplitting: {
-    groups: [
-      {
-        name: 'vendor-react',
-        test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
-        priority: 100,
-      },
-      {
-        name: 'vendor-data',
-        test: /[\\/]node_modules[\\/](@tanstack|i18next|react-i18next)[\\/]/,
-        priority: 90,
-      },
-    ],
-  }
-  ```
-- **Result**: Predictable, isolated vendor chunks that maximize browser cache reuse across releases.
-
----
-
-## Component & Directory Taxonomy
-
-```
+```text
 frontend/src/
-├── api/                    # API client layer
-│   ├── client.ts           # Typed fetch wrapper, ApiError class, status fallbacks
-│   └── hooks.ts            # TanStack Query custom hooks (useBuilds, useTeams, useShowcase)
-├── components/             # Reusable UI component tree
-│   ├── common/             # Global shell (AppHeader, UserMenu, ErrorBoundary, Logo)
-│   ├── home/               # Landing page presentation widgets
-│   ├── roster/             # Agent build management (InspectorDialog, RosterToolbar)
-│   ├── settings/           # UID management forms, segmented controls
-│   ├── showcase/           # Enka profile viewer (DriveDiscGrid, AgentStatsPanel)
-│   ├── teambuilder/        # Squad assembly (BuildPickerDialog, TeamSlotList, Sidebar)
-│   └── ui/                 # Headless Radix UI abstractions (Button, Dialog, Sonner, Tooltip)
-├── hooks/                  # Cross-cutting React hooks (useIsMobile, useLocalStorage)
-├── i18n/                   # Internationalization dictionaries (RU/EN) and formatters
-├── lib/                    # Core utilities and client engine
-│   ├── conflicts.ts        # Client-side conflict detection engine
-│   ├── format.ts           # Stat value and disc property formatting
-│   ├── game-constants.generated.ts # Generated constants from Go Fairy SDK
-│   └── register-service-worker.ts  # Service worker lifecycle manager
-├── pages/                  # Top-level route views (RosterPage, TeamsPage, ShowcasePage)
-├── store/                  # Zustand global stores (teamBuilderStore, authStore)
-├── styles/                 # Tailwind custom themes and typography definitions
-└── types/                  # TypeScript interfaces matching OpenAPI 3.1 DTO contracts
+├── api/                    # Typed fetch client, ApiError parser, TanStack Query hooks
+├── components/
+│   ├── common/             # AppHeader, Footer, UserMenu, EmptyState, ErrorBoundary
+│   ├── home/               # Landing page hero & 5-step onboarding cards
+│   ├── roster/             # Preset switcher, inline build/note editor, roster sidebar
+│   ├── settings/           # Linked UID management & visual preference controls
+│   ├── showcase/           # W-Engine card, AgentStatsPanel, 6-slot DriveDiscGrid
+│   ├── teambuilder/        # 3-slot squad editor & BuildPickerDialog with conflict checks
+│   └── ui/                 # Headless Radix UI primitives (Button, Dialog, Tooltip, etc.)
+├── hooks/                  # Shared React hooks (useActiveAccount, useIsMobile)
+├── i18n/                   # English (EN) and Russian (RU) locale dictionaries
+├── lib/                    # Client conflict checker (conflicts.ts), stat formatters, generated constants
+├── pages/                  # Route views (Home, Showcase, Roster, Teams, TeamBuilder, Settings)
+├── store/                  # Zustand stores (useTeamDraftStore)
+├── styles/                 # Local font declarations (fonts.css)
+└── types/                  # OpenAPI-generated types & domain interfaces
 ```
 
 ---
 
-## Contract-First API Integration & Code Generation
+## Development & Testing
 
-Client types and constants strictly mirror the backend OpenAPI 3.1 specification (`contracts/openapi.yaml`):
-
-1. **Automated Game Constants**:
-   Game elements, combat specialties, drive disc set bonuses, and asset CDN mappings are not typed manually. Running:
-   ```bash
-   npm run codegen
-   ```
-   invokes `backend/cmd/codegen`, which reflects the Go game catalog and writes `src/lib/game-constants.generated.ts`.
-2. **Type Safety Guarantees**:
-   Zero usage of `any`. All API responses and request payloads adhere to strict TypeScript definitions in `src/types/index.ts`.
-
----
-
-## Development & Operational Workflows
-
-### 1. Prerequisites
-
-- **Node.js**: v22.0.0 or higher.
-- **Package Manager**: `npm` (v10+).
-
-### 2. Local Development
-
-Start the development server with Hot Module Replacement (HMR):
 ```bash
+# Start Vite dev server with HMR (:5173, proxies /api/v1 -> :8080)
 npm run dev
-```
-The server binds to [http://localhost:5173](http://localhost:5173). Requests to `/api/v1` are automatically proxied to the backend running on port `8080`.
 
-### 3. Production Build
+# Regenerate OpenAPI TypeScript types
+npm run codegen:api
 
-To execute typechecking and compile the production bundle:
-```bash
-npm run build
-```
-This triggers:
-1. `tsc -b`: Incremental TypeScript type validation across the whole project.
-2. `vite build`: Rollup minification, asset content hashing, CSS purging, and chunk generation into `dist/`.
-
-To preview the production build locally:
-```bash
-npm run preview
-```
-
----
-
-## Testing & Quality Verification
-
-The frontend maintains a comprehensive automated testing matrix:
-
-### 1. Unit & Integration Testing (Vitest)
-
-Unit and component tests execute in a mocked DOM environment via **Vitest**:
-
-```bash
-# Run all unit tests
-npm run test
-```
-*Current test suite status*: **226 tests passing across 42 test suites** in ~1.3 seconds.
-
-### 2. Static Code Analysis (Oxlint)
-
-Static analysis is performed using **Oxlint**, a high-performance Rust-based linter enforcing clean React, JSX, and TypeScript patterns:
-
-```bash
+# Run Oxlint static analysis
 npm run lint
-```
-*Current status*: **0 warnings, 0 errors** across 144 source files.
 
-### 3. End-to-End User Journey Tests (Playwright)
+# Run Vitest unit & component test suite
+npm run test
 
-End-to-end browser automation tests cover critical user workflows:
-- `e2e/smoke.spec.ts`: Application shell bootstrapping, routing, and responsive navigation.
-- `e2e/teambuilder.spec.ts`: Multi-agent squad assembly, slot assignment, and conflict warning banners.
-- `e2e/teams.spec.ts`: Team list rendering, account filtering, and deletion lifecycles.
+# Typecheck and build production bundle (dist/)
+npm run build
 
-Execute the E2E test suite:
-```bash
+# Run Playwright E2E browser tests
 npm run test:e2e
 ```

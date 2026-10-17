@@ -7,9 +7,11 @@
 [![Tests](https://img.shields.io/badge/Tests-Passing%20with%20--race-success)](Makefile)
 [![Linter](https://img.shields.io/badge/Linter-golangci--lint%20(strict)-brightgreen)](.golangci.yml)
 
-The backend service for **ProxyLoadouts (PXL)** is a high-concurrency, low-latency Go application designed to manage *Zenless Zone Zero* (ZZZ) agent builds, combat teams, showcase data synchronization, and automated equipment conflict validation.
+The backend service for **ProxyLoadouts (PXL)** is a low-latency Go 1.26 application that powers *Zenless Zone Zero* showcase synchronization (via EnkaNetwork & Fairy SDK), persistent agent equipment presets (W-Engines & Drive Discs), and 3-agent squad assembly with transactional gear conflict validation.
 
-It can operate either as a decoupled headless RESTful API server or as a **self-contained single binary** with the React 19 SPA embedded directly into the Go executable via `//go:embed`.
+It can run either as a standalone REST API server during local development or as a **self-contained single binary** (`CGO_ENABLED=0`, ~35 MB RAM) with the React 19 SPA embedded directly via `//go:embed`.
+
+[**Root Project Overview**](../README.md) · [**Frontend & UI/UX Showcase**](../frontend/README.md) · [**OpenAPI 3.1 Contract**](../contracts/openapi.yaml)
 
 ---
 
@@ -123,8 +125,8 @@ backend/
 
 **Decision**: Use `modernc.org/sqlite` instead of PostgreSQL or external DBMS services.
 
-- **Why**: ProxyLoadouts is designed for zero-ops, instant portability, and local standalone distribution. For a personal loadout manager, spinning up Docker containers or managing database server processes creates unnecessary friction.
-- **Pure-Go (CGO-Free)**: Eliminates C-compiler dependencies, enabling effortless cross-compilation across macOS, Linux, and Windows.
+- **Why**: ProxyLoadouts is engineered for minimal operational overhead and a tiny resource footprint (~35 MB RAM in production). Embedded SQLite in WAL mode handles read-heavy loadout and squad queries with sub-millisecond latency on a single VPS without maintaining a separate PostgreSQL container.
+- **Pure-Go (CGO-Free)**: Eliminates C-compiler dependencies, enabling fast static builds (`CGO_ENABLED=0`) for minimal Alpine/Linux containers.
 - **Concurrency & WAL Configuration**: SQLite defaults to rollback journal locking. At startup (`internal/adapter/sqlite/db.go`), the engine explicitly sets:
   ```sql
   PRAGMA journal_mode = WAL;
@@ -170,7 +172,7 @@ Upstream game profile queries are subject to strict rate limits. A sudden traffi
 
 - **Security**: The session payload contains the authenticated user ID and a cryptographic nonce. The cookie is encrypted and authenticated using **AES-256-GCM** with a server-side `SESSION_SECRET`.
 - **The Invalidation Challenge**: Stateless cookies normally cannot be revoked until expiry.
-- **Solution (Token Versioning)**: Every user record maintains a `token_version INT DEFAULT 1` in SQLite. When a user requests `/api/v1/auth/me` with `DELETE` or logs out globally, the server increments `token_version`. Any previously issued cookie presenting an outdated version is rejected on sight (`401 Unauthorized`). This provides Redis-level revocation guarantees with zero infrastructure dependencies.
+- **Solution (Token Versioning)**: Every user record maintains a `token_version INT DEFAULT 1` in SQLite. When a user logs out (`POST /api/v1/auth/logout`), the server increments `token_version`, immediately invalidating any previously issued cookie presenting an older version (`401 Unauthorized`). Full account deletion (`DELETE /api/v1/auth/me`) permanently removes the user row and cascades across all linked accounts, builds, and squads.
 
 ### 5. Origin & CSRF Defense Architecture
 
@@ -201,7 +203,7 @@ The API strictly implements the OpenAPI 3.1 specification located at [`contracts
 ### Code Generation Pipeline (`cmd/codegen`)
 To eliminate manual duplication between Go game catalog logic and frontend TypeScript types:
 - `backend/cmd/codegen/main.go` directly inspects the `github.com/kirinyoku/fairy` game data SDK.
-- It automatically generates `frontend/src/lib/game-constants.generated.ts` with agent metadata, element types, specialty mappings, and drive disc catalog definitions.
+- It automatically generates `frontend/src/lib/game-constants.generated.ts` with agent metadata, combat attributes, specialty mappings, and drive disc catalog definitions.
 - Triggered seamlessly via:
   ```bash
   make codegen
@@ -260,7 +262,7 @@ The application distinguishes between two primary operational profiles:
 
 #### Local Development Profile (`ENV=development`)
 
-Designed for immediate developer onboarding, rapid iteration, and offline feature development:
+Designed for local development and rapid iteration:
 
 1. **Start the HTTP Server**:
    ```bash
@@ -268,7 +270,7 @@ Designed for immediate developer onboarding, rapid iteration, and offline featur
    # Alternatively: go run ./cmd/server
    ```
 2. **Behavioral Invariants in Development**:
-   - **Zero-Friction Authentication**: If `DISCORD_CLIENT_ID` or `DISCORD_CLIENT_SECRET` are unset, the server logs an operational warning via `slog.Warn` but boots successfully. Public endpoints (such as `/api/v1/showcase/{uid}`) and the conflict engine can be developed and tested immediately without registering a Discord Developer Application.
+   - **Optional Discord Credentials on Boot**: If `DISCORD_CLIENT_ID` or `DISCORD_CLIENT_SECRET` are unset, the server logs a warning via `slog.Warn` and boots cleanly so public endpoints (`/api/v1/showcase/{uid}`, `/health`) work immediately. Authenticated flows (`Roster`, `Squads`, `Settings`) require configuring Discord OAuth2 dev credentials in `.env`.
    - **Relaxed Cookie Flags**: Cookies permit plain HTTP connections over `localhost`.
    - **Verbose Structured Logging**: `slog` outputs human-readable runtime states.
 3. **Healthcheck Verification**:
@@ -279,7 +281,7 @@ Designed for immediate developer onboarding, rapid iteration, and offline featur
 
 #### Production Profile (`ENV=production`)
 
-Designed for hardened production deployments, headless container environments, or standalone host services:
+Designed for hardened production deployments and container environments:
 
 1. **Compilation**:
    Compile a stripped, statically linked binary with compiler inlining and symbol stripping:
@@ -307,7 +309,7 @@ The backend includes a self-documenting operational Makefile:
 # Display help and target catalog
 make help
 
-# Run development server with live reload
+# Run development server (go run ./cmd/server)
 make run
 
 # Run full test suite with Go Race Detector
