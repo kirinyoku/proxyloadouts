@@ -125,13 +125,13 @@ export function InterknotTerminalError({
       <div
         role="alert"
         className={cn(
-          'relative w-full overflow-hidden rounded-xl border border-white/[0.08] bg-[#111620]/90 shadow-md backdrop-blur-xl',
+          'relative w-full overflow-hidden rounded-xl border border-white/[0.08] bg-card/90 shadow-md backdrop-blur-xl',
           className,
         )}
       >
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 sm:px-4 sm:py-3">
           <div className="flex items-center gap-3">
-            <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border-2 border-black bg-[#090d12] shadow-inner overflow-hidden font-mono text-[10px] font-black text-red-400 select-none">
+            <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border-2 border-black bg-subtle shadow-inner overflow-hidden font-mono text-[10px] font-black text-red-400 select-none">
               <div
                 className="pointer-events-none absolute inset-0 opacity-20"
                 style={{
@@ -183,11 +183,11 @@ export function InterknotTerminalError({
       <div
         role="alert"
         className={cn(
-          'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111620]/90 shadow-2xl backdrop-blur-xl',
+          'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-card/90 shadow-2xl backdrop-blur-xl',
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b-2 border-black bg-[#171e27] px-4 py-2 select-none">
+        <div className="flex items-center justify-between border-b-2 border-black bg-elevated px-4 py-2 select-none">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 font-mono text-[11px] font-black tracking-wider uppercase text-amber-400">
               <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
@@ -205,7 +205,7 @@ export function InterknotTerminalError({
 
         <div className="p-5 sm:p-6 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-[230px_1fr] gap-4 sm:gap-5 items-start">
-            <div className="relative rounded-xl border-2 border-black bg-[#090d12] p-3 shadow-[inset_0_0_15px_rgba(0,0,0,0.9)] overflow-hidden">
+            <div className="relative rounded-xl border-2 border-black bg-subtle p-3 shadow-[inset_0_0_15px_rgba(0,0,0,0.9)] overflow-hidden">
               <div
                 className="pointer-events-none absolute inset-0 opacity-15"
                 style={{
@@ -260,7 +260,7 @@ export function InterknotTerminalError({
             </div>
           </div>
 
-          <div className="rounded-xl border-2 border-black bg-[#151b24] p-3.5 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="rounded-xl border-2 border-black bg-subtle p-3.5 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground font-mono">
               {t('terminalError.rateLimited.waitNote')}
             </span>
@@ -291,11 +291,11 @@ export function InterknotTerminalError({
       <div
         role="alert"
         className={cn(
-          'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111620]/90 shadow-2xl backdrop-blur-xl',
+          'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-card/90 shadow-2xl backdrop-blur-xl',
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b-2 border-black bg-[#171e27] px-4 py-2 select-none">
+        <div className="flex items-center justify-between border-b-2 border-black bg-elevated px-4 py-2 select-none">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 font-mono text-[11px] font-black tracking-wider uppercase text-red-400">
               <span className="size-2 rounded-full bg-red-500 animate-ping" />
@@ -314,7 +314,7 @@ export function InterknotTerminalError({
 
         <div className="p-5 sm:p-6 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-[230px_1fr] gap-4 sm:gap-5 items-start">
-            <div className="relative rounded-xl border-2 border-black bg-[#090d12] p-3 shadow-[inset_0_0_15px_rgba(0,0,0,0.9)] overflow-hidden">
+            <div className="relative rounded-xl border-2 border-black bg-subtle p-3 shadow-[inset_0_0_15px_rgba(0,0,0,0.9)] overflow-hidden">
               <div
                 className="pointer-events-none absolute inset-0 opacity-15"
                 style={{
@@ -367,7 +367,7 @@ export function InterknotTerminalError({
             </div>
           </div>
 
-          <div className="rounded-xl border-2 border-black bg-[#151b24] p-3.5 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="rounded-xl border-2 border-black bg-subtle p-3.5 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground font-mono">
               {t('terminalError.gatewayError.waitNote')}
             </span>
@@ -404,12 +404,12 @@ export function InterknotTerminalError({
     <div
       role="alert"
       className={cn(
-        'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111620]/90 shadow-2xl backdrop-blur-xl',
+        'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-card/90 shadow-2xl backdrop-blur-xl',
         className,
       )}
     >
       {/* Top Terminal Status Header */}
-      <div className="flex items-center justify-between border-b-2 border-black bg-[#171e27] px-4 py-2 select-none">
+      <div className="flex items-center justify-between border-b-2 border-black bg-elevated px-4 py-2 select-none">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 font-mono text-[11px] font-black tracking-wider uppercase text-red-400">
             <span className="size-2 rounded-full bg-red-500 animate-ping" />
@@ -433,7 +433,7 @@ export function InterknotTerminalError({
         {/* Main Diagnostic Split: Left CRT Monitor + Right Detailed Info */}
         <div className="grid grid-cols-1 md:grid-cols-[230px_1fr] gap-4 sm:gap-5 items-start">
           {/* CRT Monitor Block */}
-          <div className="relative rounded-xl border-2 border-black bg-[#090d12] p-3 shadow-[inset_0_0_15px_rgba(0,0,0,0.9)] overflow-hidden">
+          <div className="relative rounded-xl border-2 border-black bg-subtle p-3 shadow-[inset_0_0_15px_rgba(0,0,0,0.9)] overflow-hidden">
             {/* Scanlines Effect */}
             <div
               className="pointer-events-none absolute inset-0 opacity-15"
@@ -511,7 +511,7 @@ export function InterknotTerminalError({
         </div>
 
         {/* Action Panel: Integrated Inline Search + Retry or Custom Actions */}
-        <div className="rounded-xl border-2 border-black bg-[#151b24] p-3.5 sm:p-4">
+        <div className="rounded-xl border-2 border-black bg-subtle p-3.5 sm:p-4">
           {actions ? (
             <div className="flex flex-wrap items-center justify-center gap-3 w-full">
               {actions}
@@ -529,7 +529,7 @@ export function InterknotTerminalError({
                       value={currentUid}
                       onChange={(e) => setEditedUid(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder={t('terminalError.correctUidPlaceholder')}
-                      className="w-full rounded-[8px_8px_0_8px] border-2 border-black bg-[#0d1117] pl-12 pr-3 py-2 font-mono text-xs font-semibold text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]"
+                      className="w-full rounded-[8px_8px_0_8px] border-2 border-black bg-subtle pl-12 pr-3 py-2 font-mono text-xs font-semibold text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]"
                     />
                   </div>
 

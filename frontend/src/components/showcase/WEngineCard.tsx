@@ -50,7 +50,7 @@ export function WEngineCard({ wEngine, className, headingLevel = 3 }: WEngineCar
   return (
     <div
       className={cn(
-        'relative rounded-2xl border border-white/[0.2] bg-[#111722]/96 p-3 shadow-md backdrop-blur-sm transition-all',
+        'relative rounded-2xl border border-white/[0.2] bg-card/96 p-3 shadow-md backdrop-blur-sm transition-all',
         className,
       )}
     >
@@ -99,7 +99,7 @@ export function WEngineCard({ wEngine, className, headingLevel = 3 }: WEngineCar
 
           <div className="mt-1.5 flex items-center">
             <div
-              className="inline-flex h-6 shrink-0 items-center gap-1.5 overflow-hidden rounded-lg border border-black bg-[#232b36] pr-2 shadow-xs"
+              className="inline-flex h-6 shrink-0 items-center gap-1.5 overflow-hidden rounded-lg border border-black bg-accent pr-2 shadow-xs"
               title={t('gear.wEngineStatsTooltip', {
                 rarity: wEngine.rarity,
                 level: wEngine.level,

@@ -60,13 +60,13 @@ interface RosterToolbarProps {
  * Roster filtering toolbar:
  * - Title & back-to-teams link
  * - Search input
- * - Attribute capsule (standard elemental attributes)
- * - Specialty capsule (standard combat roles)
+ * - Attribute capsule (standard combat attributes)
+ * - Specialty capsule (standard combat specialties)
  * - Reset active filters button
  *
  * Mobile layout ergonomics:
- * - Dedicated rows for Element and Role filters so both are instantly visible
- *   without requiring horizontal scrolling or hiding roles behind elements.
+ * - Dedicated rows for Attribute and Specialty filters so both are instantly visible
+ *   without requiring horizontal scrolling or hiding specialties behind attributes.
  */
 export function RosterToolbar({
   search,
@@ -182,7 +182,7 @@ export function RosterToolbar({
   }
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 rounded-2xl border border-white/[0.08] bg-[#111620]/90 p-2 sm:px-3 sm:py-1.5 shadow-lg backdrop-blur-xl">
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 rounded-2xl border border-white/[0.08] bg-card/90 p-2 sm:px-3 sm:py-1.5 shadow-lg backdrop-blur-xl">
       {/* 1. Top row on mobile / Left section on desktop: Title, back to teams navigation, count badge, and mobile search */}
       <div className="flex items-center justify-between gap-2 w-full md:w-auto select-none">
         <div className="flex items-center gap-2">
@@ -252,10 +252,10 @@ export function RosterToolbar({
         )}
       </div>
 
-      {/* 2. Mobile Filter Rows: Two distinct rows for Element and Role without text labels */}
+      {/* 2. Mobile Filter Rows: Two distinct rows for Attribute and Specialty without text labels */}
       {totalAgents > 0 && (
         <div className="flex flex-col gap-1.5 pt-1 border-t border-white/[0.06] md:hidden w-full">
-          {/* Row 1: Element / Attribute capsule */}
+          {/* Row 1: Attribute capsule */}
           <div
             role="group"
             aria-label={t('roster.filterAttributes')}
@@ -264,7 +264,7 @@ export function RosterToolbar({
             {renderAttributeButtons()}
           </div>
 
-          {/* Row 2: Role / Specialty capsule */}
+          {/* Row 2: Specialty capsule */}
           <div
             role="group"
             aria-label={t('roster.filterSpecialties')}
@@ -275,10 +275,10 @@ export function RosterToolbar({
         </div>
       )}
 
-      {/* 3. Desktop Filter Controls: Inline row with Element capsule, Role capsule, Search, and Reset */}
+      {/* 3. Desktop Filter Controls: Inline row with Attribute capsule, Specialty capsule, Search, and Reset */}
       {totalAgents > 0 && (
         <div className="hidden md:flex items-center gap-2">
-          {/* Desktop Element / Attribute capsule */}
+          {/* Desktop Attribute capsule */}
           <div
             role="group"
             aria-label={t('roster.filterAttributes')}
@@ -290,7 +290,7 @@ export function RosterToolbar({
           {/* Subtle separator */}
           <div className="h-4 w-px bg-white/10 shrink-0" aria-hidden="true" />
 
-          {/* Desktop Role / Specialty capsule */}
+          {/* Desktop Specialty capsule */}
           <div
             role="group"
             aria-label={t('roster.filterSpecialties')}

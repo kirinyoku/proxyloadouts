@@ -38,7 +38,7 @@ function NavTab({
               ? 'flex w-full h-8.5 px-2 text-xs font-semibold tracking-wide'
               : 'inline-flex px-4 py-1.5 text-xs md:text-sm font-semibold tracking-wide',
             isActive
-              ? 'checker-dark border-black bg-primary font-bold text-primary-foreground shadow-[inset_0_0_0_2px_var(--primary),inset_0_0_0_3px_rgba(0,0,0,0.85),0_3px_14px_-4px_rgba(201,242,75,0.45)]'
+              ? 'checker-dark border-black bg-primary font-bold text-primary-foreground shadow-[inset_0_0_0_2px_var(--primary),inset_0_0_0_3px_rgba(0,0,0,0.85),0_3px_14px_-4px_color-mix(in_oklch,var(--primary)_45%,transparent)]'
               : 'border-white/10 bg-white/[0.03] text-muted-foreground hover:border-border hover:bg-elevated hover:text-foreground font-medium active:scale-[0.98]',
           )}
         >

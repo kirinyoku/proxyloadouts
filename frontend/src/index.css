@@ -130,6 +130,110 @@
     --sidebar-accent-foreground: #f3f5f8;
     --sidebar-border: rgba(255, 255, 255, 0.09);
     --sidebar-ring: #c9f24b;
+
+    /* Tier 1 Primitive Scales: Champagne Gold & Warm Bronze (50–950) */
+    --gold-50:  #fefce8;
+    --gold-100: #fef9c3;
+    --gold-200: #fef08a;
+    --gold-300: #fde047;
+    --gold-400: #facc15;
+    --gold-500: #eab308;
+    --gold-600: #ca8a04;
+    --gold-700: #a16207;
+    --gold-800: #854d0e;
+    --gold-900: #713f12;
+    --gold-950: #422006;
+
+    --bronze-50:  #fafaf9;
+    --bronze-100: #f5f5f4;
+    --bronze-200: #e7e5e4;
+    --bronze-300: #d6d3d1;
+    --bronze-400: #a8a29e;
+    --bronze-500: #78716c;
+    --bronze-600: #57534e;
+    --bronze-700: #44403c;
+    --bronze-800: #292524;
+    --bronze-900: #161412;
+    --bronze-950: #0c0b0a;
+}
+
+/* ============ CHAMPAGNE GOLD & WARM BRONZE PALETTE ============ */
+
+[data-palette="champagne"] {
+    /* Surfaces — Warm Onyx & Basalt (3% warm brass tint) */
+    --background: #0c0b0a;
+    --foreground: #f5f5f4;
+    --surface-subtle: #11100e;
+    --card: #161412;
+    --card-foreground: #f5f5f4;
+    --popover: #1f1c19;
+    --popover-foreground: #f5f5f4;
+    --surface-elevated: #1f1c19;
+
+    /* Brand & Interactive Accents */
+    --primary: #eab308;
+    --primary-foreground: #0c0b0a;
+    --brand: #facc15;
+    --secondary: #1f1c19;
+    --secondary-foreground: #f5f5f4;
+    --muted: #1c1917;
+    --muted-foreground: #a8a29e;
+    --accent: #292524;
+    --accent-foreground: #f5f5f4;
+
+    /* Semantic Status (Warning shifted to Tactical Orange to avoid colliding with Gold primary) */
+    --success: #10b981;
+    --warning: #f97316;
+    --destructive: #f43f5e;
+    --info: #38bdf8;
+
+    /* Borders, Inputs & Focus Rings */
+    --border: rgba(245, 245, 244, 0.09);
+    --input: rgba(245, 245, 244, 0.14);
+    --ring: #eab308;
+
+    /* Data Visualization / Charts */
+    --chart-1: #eab308;
+    --chart-2: #78716c;
+    --chart-3: #f97316;
+    --chart-4: #38bdf8;
+    --chart-5: #a855f7;
+
+    /* Sidebar Tokens */
+    --sidebar: #161412;
+    --sidebar-foreground: #f5f5f4;
+    --sidebar-primary: #eab308;
+    --sidebar-primary-foreground: #0c0b0a;
+    --sidebar-accent: #292524;
+    --sidebar-accent-foreground: #f5f5f4;
+    --sidebar-border: rgba(245, 245, 244, 0.09);
+    --sidebar-ring: #eab308;
+}
+
+[data-palette="champagne"].light,
+[data-palette="champagne"][data-theme="light"] {
+    --background: #fafaf9;
+    --foreground: #0c0b0a;
+    --surface-subtle: #f5f5f4;
+    --card: #ffffff;
+    --card-foreground: #0c0b0a;
+    --popover: #ffffff;
+    --popover-foreground: #0c0b0a;
+    --surface-elevated: #f5f5f4;
+
+    --primary: #ca8a04;
+    --primary-foreground: #ffffff;
+    --brand: #a16207;
+    --secondary: #e7e5e4;
+    --secondary-foreground: #1c1917;
+    --muted: #f5f5f4;
+    --muted-foreground: #57534e;
+    --accent: #e7e5e4;
+    --accent-foreground: #0c0b0a;
+
+    --border: rgba(12, 11, 10, 0.10);
+    --input: rgba(12, 11, 10, 0.16);
+    --ring: #ca8a04;
 }
 
 @layer base {
@@ -143,6 +247,11 @@
       radial-gradient(circle at 100% 100%, rgba(46, 182, 255, 0.04), transparent 50%);
     background-attachment: fixed;
     }
+  [data-palette="champagne"] body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(234, 179, 8, 0.06), transparent 70%),
+      radial-gradient(circle at 100% 100%, rgba(120, 113, 108, 0.05), transparent 50%);
+  }
   html {
     @apply font-sans;
     }
@@ -467,6 +576,16 @@
   transform: translateZ(0);
 }
 
+[data-palette="champagne"] .vhs-tracking-line {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(245, 245, 244, 0.07) 35%,
+    rgba(234, 179, 8, 0.08) 55%,
+    transparent 100%
+  );
+}
+
 /* Analog shutter bar sweeping across a horizontal 35mm film strip */
 @keyframes film-playhead-sweep {
   0% {
@@ -519,10 +638,10 @@
 
 /* Success Toast */
 .cn-toast[data-type="success"] {
-  border-color: rgba(0, 204, 13, 0.45) !important;
+  border-color: color-mix(in oklch, var(--success) 40%, transparent) !important;
   box-shadow:
     0 12px 32px -4px rgba(0, 0, 0, 0.65),
-    0 0 16px rgba(0, 204, 13, 0.14) !important;
+    0 0 16px color-mix(in oklch, var(--success) 14%, transparent) !important;
 }
 .cn-toast[data-type="success"] [data-icon] {
   color: var(--success) !important;
@@ -530,10 +649,10 @@
 
 /* Error Toast */
 .cn-toast[data-type="error"] {
-  border-color: rgba(224, 45, 27, 0.5) !important;
+  border-color: color-mix(in oklch, var(--destructive) 45%, transparent) !important;
   box-shadow:
     0 12px 32px -4px rgba(0, 0, 0, 0.65),
-    0 0 16px rgba(224, 45, 27, 0.16) !important;
+    0 0 16px color-mix(in oklch, var(--destructive) 16%, transparent) !important;
 }
 .cn-toast[data-type="error"] [data-icon] {
   color: var(--destructive) !important;
@@ -541,10 +660,10 @@
 
 /* Warning Toast */
 .cn-toast[data-type="warning"] {
-  border-color: rgba(255, 195, 0, 0.45) !important;
+  border-color: color-mix(in oklch, var(--warning) 40%, transparent) !important;
   box-shadow:
     0 12px 32px -4px rgba(0, 0, 0, 0.65),
-    0 0 16px rgba(255, 195, 0, 0.14) !important;
+    0 0 16px color-mix(in oklch, var(--warning) 14%, transparent) !important;
 }
 .cn-toast[data-type="warning"] [data-icon] {
   color: var(--warning) !important;
@@ -552,10 +671,10 @@
 
 /* Info Toast */
 .cn-toast[data-type="info"] {
-  border-color: rgba(56, 189, 248, 0.45) !important;
+  border-color: color-mix(in oklch, var(--info) 40%, transparent) !important;
   box-shadow:
     0 12px 32px -4px rgba(0, 0, 0, 0.65),
-    0 0 16px rgba(56, 189, 248, 0.14) !important;
+    0 0 16px color-mix(in oklch, var(--info) 14%, transparent) !important;
 }
 .cn-toast[data-type="info"] [data-icon] {
   color: var(--info) !important;

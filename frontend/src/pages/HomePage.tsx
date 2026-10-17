@@ -30,7 +30,7 @@ export function HomePage() {
         <div className="mx-auto max-w-3xl space-y-3">
           <h1 className="font-heading text-xl font-bold uppercase tracking-wider sm:text-3xl lg:text-4xl text-foreground">
             <span className="block sm:whitespace-nowrap">{t('home.title1')}</span>
-            <span className="block mt-1 sm:whitespace-nowrap bg-gradient-to-r from-primary via-[#ddf858] to-brand bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(201,242,75,0.2)]">
+            <span className="block mt-1 sm:whitespace-nowrap bg-gradient-to-r from-primary via-brand to-primary bg-clip-text text-transparent drop-shadow-[0_2px_12px_color-mix(in_oklch,var(--primary)_20%,transparent)]">
               {t('home.title2', 'Zenless Zone Zero')}
             </span>
           </h1>

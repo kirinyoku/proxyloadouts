@@ -69,7 +69,7 @@ export function TeamBuilderSidebar({
 
   return (
     <aside className="space-y-3 lg:sticky lg:top-20">
-      <div className="rounded-2xl border border-white/15 bg-[#141922] p-4 sm:p-5 shadow-[0_16px_40px_rgba(0,0,0,0.65)] space-y-3.5">
+      <div className="rounded-2xl border border-white/15 bg-card p-4 sm:p-5 shadow-[0_16px_40px_rgba(0,0,0,0.65)] space-y-3.5">
         <div className="space-y-3.5">
           {/* Team Name Input */}
           <div className="space-y-1.5">
@@ -90,7 +90,7 @@ export function TeamBuilderSidebar({
               value={name}
               onChange={(event) => onSetName(event.target.value)}
               maxLength={100}
-              className="bg-[#0f141c] dark:bg-[#0f141c] border-white/20 text-sm text-foreground focus-visible:bg-[#131a24] focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/40 shadow-xs transition-all"
+              className="bg-subtle dark:bg-subtle border-white/20 text-sm text-foreground focus-visible:bg-elevated focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/40 shadow-xs transition-all"
             />
             <p className="text-[11px] text-zinc-400">
               {t('teamBuilder.nameAutoHint')}
@@ -117,7 +117,7 @@ export function TeamBuilderSidebar({
               onChange={(event) => onSetDescription(event.target.value)}
               rows={2}
               maxLength={500}
-              className="bg-[#0f141c] dark:bg-[#0f141c] border-white/20 text-xs text-foreground resize-none focus-visible:bg-[#131a24] focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/40 shadow-xs transition-all"
+              className="bg-subtle dark:bg-subtle border-white/20 text-xs text-foreground resize-none focus-visible:bg-elevated focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/40 shadow-xs transition-all"
             />
           </div>
         </div>

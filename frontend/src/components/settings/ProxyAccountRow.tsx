@@ -63,7 +63,7 @@ export function ProxyAccountRow({ account, isActive }: ProxyAccountRowProps) {
           className={cn(
             'size-2 shrink-0 rounded-full transition-colors',
             isActive
-              ? 'bg-primary shadow-[0_0_8px_rgba(201,242,75,0.7)]'
+              ? 'bg-primary shadow-[0_0_8px_color-mix(in_oklch,var(--primary)_70%,transparent)]'
               : 'bg-white/20'
           )}
         />

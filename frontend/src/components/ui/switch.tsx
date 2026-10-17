@@ -49,7 +49,7 @@ function Switch({
         className={cn(
           "pointer-events-none block size-5 rounded-4xl shadow-sm transition-transform duration-200 ease-out",
           checked
-            ? "translate-x-5 bg-[#111400]"
+            ? "translate-x-5 bg-primary-foreground"
             : "translate-x-0 bg-white/75"
         )}
       />

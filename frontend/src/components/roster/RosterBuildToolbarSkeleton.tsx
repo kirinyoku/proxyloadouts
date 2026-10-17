@@ -22,7 +22,7 @@ export function RosterBuildToolbarSkeleton({ className }: RosterBuildToolbarSkel
       <Skeleton className="h-8 w-14 shrink-0 rounded-xl" />
 
       {/* Build controls cluster */}
-      <div className="flex h-9 min-w-0 flex-1 items-center gap-0.5 rounded-xl border border-white/[0.09] bg-[#0e141c]/70 p-0.5">
+      <div className="flex h-9 min-w-0 flex-1 items-center gap-0.5 rounded-xl border border-white/[0.09] bg-subtle/70 p-0.5">
         <Skeleton className="h-7.5 w-24 rounded-[10px] sm:w-32 md:w-40" />
         <Skeleton className="size-7.5 shrink-0 rounded-[10px]" />
         <div className="mx-0.5 h-5 w-px shrink-0 bg-white/[0.1]" />

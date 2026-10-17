@@ -44,7 +44,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit cursor-pointer items-center justify-between gap-2 whitespace-nowrap rounded-[10px_10px_0_10px] border-2 border-black bg-[#121820] text-foreground font-mono font-bold transition-all outline-none select-none shadow-xs hover:border-white/20 hover:bg-[#18202c] focus-visible:border-primary/80 focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-placeholder:text-muted-foreground",
+        "flex w-fit cursor-pointer items-center justify-between gap-2 whitespace-nowrap rounded-[10px_10px_0_10px] border-2 border-black bg-card text-foreground font-mono font-bold transition-all outline-none select-none shadow-xs hover:border-white/20 hover:bg-elevated focus-visible:border-primary/80 focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-placeholder:text-muted-foreground",
         size === "sm" ? "h-8 px-2.5 py-1 text-xs" : "h-10 px-3.5 py-2 text-sm",
         "[&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:block [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
@@ -72,7 +72,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "relative z-50 min-w-40 max-h-(--radix-select-content-available-height) origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[16px_16px_0_16px] border-2 border-black bg-[#0f141c]/98 p-1 text-popover-foreground shadow-2xl backdrop-blur-md ring-0 duration-150 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "relative z-50 min-w-40 max-h-(--radix-select-content-available-height) origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[16px_16px_0_16px] border-2 border-black bg-popover/98 p-1 text-popover-foreground shadow-2xl backdrop-blur-md ring-0 duration-150 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         position={position}
@@ -157,7 +157,7 @@ function SelectScrollUpButton({
     <SelectPrimitive.ScrollUpButton
       data-slot="select-scroll-up-button"
       className={cn(
-        "z-10 flex cursor-default items-center justify-center bg-[#0f141c] py-1 text-muted-foreground [&_svg:not([class*='size-'])]:size-4",
+        "z-10 flex cursor-default items-center justify-center bg-popover py-1 text-muted-foreground [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -175,7 +175,7 @@ function SelectScrollDownButton({
     <SelectPrimitive.ScrollDownButton
       data-slot="select-scroll-down-button"
       className={cn(
-        "z-10 flex cursor-default items-center justify-center bg-[#0f141c] py-1 text-muted-foreground [&_svg:not([class*='size-'])]:size-4",
+        "z-10 flex cursor-default items-center justify-center bg-popover py-1 text-muted-foreground [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}

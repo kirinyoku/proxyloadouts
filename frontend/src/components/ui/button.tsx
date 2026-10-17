@@ -11,7 +11,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "checker-dark bg-primary text-primary-foreground shadow-[inset_0_2px_3px_rgba(255,255,255,0.45),inset_0_0_0_3px_var(--primary),inset_0_0_0_4px_rgba(0,0,0,0.85),0_4px_18px_-4px_rgba(201,242,75,0.35)] hover:brightness-105 active:brightness-95",
+          "checker-dark bg-primary text-primary-foreground shadow-[inset_0_2px_3px_rgba(255,255,255,0.45),inset_0_0_0_3px_var(--primary),inset_0_0_0_4px_rgba(0,0,0,0.85),0_4px_18px_-4px_color-mix(in_oklch,var(--primary)_35%,transparent)] hover:brightness-105 active:brightness-95",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:

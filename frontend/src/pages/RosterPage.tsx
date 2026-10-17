@@ -38,7 +38,7 @@ function MobileSectionTabs({
   ]
 
   return (
-    <div className="sticky top-14 z-30 -mx-2.5 sm:-mx-3 border-b border-white/[0.06] bg-[#0d121a]/95 px-3 py-1 backdrop-blur-sm lg:hidden">
+    <div className="sticky top-14 z-30 -mx-2.5 sm:-mx-3 border-b border-white/[0.06] bg-background/95 px-3 py-1 backdrop-blur-sm lg:hidden">
       <div
         role="tablist"
         aria-label={t('showcase.agentSectionsAria')}
@@ -392,7 +392,7 @@ export function RosterPage({
                   ref={agentRailRef}
                   role="tablist"
                   aria-label={t('showcase.agentsRailAria')}
-                  className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/96 p-2 shadow-xl backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                  className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-card/96 p-2 shadow-xl backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
                 >
                   {filteredGroups.map((group) => (
                     <AgentAvatarTab
@@ -411,7 +411,7 @@ export function RosterPage({
 
               {/* Right column: detailed build inspector */}
               <div className="min-w-0 flex-1 w-full">
-                <div className="relative rounded-3xl border border-white/[0.08] bg-[#111620]/96 p-2.5 md:py-3 md:px-3.5 shadow-2xl backdrop-blur-sm">
+                <div className="relative rounded-3xl border border-white/[0.08] bg-card/96 p-2.5 md:py-3 md:px-3.5 shadow-2xl backdrop-blur-sm">
                   <div className="space-y-2.5">
                     {/* Build management toolbar */}
                     <RosterBuildToolbar

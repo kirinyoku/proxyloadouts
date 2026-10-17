@@ -63,7 +63,7 @@ export function EmptyState({
     <div
       role="status"
       className={cn(
-        'relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 shadow-lg backdrop-blur-sm',
+        'relative rounded-2xl border border-white/[0.08] bg-card/96 shadow-lg backdrop-blur-sm',
         isSmall ? 'p-6 sm:py-8' : 'p-8 sm:py-12',
         className
       )}

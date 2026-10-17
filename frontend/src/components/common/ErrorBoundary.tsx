@@ -58,7 +58,7 @@ export class ErrorBoundaryClass extends Component<ErrorBoundaryProps, State> {
           aria-live="assertive"
           className="flex min-h-[50vh] flex-col items-center justify-center p-4"
         >
-          <div className="card-zzz max-w-lg w-full p-6 text-center space-y-4 border-destructive/50 bg-[#121620]/95 shadow-2xl">
+          <div className="card-zzz max-w-lg w-full p-6 text-center space-y-4 border-destructive/50 bg-card/95 shadow-2xl">
             <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-destructive/15 text-destructive border border-destructive/30">
               <AlertTriangle className="size-6" aria-hidden="true" />
             </div>

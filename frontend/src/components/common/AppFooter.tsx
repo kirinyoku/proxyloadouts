@@ -13,7 +13,7 @@ export function AppFooter() {
   return (
     <footer
       aria-label={t('footer.aria')}
-      className="relative mt-auto border-t-2 border-black bg-[#0a0d12] text-muted-foreground"
+      className="relative mt-auto border-t-2 border-black bg-background text-muted-foreground"
     >
       {/* Decorative top accent hairline */}
       <div

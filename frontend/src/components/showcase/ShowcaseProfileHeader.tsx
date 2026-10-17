@@ -283,7 +283,7 @@ function SearchForm({
   return (
     <form
       className={cn(
-        'flex h-8 items-center gap-1.5 rounded-[10px_10px_0_10px] border-2 border-black bg-elevated pr-1 pl-2.5 shadow-[inset_0_0_0_1px_var(--border),0_2px_8px_-4px_rgba(0,0,0,0.5)] transition-shadow focus-within:shadow-[inset_0_0_0_1.5px_rgba(201,242,75,0.7),0_0_14px_-4px_rgba(201,242,75,0.35)]',
+        'flex h-8 items-center gap-1.5 rounded-[10px_10px_0_10px] border-2 border-black bg-elevated pr-1 pl-2.5 shadow-[inset_0_0_0_1px_var(--border),0_2px_8px_-4px_rgba(0,0,0,0.5)] transition-shadow focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--primary)_70%,transparent),0_0_14px_-4px_color-mix(in_oklch,var(--primary)_35%,transparent)]',
         className
       )}
       onSubmit={(event) => {
@@ -355,7 +355,7 @@ export function ShowcaseProfileHeader({
   onRefresh,
 }: ShowcaseProfileHeaderProps) {
   return (
-    <div className="relative rounded-2xl border border-white/[0.08] bg-[#111620]/96 p-3 sm:px-4 sm:py-2 shadow-lg backdrop-blur-sm">
+    <div className="relative rounded-2xl border border-white/[0.08] bg-card/96 p-3 sm:px-4 sm:py-2 shadow-lg backdrop-blur-sm">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         {/* Profile Identity: avatar, IL level, nickname, server badge, UID copy */}
         <div className="flex min-w-0 items-center gap-2.5">

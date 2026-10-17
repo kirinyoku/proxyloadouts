@@ -54,9 +54,9 @@ export function UserMenu() {
         <button
           type="button"
           className={cn(
-            'group flex h-9.5 cursor-pointer items-center gap-2 rounded-[10px_10px_0_10px] border-2 border-black bg-[#121820] px-2 py-1 transition-all outline-none select-none',
-            'hover:border-white/30 hover:bg-[#182230] focus-visible:border-primary/80 focus-visible:ring-2 focus-visible:ring-primary/40',
-            'data-[state=open]:border-primary/80 data-[state=open]:bg-[#182230]'
+            'group flex h-9.5 cursor-pointer items-center gap-2 rounded-[10px_10px_0_10px] border-2 border-black bg-card px-2 py-1 transition-all outline-none select-none',
+            'hover:border-white/30 hover:bg-elevated focus-visible:border-primary/80 focus-visible:ring-2 focus-visible:ring-primary/40',
+            'data-[state=open]:border-primary/80 data-[state=open]:bg-elevated'
           )}
         >
           {/* Avatar with ZZZ-style border */}
@@ -152,7 +152,7 @@ export function UserMenu() {
                       className={cn(
                         'size-1.5 shrink-0 rounded-full',
                         isActive
-                          ? 'bg-primary shadow-[0_0_6px_rgba(201,242,75,0.8)]'
+                          ? 'bg-primary shadow-[0_0_6px_color-mix(in_oklch,var(--primary)_80%,transparent)]'
                           : 'bg-muted-foreground/30'
                       )}
                     />
@@ -206,7 +206,7 @@ export function UserMenu() {
                         className={cn(
                           'flex h-4.5 w-6 shrink-0 items-center justify-center rounded-[5px_5px_0_5px] border text-[9px] font-bold uppercase transition-colors',
                           isSelected
-                            ? 'border-primary/60 bg-primary/20 text-primary shadow-[0_0_6px_rgba(201,242,75,0.2)]'
+                            ? 'border-primary/60 bg-primary/20 text-primary shadow-[0_0_6px_color-mix(in_oklch,var(--primary)_20%,transparent)]'
                             : 'border-white/10 bg-white/5 text-muted-foreground'
                         )}
                       >

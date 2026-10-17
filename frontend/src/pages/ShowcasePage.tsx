@@ -154,7 +154,7 @@ function AgentShowcaseSection({
   }
 
   return (
-    <div className="relative rounded-3xl border border-white/[0.08] bg-[#111620]/96 p-3 shadow-xl backdrop-blur-sm md:p-4">
+    <div className="relative rounded-3xl border border-white/[0.08] bg-card/96 p-3 shadow-xl backdrop-blur-sm md:p-4">
       <div className="space-y-3">
         {/* Agent identity and the primary build action */}
         <div className="flex items-center justify-between gap-2 border-b border-white/[0.08] pb-2">
@@ -433,7 +433,7 @@ export function ShowcasePage() {
                     ref={agentRailRef}
                     role="tablist"
                     aria-label={t('showcase.agentsRailAria')}
-                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#111620]/96 p-2 shadow-xl backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-card/96 p-2 shadow-xl backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
                   >
                     {showcase.agents.map((agent) => (
                       <AgentAvatarTab

@@ -117,7 +117,7 @@ export function HowItWorks({ className, ...props }: HowItWorksProps) {
                     {/* Step Number Badge (headroom guaranteed by container pt-4) */}
                     <span
                       aria-hidden="true"
-                      className="absolute -top-1.5 -right-1.5 flex size-5 sm:size-5.5 items-center justify-center rounded-full border border-primary/50 bg-[#0c0f13] font-mono text-[10px] font-bold text-primary shadow-xs"
+                      className="absolute -top-1.5 -right-1.5 flex size-5 sm:size-5.5 items-center justify-center rounded-full border border-primary/50 bg-background font-mono text-[10px] font-bold text-primary shadow-xs"
                     >
                       {step.number}
                     </span>

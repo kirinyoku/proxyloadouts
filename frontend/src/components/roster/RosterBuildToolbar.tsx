@@ -128,7 +128,7 @@ export function RosterBuildToolbar({
         )}
 
         {/* Zone 2: build controls cluster — compact surface wrapping build picker and note */}
-        <div className="flex h-9 min-w-0 w-fit max-w-full items-center gap-0.5 rounded-xl border border-white/[0.09] bg-[#0e141c]/70 p-0.5 shadow-inner">
+        <div className="flex h-9 min-w-0 w-fit max-w-full items-center gap-0.5 rounded-xl border border-white/[0.09] bg-subtle/70 p-0.5 shadow-inner">
           {editingName ? (
             <div className="flex h-full min-w-0 w-48 sm:w-60 max-w-full items-center gap-1 px-0.5">
               <input
@@ -295,7 +295,7 @@ export function RosterBuildToolbar({
                 <span>{t('roster.deleteBuildButton')}</span>
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="bg-[#111620] border border-white/[0.12] rounded-2xl shadow-2xl backdrop-blur-xl">
+            <AlertDialogContent className="bg-popover border border-white/[0.12] rounded-2xl shadow-2xl backdrop-blur-xl">
               <AlertDialogHeader>
                 <AlertDialogTitle className="font-heading text-lg break-words">
                   {t('roster.deleteDialogTitle', { name: currentBuild.name })}
@@ -367,7 +367,7 @@ export function RosterBuildToolbar({
               >
                 <SelectTrigger
                   size="sm"
-                  className="h-8 flex-1 min-w-0 text-xs font-mono border-white/15 bg-[#121820] hover:border-white/30 text-foreground"
+                  className="h-8 flex-1 min-w-0 text-xs font-mono border-white/15 bg-card hover:border-white/30 text-foreground"
                   title={`${currentBuild.name} (${formatDateTime(currentBuild.updated_at || currentBuild.created_at)})`}
                 >
                   <SelectValue placeholder={t('roster.buildSelectPlaceholder')}>
@@ -391,7 +391,7 @@ export function RosterBuildToolbar({
                 type="button"
                 onClick={handleStartRename}
                 disabled={isPending}
-                className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-[#141a24] text-neutral-300 shadow-xs transition-all hover:border-primary/50 hover:bg-[#1c2432] hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
+                className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-card text-neutral-300 shadow-xs transition-all hover:border-primary/50 hover:bg-elevated hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
                 title={t('roster.renameBuild')}
               >
                 <Pencil className="size-3" />
@@ -413,7 +413,7 @@ export function RosterBuildToolbar({
                 <Trash2 className="size-3.5 shrink-0" />
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="bg-[#111620] border border-white/[0.12] rounded-2xl shadow-2xl backdrop-blur-xl">
+            <AlertDialogContent className="bg-popover border border-white/[0.12] rounded-2xl shadow-2xl backdrop-blur-xl">
               <AlertDialogHeader>
                 <AlertDialogTitle className="font-heading text-lg break-words">
                   {t('roster.deleteDialogTitle', { name: currentBuild.name })}
@@ -483,7 +483,7 @@ export function RosterBuildToolbar({
                   handleStartNoteEdit()
                 }
               }}
-              className="group/note flex h-7.5 flex-1 min-w-0 items-center justify-between gap-1.5 rounded-xl border border-white/[0.1] bg-[#121820]/80 px-2.5 text-xs transition-all hover:border-white/25 hover:bg-[#18202c] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none shadow-xs"
+              className="group/note flex h-7.5 flex-1 min-w-0 items-center justify-between gap-1.5 rounded-xl border border-white/[0.1] bg-card/80 px-2.5 text-xs transition-all hover:border-white/25 hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none shadow-xs"
               title={t('roster.noteEditTitle', { desc: currentBuild.description ?? '' })}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">

@@ -23,7 +23,7 @@ const strokeWidths = {
 }
 
 const colorClasses = {
-  primary: 'text-primary drop-shadow-[0_0_6px_rgba(201,242,75,0.45)]',
+  primary: 'text-primary drop-shadow-[0_0_6px_color-mix(in_oklch,var(--primary)_45%,transparent)]',
   cyan: 'text-[#2eb6ff] drop-shadow-[0_0_6px_rgba(46,182,255,0.4)]',
   white: 'text-white',
   current: 'text-current',

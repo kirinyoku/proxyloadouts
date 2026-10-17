@@ -3,11 +3,11 @@ import { cn } from '@/lib/utils'
 
 interface SettingsRowProps {
   label: string
-  /** Explanatory copy under the label. */
-  hint?: string
+  /** Explanatory copy or active state sublabel under the label. */
+  hint?: ReactNode
   control: ReactNode
   className?: string
-  /** Keep control on the same line as label on mobile (ideal for switches). */
+  /** Keep control on the same line as label on mobile (ideal for switches and compact wells). */
   inline?: boolean
 }
 
@@ -26,7 +26,7 @@ export function SettingsRow({
     return (
       <div
         className={cn(
-          'grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1.5 py-3.5 sm:py-4',
+          'grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-0.5 py-3.5',
           className
         )}
       >
@@ -34,14 +34,19 @@ export function SettingsRow({
           {label}
         </span>
 
-        <div className="row-span-1 flex shrink-0 items-center justify-end sm:row-span-2">
+        <div
+          className={cn(
+            'flex shrink-0 items-center justify-end',
+            hint ? 'row-span-2' : 'row-span-1'
+          )}
+        >
           {control}
         </div>
 
         {hint && (
-          <p className="col-span-2 text-xs leading-relaxed text-muted-foreground/80 sm:col-span-1 sm:max-w-md">
+          <div className="col-span-1 text-xs leading-snug text-muted-foreground/80 sm:max-w-md">
             {hint}
-          </p>
+          </div>
         )}
       </div>
     )

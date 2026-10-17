@@ -8,6 +8,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useCornerStyle } from '@/hooks/useCornerStyle'
+import { useColorPalette } from '@/hooks/useColorPalette'
 import { useBgAnimation } from '@/hooks/useBgAnimation'
 import { useCreateAccount, useDeleteMe, useMe } from '@/api/hooks'
 import {
@@ -34,6 +35,7 @@ import { SettingsRow } from '@/components/settings/SettingsRow'
 import { SettingsSection } from '@/components/settings/SettingsSection'
 import { Switch } from '@/components/ui/switch'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
+import type { ColorPalette } from '@/lib/color-palette'
 import { cn } from '@/lib/utils'
 import { UID_PATTERN } from '@/lib/uid'
 import { MAX_ACCOUNTS } from '@/types'
@@ -54,12 +56,99 @@ function CornerGlyph({ sharp }: { sharp: boolean }) {
   )
 }
 
+const PALETTE_SWATCH_CONFIG: Record<
+  ColorPalette,
+  {
+    primaryHex: string
+    secondaryHex: string
+    activeRingClass: string
+  }
+> = {
+  acid: {
+    primaryHex: '#c9f24b',
+    secondaryHex: '#1b2430',
+    activeRingClass: 'border-[#c9f24b]/60 bg-white/[0.08] ring-1 ring-[#c9f24b]/50 shadow-xs',
+  },
+  champagne: {
+    primaryHex: '#eab308',
+    secondaryHex: '#5c4028',
+    activeRingClass: 'border-[#eab308]/60 bg-white/[0.08] ring-1 ring-[#eab308]/50 shadow-xs',
+  },
+}
+
+/**
+ * Rectangular dual-tone swatch wells housed in a control track matching
+ * SegmentedControl height (`h-9 sm:h-8` inside `p-1`). Corners adapt
+ * automatically to `[data-corners="sharp"]`.
+ */
+function PaletteSwatchWells({
+  options,
+  value,
+  onValueChange,
+  ariaLabel,
+}: {
+  options: readonly { value: ColorPalette; label: string }[]
+  value: ColorPalette
+  onValueChange: (value: ColorPalette) => void
+  ariaLabel: string
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      data-slot="palette-wells"
+      className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/35 p-1"
+    >
+      {options.map((option) => {
+        const isSelected = option.value === value
+        const config = PALETTE_SWATCH_CONFIG[option.value]
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            aria-label={option.label}
+            title={option.label}
+            onClick={() => onValueChange(option.value)}
+            className={cn(
+              'group relative flex h-9 w-14 sm:h-8 sm:w-12 shrink-0 items-center justify-center rounded-md border p-1.5 transition-all duration-150 outline-none select-none active:scale-[0.97]',
+              'focus-visible:ring-2 focus-visible:ring-primary/60',
+              isSelected
+                ? config.activeRingClass
+                : 'border-transparent opacity-55 hover:border-white/10 hover:bg-white/[0.04] hover:opacity-100'
+            )}
+          >
+            <span
+              aria-hidden="true"
+              data-palette-swatch={option.value}
+              className="flex h-full w-full overflow-hidden rounded-[4px] ring-1 ring-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_1px_2px_rgba(0,0,0,0.5)] [forced-color-adjust:none]"
+            >
+              <span
+                className="h-full w-1/2"
+                style={{ backgroundColor: config.primaryHex }}
+              />
+              <span
+                className="h-full w-1/2"
+                style={{ backgroundColor: config.secondaryHex }}
+              />
+            </span>
+            <span className="sr-only">{option.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function SettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: me } = useMe()
   const isAuthed = Boolean(me)
   const { activeAccount, accounts, isPending } = useActiveAccount({ enabled: isAuthed })
+  const { colorPalette, setColorPalette } = useColorPalette()
   const { isSharp, setCornerStyle } = useCornerStyle()
   const { isEnabled: isBgAnimEnabled, setBgAnimationMode } = useBgAnimation()
   const createMutation = useCreateAccount()
@@ -71,6 +160,17 @@ export function SettingsPage() {
   const isMaxAccounts = accounts.length >= MAX_ACCOUNTS
   const uidIsValid = UID_PATTERN.test(uid)
   const errorMessage = submitted && !uidIsValid ? t('settings.uidError') : null
+
+  const paletteOptions: readonly { value: ColorPalette; label: string }[] = [
+    {
+      value: 'acid',
+      label: t('settings.colorPaletteAcid'),
+    },
+    {
+      value: 'champagne',
+      label: t('settings.colorPaletteChampagne'),
+    },
+  ]
 
   const cornerOptions: readonly SegmentedOption<CornerStyleValue>[] = [
     {
@@ -116,7 +216,7 @@ export function SettingsPage() {
         </p>
       </div>
 
-      {/* 01 — Interface: language, corner geometry, background animation */}
+      {/* 01 — Interface: language, color palette, corner geometry, background animation */}
       <SettingsSection
         index="01"
         title={t('settings.interfaceTitle')}
@@ -127,6 +227,19 @@ export function SettingsPage() {
             label={t('settings.languageTitle')}
             control={
               <LanguageSwitcher variant="select" align="end" className="w-full sm:w-auto" />
+            }
+          />
+
+          <SettingsRow
+            label={t('settings.colorPaletteTitle')}
+            inline
+            control={
+              <PaletteSwatchWells
+                options={paletteOptions}
+                value={colorPalette}
+                onValueChange={setColorPalette}
+                ariaLabel={t('settings.colorPaletteTitle')}
+              />
             }
           />
 

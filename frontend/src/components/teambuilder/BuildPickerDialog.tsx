@@ -181,7 +181,7 @@ export function BuildPickerDialog({
       <DialogContent
         showCloseButton={false}
         className={cn(
-          'flex flex-col gap-3 sm:gap-3.5 overflow-hidden border border-white/12 bg-[#0c1015] text-white shadow-[0_24px_64px_rgba(0,0,0,0.85),0_0_36px_rgba(201,242,75,0.08)] duration-200 outline-none',
+          'flex flex-col gap-3 sm:gap-3.5 overflow-hidden border border-white/12 bg-popover text-white shadow-[0_24px_64px_rgba(0,0,0,0.85),0_0_36px_color-mix(in_oklch,var(--primary)_8%,transparent)] duration-200 outline-none',
           // Mobile Fullscreen (< sm): full viewport, zero gap, safe area insets
           'fixed inset-0 top-0 left-0 right-0 bottom-0 z-50 h-dvh max-h-dvh w-full max-w-full translate-x-0 translate-y-0 rounded-none border-0 p-3.5 pt-[max(0.875rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]',
           // Desktop Modal (sm+): centered, max-w-2xl, max-h 85vh, rounded-2xl
@@ -246,7 +246,7 @@ export function BuildPickerDialog({
                   placeholder={t('teamBuilder.pickerSearchPlaceholder')}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="h-10 pl-9.5 pr-8.5 w-full rounded-[10px_10px_0_10px] border border-white/12 bg-[#121722] text-xs sm:text-sm text-white placeholder:text-muted-foreground/50 focus-visible:border-primary/70 focus-visible:bg-[#151c2a] focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_16px_rgba(201,242,75,0.12)] transition-all"
+                  className="h-10 pl-9.5 pr-8.5 w-full rounded-[10px_10px_0_10px] border border-white/12 bg-card text-xs sm:text-sm text-white placeholder:text-muted-foreground/50 focus-visible:border-primary/70 focus-visible:bg-elevated focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_16px_color-mix(in_oklch,var(--primary)_12%,transparent)] transition-all"
                   aria-label={t('teamBuilder.pickerSearchPlaceholder')}
                 />
                 {query && (
@@ -262,7 +262,7 @@ export function BuildPickerDialog({
               </div>
 
               {/* Filter Toolbar */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-white/10 bg-[#121720] p-1.5 shadow-inner shrink-0">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-white/10 bg-subtle p-1.5 shadow-inner shrink-0">
                 {/* Scrollable Track for Elements & Specialties */}
                 <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth touch-pan-x py-0.5">
                   <button
@@ -349,7 +349,7 @@ export function BuildPickerDialog({
                       className={cn(
                         'h-8 w-full sm:w-auto px-3 rounded-lg border font-mono text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer select-none inline-flex items-center justify-center active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 shrink-0',
                         hideConflicting
-                          ? 'border-primary/50 bg-primary/15 text-primary shadow-[0_0_12px_rgba(201,242,75,0.12)] hover:bg-primary/20 hover:border-primary/70'
+                          ? 'border-primary/50 bg-primary/15 text-primary shadow-[0_0_12px_color-mix(in_oklch,var(--primary)_12%,transparent)] hover:bg-primary/20 hover:border-primary/70'
                           : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:border-white/20 hover:bg-white/[0.08] hover:text-white',
                       )}
                       title={
@@ -398,15 +398,15 @@ export function BuildPickerDialog({
                     return (
                       <div
                         key={group.agentId}
-                        className="rounded-2xl border border-white/12 bg-[#10151f] shadow-[0_4px_16px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-200"
+                        className="rounded-2xl border border-white/12 bg-subtle shadow-[0_4px_16px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-200"
                       >
                         {/* Agent Header */}
-                        <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#141a24] border-b border-white/10">
+                        <div className="flex items-center justify-between px-3.5 py-2.5 bg-card border-b border-white/10">
                           <div className="flex items-center gap-2.5 min-w-0">
                             {/* Agent Circular Avatar */}
                             <div
                               className={cn(
-                                'relative size-8 sm:size-9 shrink-0 rounded-full border-2 bg-[#10141b] shadow-sm',
+                                'relative size-8 sm:size-9 shrink-0 rounded-full border-2 bg-subtle shadow-sm',
                                 sampleAgent?.rarity === 'S'
                                   ? 'border-amber-400/80 shadow-[0_0_8px_rgba(245,238,56,0.25)]'
                                   : 'border-purple-400/80 shadow-[0_0_8px_rgba(192,132,252,0.25)]',
@@ -513,21 +513,21 @@ export function BuildPickerDialog({
                                   'group/build relative flex flex-col w-full rounded-xl border p-2.5 sm:px-3 sm:py-2.5 text-left transition-all duration-200 select-none overflow-hidden',
                                   // Base & Status Styling with Edge Indicator
                                   isCurrentInSquad && [
-                                    'border-l-4 border-l-white/25 border-white/[0.08] bg-[#11141c]/90 cursor-not-allowed opacity-75',
+                                    'border-l-4 border-l-white/25 border-white/[0.08] bg-subtle/90 cursor-not-allowed opacity-75',
                                     'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
                                   ],
                                   isDuplicateAgent && [
-                                    'border-l-4 border-l-slate-500 border-white/[0.08] bg-[#11141c]/80 cursor-not-allowed opacity-75',
+                                    'border-l-4 border-l-muted-foreground/50 border-white/[0.08] bg-subtle/80 cursor-not-allowed opacity-75',
                                   ],
                                   isGearConflict && [
                                     'border-l-4 border-l-red-500/80 border-red-500/25 bg-[#181315] cursor-pointer',
                                     'shadow-[inset_0_1px_0_rgba(239,68,68,0.06)]',
                                   ],
                                   !isDisabled && [
-                                    'border-l-4 border-l-transparent border-white/[0.12] bg-[#141a24] cursor-pointer',
+                                    'border-l-4 border-l-transparent border-white/[0.12] bg-card cursor-pointer',
                                     'shadow-[0_2px_8px_rgba(0,0,0,0.35)]',
-                                    'hover:border-l-primary hover:border-primary/50 hover:bg-[#1a2230]',
-                                    'hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_14px_rgba(201,242,75,0.08)] active:scale-[0.995]',
+                                    'hover:border-l-primary hover:border-primary/50 hover:bg-elevated',
+                                    'hover:shadow-[0_4px_16px_rgba(0,0,0,0.5),0_0_14px_color-mix(in_oklch,var(--primary)_8%,transparent)] active:scale-[0.995]',
                                   ],
                                 )}
                               >
@@ -817,7 +817,7 @@ export function BuildPickerDialog({
                                     )}
 
                                     {!isDisabled && (
-                                      <div className="flex w-full items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-primary transition-all group-hover/build:bg-primary group-hover/build:text-black group-hover/build:border-primary group-hover/build:shadow-[0_0_12px_rgba(201,242,75,0.25)]">
+                                      <div className="flex w-full items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-primary transition-all group-hover/build:bg-primary group-hover/build:text-black group-hover/build:border-primary group-hover/build:shadow-[0_0_12px_color-mix(in_oklch,var(--primary)_25%,transparent)]">
                                         <span>{t('teamBuilder.pickerSelectButton', { defaultValue: 'SELECT' })}</span>
                                       </div>
                                     )}

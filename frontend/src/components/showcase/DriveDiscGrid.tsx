@@ -158,7 +158,7 @@ export function DiscCard({
 
   if (!disc) {
     return (
-      <div className="flex h-full min-h-[170px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.1] bg-[#0b0e14]/50 p-2 text-center text-muted-foreground sm:p-2.5">
+      <div className="flex h-full min-h-[170px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.1] bg-subtle/50 p-2 text-center text-muted-foreground sm:p-2.5">
         <span className="flex size-7 items-center justify-center rounded-full border border-dashed border-white/[0.15] font-mono text-xs font-bold text-muted-foreground">
           {slot}
         </span>

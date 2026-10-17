@@ -8,7 +8,7 @@ interface TeamBuilderSidebarSkeletonProps {
 export function TeamBuilderSidebarSkeleton({ className }: TeamBuilderSidebarSkeletonProps) {
   return (
     <aside aria-hidden="true" className={cn('space-y-3 lg:sticky lg:top-20', className)}>
-      <div className="rounded-2xl border border-white/[0.12] bg-[#131922]/80 p-4 sm:p-5 backdrop-blur-md shadow-lg space-y-3.5">
+      <div className="rounded-2xl border border-white/[0.12] bg-card/80 p-4 sm:p-5 backdrop-blur-md shadow-lg space-y-3.5">
         <div className="space-y-3.5">
           {/* Team Name Input Field */}
           <div className="space-y-1.5">

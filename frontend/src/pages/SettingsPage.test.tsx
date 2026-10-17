@@ -18,6 +18,10 @@ vi.mock('react-i18next', async (importOriginal) => {
           'settings.interfaceDesc': 'Язык, геометрия углов и анимация фона.',
           'settings.languageTitle': 'Язык интерфейса',
           'settings.languageDesc': 'Выберите язык отображения меню.',
+          'settings.colorPaletteTitle': 'Цветовая палитра',
+          'settings.colorPaletteDesc': 'Акцентная схема и оттенок поверхностей интерфейса.',
+          'settings.colorPaletteAcid': 'Acid Lime',
+          'settings.colorPaletteChampagne': 'Champagne & Bronze',
           'settings.cornerStyleTitle': 'Геометрия углов',
           'settings.cornerStyleDesc': 'Форма углов панелей и кнопок.',
           'settings.cornerStyleRounded': 'Скруглённые',
@@ -68,6 +72,7 @@ vi.mock('react-router-dom', () => ({
 
 const mockUseMe = vi.fn()
 const mockUseActiveAccount = vi.fn()
+const mockUseColorPalette = vi.fn()
 const mockUseCornerStyle = vi.fn()
 const mockUseBgAnimation = vi.fn()
 const mockCreateAccountMutation = { mutate: vi.fn(), isPending: false }
@@ -83,6 +88,10 @@ vi.mock('@/api/hooks', () => ({
 
 vi.mock('@/hooks/useActiveAccount', () => ({
   useActiveAccount: (options?: { enabled?: boolean }) => mockUseActiveAccount(options),
+}))
+
+vi.mock('@/hooks/useColorPalette', () => ({
+  useColorPalette: () => mockUseColorPalette(),
 }))
 
 vi.mock('@/hooks/useCornerStyle', () => ({
@@ -110,6 +119,11 @@ const mockAccount2: GameAccount = {
 describe('SettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseColorPalette.mockReturnValue({
+      colorPalette: 'acid',
+      isChampagne: false,
+      setColorPalette: vi.fn(),
+    })
     mockUseCornerStyle.mockReturnValue({
       cornerStyle: 'rounded',
       isSharp: false,
@@ -198,10 +212,17 @@ describe('SettingsPage', () => {
     expect(html).not.toContain('Выберите язык отображения меню.')
     expect(html).not.toContain('Форма углов панелей и кнопок.')
     expect(html).not.toContain('Анимированный фон в стиле ZZZ.')
-    // Corner geometry is a radiogroup with a preview glyph per option
-    expect(html).toContain('role="radiogroup"')
-    expect(html.match(/role="radio"/g)).toHaveLength(2)
+    // Color palette and Corner geometry are radiogroups with preview glyphs per option
+    expect(html).toContain('Цветовая палитра')
+    expect(html).toContain('Acid Lime')
+    expect(html).toContain('Champagne &amp; Bronze')
+    expect(html.match(/role="radiogroup"/g)).toHaveLength(2)
+    expect(html.match(/role="radio"/g)).toHaveLength(4)
+    expect(html).toContain('data-slot="palette-wells"')
+    expect(html).not.toContain('data-slot="active-palette-label"')
     expect(html).toContain('data-keep-rounded="true"')
+    expect(html).toContain('data-palette-swatch="acid"')
+    expect(html).toContain('data-palette-swatch="champagne"')
     // Background animation is a switch reflecting the enabled mode
     expect(html).toContain('role="switch"')
     expect(html).toContain('aria-checked="true"')
@@ -235,9 +256,32 @@ describe('SettingsPage', () => {
     const html = renderToString(<SettingsPage />)
 
     expect(html).toContain('Острые')
-    const group = html.slice(html.indexOf('role="radiogroup"'), html.indexOf('role="switch"'))
+    const group = html.slice(
+      html.indexOf('aria-label="Геометрия углов"'),
+      html.indexOf('role="switch"')
+    )
     expect(group.match(/aria-checked="true"/g)).toHaveLength(1)
     expect(group).toContain('Острые')
+  })
+
+  it('marks the champagne color palette as the selected option', () => {
+    mockUseColorPalette.mockReturnValue({
+      colorPalette: 'champagne',
+      isChampagne: true,
+      setColorPalette: vi.fn(),
+    })
+    mockUseMe.mockReturnValue({ data: null })
+    mockUseActiveAccount.mockReturnValue({ activeAccount: null, accounts: [], isPending: false })
+
+    const html = renderToString(<SettingsPage />)
+
+    const group = html.slice(
+      html.indexOf('aria-label="Цветовая палитра"'),
+      html.indexOf('aria-label="Геометрия углов"')
+    )
+    expect(group.match(/aria-checked="true"/g)).toHaveLength(1)
+    expect(group).toContain('Champagne &amp; Bronze')
+    expect(group).toContain('aria-label="Champagne &amp; Bronze"')
   })
 
   it('renders an empty state when the account list is empty', () => {

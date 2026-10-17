@@ -96,7 +96,7 @@ export function AgentAvatarTab({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         'disabled:pointer-events-none disabled:opacity-50',
         selected
-          ? 'z-10 border-primary ring-2 ring-primary/70 shadow-[0_0_16px_rgba(201,242,75,0.55)] scale-105'
+          ? 'z-10 border-primary ring-2 ring-primary/70 shadow-[0_0_16px_color-mix(in_oklch,var(--primary)_55%,transparent)] scale-105'
           : 'border-black/80 bg-subtle opacity-75 hover:opacity-100 hover:border-white/50 hover:scale-105 active:scale-95',
         className,
       )}
@@ -129,7 +129,7 @@ export function AgentAvatarTab({
           className={cn(
             'absolute -top-1 -right-1 z-20 flex h-5 min-w-5 items-center justify-center gap-1 rounded-full px-1.5 font-mono text-[11px] font-black leading-none shadow-md border transition-all duration-150',
             selected
-              ? 'bg-primary text-black border-black shadow-[0_2px_8px_rgba(201,242,75,0.45)]'
+              ? 'bg-primary text-black border-black shadow-[0_2px_8px_color-mix(in_oklch,var(--primary)_45%,transparent)]'
               : 'bg-card text-foreground border-border/80 shadow-black/80 group-hover:border-primary/60 group-hover:text-primary',
           )}
         >
