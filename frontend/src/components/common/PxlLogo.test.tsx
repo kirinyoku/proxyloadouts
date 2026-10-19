@@ -30,4 +30,14 @@ describe('PxlLogo', () => {
 
     expect(html).toContain('ZZZ BUILD SYSTEM')
   })
+
+  it('renders PxlMark SVG emblem when showMark is true', () => {
+    const html = renderToString(<PxlLogo showMark />)
+
+    expect(html).toContain('<svg')
+    expect(html).toContain('pxl-mark-glow')
+    expect(html).toContain('aria-label="PXL"')
+    expect(html).toContain('PROXY')
+    expect(html).toContain('LOADOUTS')
+  })
 })

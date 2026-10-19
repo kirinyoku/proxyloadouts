@@ -71,7 +71,7 @@ export function AppHeader() {
             aria-label="ProxyLoadouts"
             className="group flex shrink-0 items-center select-none py-1"
           >
-            <PxlLogo size="md" />
+            <PxlLogo size="md" showMark />
           </NavLink>
 
           <nav

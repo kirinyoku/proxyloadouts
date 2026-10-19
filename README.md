@@ -1,6 +1,8 @@
 <div align="center">
 
-# ProxyLoadouts (PXL)
+<a href="https://proxyloadouts.com">
+  <img src="docs/images/logo-horizontal.png" alt="ProxyLoadouts Logo" width="360" />
+</a>
 
 **Equipment Preset Manager & Squad Planner for *Zenless Zone Zero***
 
