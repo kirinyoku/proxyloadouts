@@ -207,6 +207,8 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 sm:space-y-6">
+      <title>{t('settings.pageTitle')}</title>
+      <meta name="description" content={t('settings.metaDescription')} />
       <div className="flex flex-col gap-1 border-b border-white/[0.08] pb-4">
         <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl">
           {t('settings.title')}

@@ -81,6 +81,8 @@ const en: TranslationSchema = {
   },
   login: {
     title: 'ProxyLoadouts',
+    pageTitle: 'Sign In with Discord — ProxyLoadouts',
+    metaDescription: 'Sign in to ProxyLoadouts to save agent builds, sync gear, and assemble combat squads.',
     description: 'Saved agent builds, drive disc sets, and squads without gear conflicts.',
     discordButton: 'Log in with Discord',
     guestNote: 'You can browse any showcase by UID without logging in — auth is only needed for your own builds and squads.',
@@ -148,6 +150,9 @@ const en: TranslationSchema = {
     compactSub: 'INTER-KNOT // Error fetching data',
   },
   showcase: {
+    pageTitle: 'Agent Showcase Scanner — ProxyLoadouts',
+    pageTitleWithUid: 'Showcase for UID {{uid}} — ProxyLoadouts',
+    metaDescription: 'Scan and inspect Zenless Zone Zero agent showcases, equipment, and drive disc builds by game UID.',
     errors: {
       404: 'Profile not found on EnkaNetwork. Check the UID, or turn on agent display for your in-game showcase.',
       429: 'Too many requests to EnkaNetwork. Please wait a moment, then retry.',
@@ -214,6 +219,8 @@ const en: TranslationSchema = {
   },
   roster: {
     title: 'Roster',
+    pageTitle: 'Agent Build Roster — ProxyLoadouts',
+    metaDescription: 'Manage swap-ready builds and equipment loadouts for all your Zenless Zone Zero agents.',
     toTeams: 'To squads',
     toTeamsTitle: 'Back to saved squads',
     searchPlaceholder: 'Search agent…',
@@ -274,6 +281,11 @@ const en: TranslationSchema = {
   },
   teams: {
     title: 'SQUADS',
+    pageTitle: 'Combat Squads — ProxyLoadouts',
+    pageTitleNew: 'New Squad Builder — ProxyLoadouts',
+    pageTitleEdit: 'Edit Squad — ProxyLoadouts',
+    metaDescription: 'Plan and assemble combat squads for Zenless Zone Zero without equipment and drive disc conflicts.',
+    metaDescriptionBuilder: 'Assemble your Zenless Zone Zero combat squad and check drive disc equipment conflicts in real time.',
     totalAria: 'Total squads: {{count}}',
     limitReachedTooltip: 'Limit reached (max 15 squads per account)',
     createSquad: 'New Squad',
@@ -405,6 +417,8 @@ const en: TranslationSchema = {
   },
   settings: {
     title: 'Settings',
+    pageTitle: 'Account & Appearance Settings — ProxyLoadouts',
+    metaDescription: 'Configure your linked Zenless Zone Zero UIDs, visual themes, and ProxyLoadouts account preferences.',
     eyebrow: '// SYSTEM',
     subtitle: 'Interface and linked game UIDs',
     interfaceTitle: 'Interface',
@@ -604,6 +618,8 @@ const en: TranslationSchema = {
   },
   privacy: {
     title: 'Privacy Policy & Terms of Service',
+    pageTitle: 'Privacy Policy & Terms of Service — ProxyLoadouts',
+    metaDescription: 'Privacy Policy and Terms of Service for ProxyLoadouts, an independent Zenless Zone Zero agent build manager.',
     badge: 'LEGAL // PRIVACY & TERMS',
     lastUpdated: 'Last updated: September 2026',
     backToHome: 'Back to Home',

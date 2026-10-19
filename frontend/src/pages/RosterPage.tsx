@@ -293,6 +293,8 @@ export function RosterPage({
 
   return (
     <div className="space-y-1.5">
+      <title>{t('roster.pageTitle')}</title>
+      <meta name="description" content={t('roster.metaDescription')} />
       {/* 1. Header & filtering toolbar */}
       <RosterToolbar
         search={search}

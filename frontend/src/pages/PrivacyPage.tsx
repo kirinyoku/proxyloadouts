@@ -21,6 +21,8 @@ export function PrivacyPage() {
 
   return (
     <div className="mx-auto max-w-4xl py-6 sm:py-10">
+      <title>{t('privacy.pageTitle')}</title>
+      <meta name="description" content={t('privacy.metaDescription')} />
       {/* Back navigation */}
       <div className="mb-6">
         <Button

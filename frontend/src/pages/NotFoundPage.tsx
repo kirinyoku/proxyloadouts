@@ -25,7 +25,7 @@ export function NotFoundPage() {
   const currentHost =
     typeof window !== 'undefined' && window.location?.host
       ? window.location.host
-      : 'proxyloadouts.app'
+      : 'proxyloadouts.com'
 
   return (
     <div className="flex min-h-[calc(100vh-14rem)] flex-col items-center justify-center py-6 sm:py-12">

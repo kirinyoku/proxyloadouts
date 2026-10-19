@@ -82,14 +82,14 @@ describe('InterknotTerminalError component', () => {
       <InterknotTerminalError
         status={404}
         query="/custom-path"
-        host="test.proxyloadouts.app"
+        host="test.proxyloadouts.com"
         actions={<button type="button">Custom Home</button>}
       />
     )
 
     expect(html).toContain('role="alert"')
     expect(html).toContain('/custom-path')
-    expect(html).toContain('test.proxyloadouts.app')
+    expect(html).toContain('test.proxyloadouts.com')
     expect(html).toContain('Custom Home')
   })
 })

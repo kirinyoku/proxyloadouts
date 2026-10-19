@@ -22,9 +22,11 @@ export function LoginPage() {
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center gap-8 px-4">
+      <title>{t('login.pageTitle')}</title>
+      <meta name="description" content={t('login.metaDescription')} />
       <div className="w-full max-w-sm space-y-6 text-center">
         <div className="space-y-3">
-          <PxlLogo size="lg" className="items-center text-center" />
+          <PxlLogo size="lg" showMark layout="vertical" className="items-center text-center" />
           <h1 className="sr-only">{t('login.title')}</h1>
           <p className="pt-1 text-balance text-sm text-muted-foreground">
             {t('login.description')}

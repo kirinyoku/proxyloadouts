@@ -79,6 +79,8 @@ const ru = {
   },
   login: {
     title: 'ProxyLoadouts',
+    pageTitle: 'Вход через Discord — ProxyLoadouts',
+    metaDescription: 'Войдите в ProxyLoadouts для сохранения сборок агентов, синхронизации снаряжения и сборки отрядов.',
     description: 'Сохранённые сборки агентов, комплекты драйв-дисков и отряды без конфликтов снаряжения.',
     discordButton: 'Войти через Discord',
     guestNote: 'Витрину по любому UID можно смотреть без авторизации — вход нужен только для своих сборок и отрядов.',
@@ -146,6 +148,9 @@ const ru = {
     compactSub: 'INTER-KNOT // Ошибка при получении данных',
   },
   showcase: {
+    pageTitle: 'Витрина агентов — ProxyLoadouts',
+    pageTitleWithUid: 'Витрина агентов для UID {{uid}} — ProxyLoadouts',
+    metaDescription: 'Сканирование и просмотр витрины агентов, снаряжения и драйв-дисков Zenless Zone Zero по игровому UID.',
     errors: {
       404: 'Профиль не найден в EnkaNetwork. Проверьте UID или убедитесь, что в игре включён показ персонажей на витрине.',
       429: 'Слишком много запросов к EnkaNetwork. Пожалуйста, подождите немного и повторите попытку.',
@@ -212,6 +217,8 @@ const ru = {
   },
   roster: {
     title: 'Ростер',
+    pageTitle: 'Ростер сборок агентов — ProxyLoadouts',
+    metaDescription: 'Управляйте готовыми сборками и комплектами снаряжения для всех ваших агентов Zenless Zone Zero.',
     toTeams: 'К отрядам',
     toTeamsTitle: 'К сохранённым отрядам',
     searchPlaceholder: 'Поиск агента…',
@@ -272,6 +279,11 @@ const ru = {
   },
   teams: {
     title: 'ОТРЯДЫ',
+    pageTitle: 'Боевые отряды — ProxyLoadouts',
+    pageTitleNew: 'Конструктор отряда — ProxyLoadouts',
+    pageTitleEdit: 'Редактирование отряда — ProxyLoadouts',
+    metaDescription: 'Планируйте и собирайте боевые отряды для Zenless Zone Zero без конфликтов снаряжения и дисков.',
+    metaDescriptionBuilder: 'Соберите боевой отряд для Zenless Zone Zero и проверьте конфликты драйв-дисков в реальном времени.',
     totalAria: 'Всего отрядов: {{count}}',
     limitReachedTooltip: 'Лимит: максимум 15 отрядов на аккаунт',
     createSquad: 'Новый отряд',
@@ -403,6 +415,8 @@ const ru = {
   },
   settings: {
     title: 'Настройки',
+    pageTitle: 'Настройки аккаунта и оформления — ProxyLoadouts',
+    metaDescription: 'Управление привязанными UID Zenless Zone Zero, визуальными темами и настройками ProxyLoadouts.',
     eyebrow: '// SYSTEM',
     subtitle: 'Интерфейс и привязанные игровые UID',
     interfaceTitle: 'Интерфейс',
@@ -602,6 +616,8 @@ const ru = {
   },
   privacy: {
     title: 'Политика конфиденциальности и условия использования',
+    pageTitle: 'Политика конфиденциальности и условия — ProxyLoadouts',
+    metaDescription: 'Политика конфиденциальности и условия использования сервиса ProxyLoadouts для игроков Zenless Zone Zero.',
     badge: 'LEGAL // PRIVACY & TERMS',
     lastUpdated: 'Редакция: сентябрь 2026 г.',
     backToHome: 'На главную',

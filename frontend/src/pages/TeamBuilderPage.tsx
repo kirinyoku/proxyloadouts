@@ -237,6 +237,8 @@ function TeamBuilderForm({
 
   return (
     <div className="space-y-6">
+      <title>{isEditing ? t('teams.pageTitleEdit') : t('teams.pageTitleNew')}</title>
+      <meta name="description" content={t('teams.metaDescriptionBuilder')} />
       {/* Header */}
       <TeamBuilderHeader isEditing={isEditing} />
 

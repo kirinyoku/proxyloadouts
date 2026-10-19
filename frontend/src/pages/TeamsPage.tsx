@@ -71,6 +71,8 @@ export function TeamsPage() {
 
   return (
     <div className="space-y-3.5 sm:space-y-4">
+      <title>{t('teams.pageTitle')}</title>
+      <meta name="description" content={t('teams.metaDescription')} />
       {/* Page Header */}
       <TeamsHeader totalCount={totalCount} />
 

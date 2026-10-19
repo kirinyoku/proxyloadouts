@@ -373,8 +373,14 @@ export function ShowcasePage() {
 
   const isInputValid = UID_PATTERN.test(uidInput)
 
+  const pageTitle = scannedUid
+    ? t('showcase.pageTitleWithUid', { uid: scannedUid })
+    : t('showcase.pageTitle')
+
   return (
     <div className="space-y-3">
+      <title>{pageTitle}</title>
+      <meta name="description" content={t('showcase.metaDescription')} />
       {showcaseQuery.isPending && scannedUid && <ShowcasePageSkeleton />}
 
       {showcaseQuery.isError && (
