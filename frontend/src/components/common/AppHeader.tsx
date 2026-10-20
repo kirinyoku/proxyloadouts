@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { LogIn } from 'lucide-react'
 import { useMe } from '@/api/hooks'
 import { Button } from '@/components/ui/button'
 import { UserMenu } from '@/components/common/UserMenu'
@@ -87,9 +88,14 @@ export function AppHeader() {
             {isAuthed ? (
               <UserMenu />
             ) : (
-              <Button size="sm" asChild>
+              <Button
+                size="default"
+                className="h-8 gap-1.5 px-3 text-xs font-semibold"
+                asChild
+              >
                 <Link to="/login">
-                  {t('nav.login')}
+                  <LogIn className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span>{t('nav.login')}</span>
                 </Link>
               </Button>
             )}

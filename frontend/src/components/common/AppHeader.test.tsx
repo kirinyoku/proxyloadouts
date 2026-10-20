@@ -91,13 +91,13 @@ describe('AppHeader', () => {
     expect(html).not.toMatch(/class="[^"]*hidden[^"]*font-heading/)
   })
 
-  it('renders login button with text and no icon or language switcher', () => {
+  it('renders login button with text, icon and no language switcher', () => {
     const html = renderToString(<AppHeader />)
 
     expect(html).toContain('href="/login"')
     expect(html).toContain('Войти')
-    // No svg icon inside the login button link
-    expect(html).not.toMatch(/href="\/login"[^>]*>.*<svg/)
+    // Svg icon inside the login button link
+    expect(html).toMatch(/href="\/login"[^>]*>.*<svg/)
     expect(html).not.toContain('lang-switcher')
   })
 })
