@@ -9,3 +9,5 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+
+Sitemap: https://proxyloadouts.com/sitemap.xml

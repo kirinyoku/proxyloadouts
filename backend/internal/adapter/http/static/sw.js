@@ -7,7 +7,7 @@
 const CODE_CACHE = 'proxyloadouts-code-v1'
 const FONT_CACHE = 'proxyloadouts-fonts-v1'
 const NAVIGATION_CACHE = 'proxyloadouts-navigation-v1'
-const IMAGE_CACHE = 'proxyloadouts-images-v1'
+const IMAGE_CACHE = 'proxyloadouts-images-v2'
 const APP_CACHE_PREFIX = 'proxyloadouts-'
 const RETAINED_CACHES = new Set([CODE_CACHE, FONT_CACHE, NAVIGATION_CACHE, IMAGE_CACHE])
 

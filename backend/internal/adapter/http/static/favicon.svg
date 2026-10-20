@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="none">
+  <!-- Tactical Dark Squircle Background -->
+  <rect width="200" height="200" rx="44" fill="#0c0f13"/>
+  <rect x="3" y="3" width="194" height="194" rx="41" stroke="#222938" stroke-width="4"/>
+
+  <svg x="18" y="27" width="164" height="146" viewBox="34 30 182 154" fill="none">
+    <!-- P: Sliced Techno Glyph -->
+    <g fill="#f3f5f8">
+      <rect x="40" y="32" width="22" height="40" rx="2" />
+      <rect x="42" y="76" width="22" height="42" rx="2" />
+      <rect x="66" y="32" width="40" height="18" rx="2" />
+      <rect x="106" y="44" width="18" height="32" rx="2" />
+      <rect x="66" y="70" width="40" height="18" rx="2" />
+    </g>
+
+    <!-- Glitch Slice on P -->
+    <rect x="36" y="66" width="94" height="4" rx="1.5" fill="#c9f24b" />
+
+    <!-- X: Pure Pixel Matrix (5 Square Pixel Blocks) -->
+    <g fill="#c9f24b">
+      <rect x="60" y="134" width="14" height="14" rx="2.5" />
+      <rect x="94" y="134" width="14" height="14" rx="2.5" />
+      <rect x="77" y="151" width="14" height="14" rx="2.5" />
+      <rect x="60" y="168" width="14" height="14" rx="2.5" />
+      <rect x="94" y="168" width="14" height="14" rx="2.5" />
+    </g>
+
+    <!-- L: Digital Pillar with Extended Grounding Base -->
+    <g fill="#f3f5f8">
+      <rect x="140" y="32" width="22" height="80" rx="2" />
+      <rect x="138" y="116" width="22" height="38" rx="2" />
+      <rect x="138" y="154" width="76" height="22" rx="2" />
+    </g>
+
+    <!-- L Terminal Accent -->
+    <rect x="196" y="142" width="18" height="8" rx="1.5" fill="#c9f24b" />
+  </svg>
+</svg>
