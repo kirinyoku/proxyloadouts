@@ -82,6 +82,7 @@ function App() {
                     <Route path="/" element={<HomePage />} />
                     <Route path="/showcase" element={<ShowcasePage />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
+                    <Route path="/terms" element={<Navigate to="/privacy" replace />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route element={<ProtectedRoute />}>
                       <Route path="/roster" element={<RosterPage />} />

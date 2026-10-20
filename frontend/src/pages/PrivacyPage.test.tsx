@@ -69,6 +69,7 @@ describe('PrivacyPage', () => {
   it('provides secure mailto and external links with rel="noopener noreferrer"', () => {
     const html = renderPrivacyHtml()
 
+    expect(ru.privacy.sections.contact.email).toBe('support@proxyloadouts.com')
     expect(html).toContain(`mailto:${ru.privacy.sections.contact.email}`)
     expect(html).toContain('href="https://enka.network"')
     expect(html).toContain('target="_blank"')

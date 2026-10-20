@@ -720,7 +720,7 @@ const en: TranslationSchema = {
         title: '10. Inquiries, DMCA & Supervisory Contacts (DSA / GDPR)',
         content:
           'For all legal inquiries, copyright notices (Takedown / DMCA), data subject requests under GDPR, or communications under the Digital Services Act (DSA), please reach out via email:',
-        email: 'proxyloadouts@gmail.com',
+        email: 'support@proxyloadouts.com',
         responseTime:
           'Pursuant to GDPR Art. 12(3), data subject inquiries are handled without undue delay and at the latest within one month (30 days) of receipt.',
       },

@@ -1241,3 +1241,16 @@ func TestDeleteMe(t *testing.T) {
 		t.Fatalf("expected 0 game_accounts after cascading user deletion, got %d", count)
 	}
 }
+
+func TestRequestSizeLimit(t *testing.T) {
+	f := newFixture(t)
+	cookie := f.login(t)
+
+	// Send a payload larger than 1 MiB limit
+	hugeBody := `{"uid":"` + strings.Repeat("1", (1<<20)+16) + `"}`
+	rec := f.doRaw(t, http.MethodPost, "/api/v1/accounts", hugeBody, cookie)
+
+	if rec.Code != http.StatusBadRequest && rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 400 Bad Request or 413 Payload Too Large for oversized payload, got %d: %s", rec.Code, rec.Body.String())
+	}
+}

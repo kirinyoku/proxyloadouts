@@ -132,6 +132,8 @@ func TestConfig_ValidateProduction(t *testing.T) {
 		DiscordClientID:     "",
 		DiscordClientSecret: "",
 		SessionSecret:       "default-dev-secret-change-me",
+		FrontendURL:         "http://localhost:5173",
+		DiscordRedirectURI:  "http://localhost:8080/api/v1/auth/discord/callback",
 	}
 
 	if err := cfg.ValidateProduction(); err == nil {
@@ -141,6 +143,20 @@ func TestConfig_ValidateProduction(t *testing.T) {
 	cfg.DiscordClientID = "client-id"
 	cfg.DiscordClientSecret = "client-secret"
 	cfg.SessionSecret = "strong-random-session-secret"
+
+	// Should still fail due to localhost FrontendURL
+	if err := cfg.ValidateProduction(); err == nil {
+		t.Error("expected error for localhost FrontendURL in production, got nil")
+	}
+
+	cfg.FrontendURL = "https://proxyloadouts.com"
+
+	// Should still fail due to localhost DiscordRedirectURI
+	if err := cfg.ValidateProduction(); err == nil {
+		t.Error("expected error for localhost DiscordRedirectURI in production, got nil")
+	}
+
+	cfg.DiscordRedirectURI = "https://proxyloadouts.com/api/v1/auth/discord/callback"
 
 	if err := cfg.ValidateProduction(); err != nil {
 		t.Errorf("expected valid production config, got error: %v", err)

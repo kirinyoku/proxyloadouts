@@ -68,7 +68,7 @@ func Load(filenames ...string) (*Config, error) {
 	return cfg, nil
 }
 
-// ValidateProduction checks that critical secrets are set when running in production.
+// ValidateProduction checks that critical secrets and origins are set when running in production.
 func (c *Config) ValidateProduction() error {
 	if c.Env == "production" {
 		if c.DiscordClientID == "" {
@@ -79,6 +79,12 @@ func (c *Config) ValidateProduction() error {
 		}
 		if c.SessionSecret == "" || c.SessionSecret == "default-dev-secret-change-me" {
 			return errors.New("SESSION_SECRET must be securely configured in production")
+		}
+		if c.FrontendURL == "" || c.FrontendURL == "http://localhost:5173" || c.FrontendURL == "http://localhost:8080" {
+			return errors.New("FRONTEND_URL must be configured to the production origin (not localhost)")
+		}
+		if c.DiscordRedirectURI == "" || c.DiscordRedirectURI == "http://localhost:8080/api/v1/auth/discord/callback" {
+			return errors.New("DISCORD_REDIRECT_URI must be configured to the production callback URL (not localhost)")
 		}
 	}
 	return nil

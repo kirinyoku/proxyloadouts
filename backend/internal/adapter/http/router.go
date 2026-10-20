@@ -60,6 +60,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		WaitForDelivery: false,
 	}).Handle)
 	r.Use(securityHeaders(opts))
+	r.Use(middleware.RequestSize(1 << 20)) // 1 MiB maximum request body size (Anti-DoS)
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	allowedOrigins := []string{opts.FrontendURL}
