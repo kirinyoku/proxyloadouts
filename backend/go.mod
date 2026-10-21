@@ -8,8 +8,8 @@ require (
 	github.com/go-chi/cors v1.2.2
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
-	github.com/kirinyoku/enkanetwork-go v1.1.2
-	github.com/kirinyoku/fairy v1.4.2
+	github.com/kirinyoku/enkanetwork-go v1.1.4
+	github.com/kirinyoku/fairy v1.5.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/time v0.16.0
 	modernc.org/sqlite v1.57.0

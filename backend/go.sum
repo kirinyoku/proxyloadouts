@@ -20,10 +20,10 @@ github.com/hashicorp/golang-lru/v2 v2.0.7 h1:a+bsQ5rvGLjzHuww6tVxozPZFVghXaHOwFs
 github.com/hashicorp/golang-lru/v2 v2.0.7/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
-github.com/kirinyoku/enkanetwork-go v1.1.2 h1:AriPMj2PURaHFd0N0GT5qpuJGIdkmo94s2/J/IGySyA=
-github.com/kirinyoku/enkanetwork-go v1.1.2/go.mod h1:+SuifKuxEiJFruoncvJEWnuFvp2WcG/o1gzZn9GvGEM=
-github.com/kirinyoku/fairy v1.4.2 h1:bj8DdIbg+rZisB1TuQnV1YXn1mNrGMP0QzIWELsnrfM=
-github.com/kirinyoku/fairy v1.4.2/go.mod h1:PYvwzdAMwjw0iEbbwsMsh3DJ+Bd5PlfUh0JScl2oE6Y=
+github.com/kirinyoku/enkanetwork-go v1.1.4 h1:rTfZQNAgBBRnt9FU13JNTSU+X4Q8gchxCBNkRar5frQ=
+github.com/kirinyoku/enkanetwork-go v1.1.4/go.mod h1:+SuifKuxEiJFruoncvJEWnuFvp2WcG/o1gzZn9GvGEM=
+github.com/kirinyoku/fairy v1.5.0 h1:VyKcBQeJ08NO0i/zYQyncAhy5pN3mOvXJmwpZcWjQ/M=
+github.com/kirinyoku/fairy v1.5.0/go.mod h1:QT8LESqGpohQC3vUtrgVhD2wVW7fcpB1Fz2LjoOio/s=
 github.com/mattn/go-isatty v0.0.24 h1:tGZZoVgT/KiqK1c8ocVLeDS8BSWMRd47J3Lbz7vsReI=
 github.com/mattn/go-isatty v0.0.24/go.mod h1:nMCL3Zebbrt45jsMDgnfIwz6ydEQApk5oEI3HqDio6A=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
