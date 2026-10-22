@@ -67,12 +67,12 @@ describe('ShowcaseGuestBanner (Minimalist)', () => {
     expect(html).toContain('custom-test-class')
   })
 
-  it('renders informational icon and theme primary accent styling without muddy amber', () => {
+  it('renders informational icon and theme brand yellow accent styling without muddy amber', () => {
     const html = renderToString(<ShowcaseGuestBanner />)
 
     expect(html).toContain('lucide-info')
-    expect(html).toContain('border-primary/45')
-    expect(html).toContain('text-primary')
+    expect(html).toContain('border-brand/40')
+    expect(html).toContain('text-brand')
     expect(html).not.toContain('border-amber-400')
     expect(html).not.toContain('bg-amber-400')
   })

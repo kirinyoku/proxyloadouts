@@ -9,7 +9,7 @@ export interface ShowcaseGuestBannerProps {
 }
 
 /**
- * Informational Guest Banner with signature ZZZ yellow/primary accent.
+ * Informational Guest Banner with signature ZZZ electric yellow brand accent.
  *
  * Informs unauthenticated users that logging in via Discord enables
  * saving build snapshots to their Proxy roster and assembling teams.
@@ -24,14 +24,14 @@ export function ShowcaseGuestBanner({ className }: ShowcaseGuestBannerProps) {
       aria-label={t('showcase.guestBanner')}
       className={cn(
         'flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between',
-        'rounded-xl border border-primary/45 bg-primary/[0.05] p-3 sm:px-4 sm:py-2.5',
-        'transition-colors hover:border-primary/65 shadow-[0_0_16px_color-mix(in_oklch,var(--primary)_10%,transparent)]',
+        'rounded-xl border border-brand/40 bg-brand/[0.04] p-3 sm:px-4 sm:py-2.5',
+        'transition-colors hover:border-brand/60 shadow-[0_0_16px_color-mix(in_oklch,var(--brand)_8%,transparent)]',
         className
       )}
     >
       {/* Informational message */}
       <div className="flex items-start sm:items-center gap-2.5 min-w-0">
-        <Info className="size-4 shrink-0 text-primary mt-0.5 sm:mt-0" aria-hidden="true" />
+        <Info className="size-4 shrink-0 text-brand mt-0.5 sm:mt-0" aria-hidden="true" />
         <p className="text-xs leading-relaxed text-zinc-200 font-sans">
           {t('showcase.guestBanner')}
         </p>
@@ -43,9 +43,9 @@ export function ShowcaseGuestBanner({ className }: ShowcaseGuestBannerProps) {
         variant="outline"
         asChild
         className={cn(
-          'w-full sm:w-auto h-8 sm:h-7 px-3 text-xs font-semibold shrink-0',
-          'rounded-lg border-primary/40 bg-primary/10 text-primary',
-          'hover:bg-primary/20 hover:border-primary/70 hover:text-primary',
+          'w-full sm:w-auto h-8 sm:h-7 px-3 text-xs shrink-0',
+          'rounded-lg border-brand/40 bg-brand/10 text-brand',
+          'hover:bg-brand/20 hover:border-brand/70 hover:text-brand',
           'transition-all duration-150 active:scale-[0.98]'
         )}
       >
