@@ -57,7 +57,7 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     // Expect redirect to /login
     await expect(page).toHaveURL(/\/login/)
     await expect(page.getByRole('heading', { name: 'ProxyLoadouts' })).toBeVisible()
-    await expect(page.getByRole('link', { name: /Войти через Discord/i })).toBeVisible()
+    await expect(page.getByRole('link', { name: /^(Войти|Log In)$/i })).toBeVisible()
   })
 
   test('renders 5-step minimalist guide for new ZZZ players including auth', async ({ page }) => {
@@ -66,7 +66,7 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     // Check 5-step process guide
     await expect(page.getByRole('heading', { name: 'Игровая витрина' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Скан по UID' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Вход через Discord' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Авторизация через Discord' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Менеджмент сборок' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Менеджмент отрядов' })).toBeVisible()
   })
