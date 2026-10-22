@@ -85,6 +85,7 @@ const en: TranslationSchema = {
     metaDescription: 'Sign in to ProxyLoadouts to save agent builds, sync gear, and assemble combat squads.',
     description: 'Saved agent builds, drive disc sets, and squads without gear conflicts.',
     discordButton: 'Log In',
+    backToHome: 'Back to Home',
     guestNote: 'You can browse any showcase by UID without logging in — auth is only needed for your own builds and squads.',
   },
   auth: {
