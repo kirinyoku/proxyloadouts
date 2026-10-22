@@ -84,7 +84,7 @@ const en: TranslationSchema = {
     pageTitle: 'Sign In with Discord — ProxyLoadouts',
     metaDescription: 'Sign in to ProxyLoadouts to save agent builds, sync gear, and assemble combat squads.',
     description: 'Saved agent builds, drive disc sets, and squads without gear conflicts.',
-    discordButton: 'Log in with Discord',
+    discordButton: 'Log In',
     guestNote: 'You can browse any showcase by UID without logging in — auth is only needed for your own builds and squads.',
   },
   auth: {
@@ -162,7 +162,7 @@ const en: TranslationSchema = {
     retry: 'Retry',
     newSearch: 'New search',
     guestBanner: 'Log in with Discord — that is what saves agent builds to your roster and lets you assemble squads from them.',
-    guestLoginButton: 'Log in with Discord',
+    guestLoginButton: 'Log In',
     unlinkedBanner: 'Showcase {{uid}} is not linked to your profile. Link the UID in settings, or its builds will not save to your roster.',
     linkThisUid: 'Link this UID',
     linkUid: 'Link UID',
@@ -463,7 +463,7 @@ const en: TranslationSchema = {
     bgAnimationDisabled: 'Off',
     bgAnimationMobileNotice: 'Disabled on mobile to save resources',
     guestAccountsNote: 'Log in with Discord to link your UIDs and keep builds and squads.',
-    guestLoginButton: 'Log in with Discord',
+    guestLoginButton: 'Log In',
     dangerZoneTitle: 'Danger Zone',
     dangerZoneDesc: 'ProxyLoadouts actions that cannot be undone.',
     deleteAccountTitle: 'Delete Account',
@@ -611,10 +611,14 @@ const en: TranslationSchema = {
   },
   footer: {
     aria: 'ProxyLoadouts site footer',
+    alphaBadge: 'ALPHA',
+    alphaNoticeLeading: 'The project is currently in early alpha. If you encounter any bugs, have feedback, or suggestions, please write to',
+    alphaNoticeTrailing: '.',
     poweredBy: 'Game showcase and gear data powered by',
     enkaNetwork: 'EnkaNetwork',
     disclaimer: 'ProxyLoadouts is an independent fan-made project not affiliated with COGNOSPHERE PTE. LTD. or miHoYo. Zenless Zone Zero™, characters, names, and game assets are the property of COGNOSPHERE PTE. LTD.',
     privacy: 'Privacy & Terms',
+    createdBy: 'created by',
   },
   privacy: {
     title: 'Privacy Policy & Terms of Service',
@@ -720,7 +724,7 @@ const en: TranslationSchema = {
         title: '10. Inquiries, DMCA & Supervisory Contacts (DSA / GDPR)',
         content:
           'For all legal inquiries, copyright notices (Takedown / DMCA), data subject requests under GDPR, or communications under the Digital Services Act (DSA), please reach out via email:',
-        email: 'support@proxyloadouts.com',
+        email: 'contact@proxyloadouts.com',
         responseTime:
           'Pursuant to GDPR Art. 12(3), data subject inquiries are handled without undue delay and at the latest within one month (30 days) of receipt.',
       },

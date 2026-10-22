@@ -11,7 +11,7 @@ vi.mock('react-i18next', () => ({
         'home.step1DescShort': 'Выставьте агентов на игровую витрину',
         'home.step2Title': 'Скан по UID',
         'home.step2DescShort': 'Импортируйте экипировку агентов по UID',
-        'home.step3Title': 'Вход через Discord',
+        'home.step3Title': 'Авторизация через Discord',
         'home.step3DescShort': 'Авторизуйтесь через Discord для сохранения сборок',
         'home.step4Title': 'Менеджмент сборок',
         'home.step4DescShort': 'Создавайте сборки под разные отряды',
@@ -53,7 +53,7 @@ describe('HowItWorks', () => {
     expect(html).toContain('Импортируйте экипировку агентов по UID')
 
     expect(html).toContain('03')
-    expect(html).toContain('Вход через Discord')
+    expect(html).toContain('Авторизация через Discord')
     expect(html).toContain('Авторизуйтесь через Discord для сохранения сборок')
 
     expect(html).toContain('04')

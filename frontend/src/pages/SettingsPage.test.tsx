@@ -44,8 +44,8 @@ vi.mock('react-i18next', async (importOriginal) => {
           'settings.addAccountButton': 'Привязать UID',
           'settings.uidPlaceholder': '1504687050',
           'settings.limitReachedAlert': 'Достигнут лимит аккаунтов (3 из 3).',
-          'settings.guestAccountsNote': 'Войдите через Discord, чтобы привязать свои игровые аккаунты UID.',
-          'settings.guestLoginButton': 'Войти через Discord',
+          'settings.guestAccountsNote': 'Авторизуйтесь через Discord, чтобы привязать свои игровые аккаунты UID.',
+          'settings.guestLoginButton': 'Войти',
           'settings.dangerZoneTitle': 'Опасная зона',
           'settings.dangerZoneDesc': 'Безвозвратные действия с вашей учетной записью.',
           'settings.deleteAccountTitle': 'Удалить аккаунт',
@@ -147,7 +147,8 @@ describe('SettingsPage', () => {
     const html = renderToString(<SettingsPage />)
 
     expect(html).toContain('Настройки')
-    expect(html).toContain('Войдите через Discord')
+    expect(html).toContain('Авторизуйтесь через Discord')
+    expect(html).toContain('Войти')
     expect(html).not.toContain('Удалить аккаунт')
     expect(html).not.toContain('Опасная зона')
   })
