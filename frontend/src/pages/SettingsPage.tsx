@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { DiscordIcon } from '@/components/common/DiscordIcon'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { LinkUidForm } from '@/components/settings/LinkUidForm'
 import { ProxyAccountRow } from '@/components/settings/ProxyAccountRow'
@@ -292,19 +293,21 @@ export function SettingsPage() {
           title={t('settings.accountsTitle')}
           icon={UsersRound}
         >
-          <div className="flex flex-col items-center gap-3.5 py-8 text-center">
-            <span
-              aria-hidden="true"
-              className="flex size-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-muted-foreground"
-            >
-              <UsersRound className="size-5" />
-            </span>
-            <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-              {t('settings.guestAccountsNote')}
-            </p>
-            <Button asChild size="default" className="h-10 sm:h-9 w-full sm:w-auto gap-2">
+          <div className="flex flex-col gap-3.5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:py-4">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <span
+                aria-hidden="true"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[#5865F2]/25 bg-[#5865F2]/10 text-[#5865F2] mt-0.5 sm:mt-0"
+              >
+                <DiscordIcon className="size-4" />
+              </span>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {t('settings.guestAccountsNote')}
+              </p>
+            </div>
+            <Button asChild size="default" className="w-full sm:w-auto shrink-0 gap-1.5">
               <Link to="/login">
-                <LogIn className="size-4" />
+                <LogIn className="size-3.5" />
                 {t('settings.guestLoginButton')}
               </Link>
             </Button>
