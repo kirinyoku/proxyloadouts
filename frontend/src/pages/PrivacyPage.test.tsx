@@ -71,6 +71,7 @@ describe('PrivacyPage', () => {
 
     expect(ru.privacy.sections.contact.email).toBe('contact@proxyloadouts.com')
     expect(html).toContain(`mailto:${ru.privacy.sections.contact.email}`)
+    expect(html).toContain('href="https://www.hetzner.com"')
     expect(html).toContain('href="https://enka.network"')
     expect(html).toContain('target="_blank"')
     expect(html).toContain('rel="noopener noreferrer"')

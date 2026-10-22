@@ -625,13 +625,13 @@ const en: TranslationSchema = {
     pageTitle: 'Privacy Policy & Terms of Service — ProxyLoadouts',
     metaDescription: 'Privacy Policy and Terms of Service for ProxyLoadouts, an independent Zenless Zone Zero agent build manager.',
     badge: 'LEGAL // PRIVACY & TERMS',
-    lastUpdated: 'Last updated: September 2026',
+    lastUpdated: 'Last updated: October 2026',
     backToHome: 'Back to Home',
     sections: {
       overview: {
         title: '1. Overview & Service Operator',
         content:
-          'ProxyLoadouts (the "Service") is an independent, non-commercial fan service for Zenless Zone Zero (ZZZ) players, created to catalog builds, calculate gear stat allocations, and plan squad compositions. The server infrastructure is hosted within the European Union (EU). This document combines our Terms of Service and Privacy Policy, governing the use of the Service under applicable EU law, including the General Data Protection Regulation (GDPR, Regulation (EU) 2016/679) and the Digital Services Act (DSA, Regulation (EU) 2022/2065).',
+          'ProxyLoadouts (the "Service") is an independent, non-commercial fan service for Zenless Zone Zero (ZZZ) players, created to catalog builds, calculate gear stat allocations, and plan squad compositions. The server infrastructure is hosted in a data center located in Finland (European Union). This document combines our Terms of Service and Privacy Policy, governing the use of the Service under applicable Finnish and EU law, including the General Data Protection Regulation (GDPR, Regulation (EU) 2016/679) and the Digital Services Act (DSA, Regulation (EU) 2022/2065).',
         operatorTitle: 'Service Operator & Single Point of Contact (DSA Art. 11/12):',
         operatorContent:
           'The Service is operated by an independent project team of ProxyLoadouts. The designated official electronic contact for users, copyright holders, and EU supervisory authorities is:',
@@ -648,6 +648,8 @@ const en: TranslationSchema = {
           'Account Suspension, Termination & Discontinuation: The Administration reserves the right at any time, without prior notice or liability, to suspend access, delete any user account found in violation of these Terms, or temporarily suspend or permanently shut down the Service entirely (terminate servers and decommission the project) without any obligation or compensation to users.',
         ruleLiability:
           'Disclaimer of Warranties & Limitation of Liability: The Service is provided on an "as is" and "as available" basis without warranties of any kind, express or implied. The Administration does not guarantee uninterrupted operation or data preservation and assumes no liability for any loss, corruption, or deletion of user data (including saved builds, teams, and preferences), hardware or database failures, service shutdown, downtime of third-party gateways (EnkaNetwork, Discord), in-game API/server updates, or force majeure events. The Service assumes no obligation to back up data; users are solely responsible for maintaining their own copies of any important information.',
+        ruleJurisdiction:
+          'Governing Law & Jurisdiction: These Terms and any dispute or claim arising out of or in connection with the Service shall be governed by and construed in accordance with the laws of Finland and applicable European Union law, excluding conflict of law rules.',
       },
       ip: {
         title: '3. Intellectual Property & Fan-Content Policy (HoYoverse)',
@@ -672,7 +674,7 @@ const en: TranslationSchema = {
           'Client IP addresses and technical HTTP headers are processed transiently in volatile memory strictly for DDoS mitigation, abuse prevention, and rate limiting. During technical request processing, authorization credentials and session cookies (the Cookie header) are strictly excluded from server diagnostic logs. IP addresses are not linked to user accounts and are never written to permanent database storage (legitimate interest in cybersecurity).',
       },
       cookies: {
-        title: '5. Technical Cookies & LocalStorage (ePrivacy Directive & TDDDG § 25)',
+        title: '5. Technical Cookies & LocalStorage (ePrivacy Directive 2002/58/EC)',
         content:
           'The Service uses strictly necessary technical storage required to deliver the features requested by the user:',
         cookieItem:
@@ -680,7 +682,7 @@ const en: TranslationSchema = {
         storageItem:
           'Browser LocalStorage: Used strictly client-side to store your preferred interface language (i18nextLng) and your active game UID.',
         noConsentNotice:
-          'Under Article 5(3) of the ePrivacy Directive 2002/58/EC, § 25(2) of the German TDDDG, and Article 11.7a of the Dutch Telecommunicatiewet, strictly necessary technical storage does not require user consent or a cookie banner. Marketing, advertising, and third-party tracking scripts are completely absent.',
+          'Under Article 5(3) of the ePrivacy Directive 2002/58/EC and Section 205 of the Finnish Act on Electronic Communications Services (Laki sähköisen viestinnän palveluista 917/2014), strictly necessary technical storage does not require user consent or a cookie banner. Marketing, advertising, and third-party tracking scripts are completely absent.',
       },
       safety: {
         title: '6. Game Account Safety & Non-Custodial Architecture',
@@ -711,10 +713,12 @@ const en: TranslationSchema = {
         portability:
           'Right to Data Portability (Art. 20): You have the right to request an export of your saved builds and squad configurations in a structured, machine-readable format (JSON).',
         complaint:
-          'Right to Lodge a Complaint (Art. 77): If you believe data processing violates GDPR, you have the statutory right to file a complaint with a data protection supervisory authority in the EU Member State of your habitual residence, place of work, or place of the server infrastructure (a directory of national authorities is available via the European Data Protection Board — EDPB).',
+          'Right to Lodge a Complaint (Art. 77): If you believe data processing violates GDPR, you have the statutory right to file a complaint with a supervisory authority in the EU Member State of your habitual residence or at the server infrastructure location with the Office of the Data Protection Ombudsman in Finland (Tietosuojavaltuutetun toimisto, tietosuoja.fi), or via the European Data Protection Board (EDPB).',
       },
       thirdParty: {
         title: '9. Third-Party Integrations & Processors',
+        hetzner:
+          'Hetzner Online GmbH / Hetzner Finland Oy: Provision of cloud server infrastructure and database hosting in Finland (Tuusula/Helsinki data center, EU) under a formal Data Processing Agreement (DPA) compliant with GDPR Art. 28.',
         discord:
           'Discord OAuth2: Used strictly for secure authentication. Data processing by Discord Inc. is governed by its Privacy Policy and the EU-U.S. Data Privacy Framework.',
         enka:

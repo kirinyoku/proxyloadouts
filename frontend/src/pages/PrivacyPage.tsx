@@ -103,6 +103,9 @@ export function PrivacyPage() {
             <div className="rounded-[8px_8px_0_8px] border border-white/5 bg-white/[0.02] p-4 text-xs leading-relaxed text-muted-foreground">
               <p>{t('privacy.sections.terms.ruleLiability')}</p>
             </div>
+            <div className="rounded-[8px_8px_0_8px] border border-white/5 bg-white/[0.02] p-4 text-xs leading-relaxed text-muted-foreground">
+              <p>{t('privacy.sections.terms.ruleJurisdiction')}</p>
+            </div>
           </div>
         </section>
 
@@ -274,6 +277,21 @@ export function PrivacyPage() {
             {t('privacy.sections.thirdParty.title')}
           </h2>
           <ul className="space-y-3 text-sm text-muted-foreground">
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+              <div>
+                <span>{t('privacy.sections.thirdParty.hetzner')}</span>{' '}
+                <a
+                  href="https://www.hetzner.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-0.5 text-primary hover:underline"
+                >
+                  <span>hetzner.com</span>
+                  <ExternalLink className="size-3" />
+                </a>
+              </div>
+            </li>
             <li className="flex items-start gap-2">
               <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
               <span>{t('privacy.sections.thirdParty.discord')}</span>
