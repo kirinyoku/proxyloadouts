@@ -142,7 +142,7 @@ function AgentShowcaseSection({
     saveButton = (
       <Button
         variant="outline"
-        className="h-7.5 shrink-0 gap-1.5 border-dashed border-primary/40 px-2.5 text-[11px] font-semibold text-primary hover:bg-primary/10 cursor-pointer sm:h-8 sm:px-3 sm:text-xs"
+        className="h-7.5 shrink-0 gap-1.5 border-dashed border-primary/40 px-2.5 text-[11px] text-primary hover:bg-primary/10 cursor-pointer sm:h-8 sm:px-3 sm:text-xs"
         asChild
       >
         <Link to="/settings" title={t('showcase.linkUidTooltip')} aria-label={t('showcase.linkUid')}>
