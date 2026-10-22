@@ -252,7 +252,7 @@ export function TeamMemberPreview({
               ) : (
                 <Disc className="size-3.5 sm:size-4 text-muted-foreground/60" />
               )}
-              <span className="absolute -bottom-0.5 -right-1 flex size-3.5 items-center justify-center rounded-full border border-black bg-amber-400 font-mono text-[8px] font-black leading-none text-black">
+              <span className="absolute -bottom-0.5 -right-1 flex size-3.5 items-center justify-center rounded-full border border-black bg-primary font-mono text-[8px] font-black leading-none text-primary-foreground">
                 {discSet.count}
               </span>
             </div>

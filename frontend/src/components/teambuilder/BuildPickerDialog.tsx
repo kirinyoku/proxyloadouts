@@ -603,7 +603,7 @@ export function BuildPickerDialog({
                                                 ) : (
                                                   <Disc className="size-2.5 text-muted-foreground/60" />
                                                 )}
-                                                <span className="absolute -bottom-0.5 -right-0.5 flex size-3 items-center justify-center rounded-full bg-amber-400 font-mono text-[7px] font-black leading-none text-black shadow-xs border border-black">
+                                                <span className="absolute -bottom-0.5 -right-0.5 flex size-3 items-center justify-center rounded-full bg-primary font-mono text-[7px] font-black leading-none text-primary-foreground shadow-xs border border-black">
                                                   {discSet.count}
                                                 </span>
                                               </div>
@@ -753,7 +753,7 @@ export function BuildPickerDialog({
                                             ) : (
                                               <Disc className="size-3.5 text-muted-foreground/60" />
                                             )}
-                                            <span className="absolute -bottom-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-amber-400 font-mono text-[8px] font-black leading-none text-black shadow-xs border border-black">
+                                            <span className="absolute -bottom-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-primary font-mono text-[8px] font-black leading-none text-primary-foreground shadow-xs border border-black">
                                               {discSet.count}
                                             </span>
                                           </div>
