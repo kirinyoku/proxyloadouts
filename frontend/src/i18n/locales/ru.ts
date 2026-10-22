@@ -75,7 +75,7 @@ const ru = {
     step2DescShort: 'Импортируйте экипировку агентов по UID',
     step3DescShort: 'Авторизуйтесь через Discord для сохранения сборок',
     step4DescShort: 'Создавайте сборки под разные отряды',
-    step5DescShort: 'Собирайте отряды под различный боевой контент',
+    step5DescShort: 'Собирайте отряды из своих сборок без коллизий',
   },
   login: {
     title: 'ProxyLoadouts',

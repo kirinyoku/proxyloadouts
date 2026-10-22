@@ -16,7 +16,7 @@ vi.mock('react-i18next', () => ({
         'home.step4Title': 'Менеджмент сборок',
         'home.step4DescShort': 'Создавайте сборки под разные отряды',
         'home.step5Title': 'Менеджмент отрядов',
-        'home.step5DescShort': 'Собирайте отряды под различный боевой контент',
+        'home.step5DescShort': 'Собирайте отряды из своих сборок без коллизий',
       }
       return translations[key] ?? key
     },
@@ -62,6 +62,6 @@ describe('HowItWorks', () => {
 
     expect(html).toContain('05')
     expect(html).toContain('Менеджмент отрядов')
-    expect(html).toContain('Собирайте отряды под различный боевой контент')
+    expect(html).toContain('Собирайте отряды из своих сборок без коллизий')
   })
 })

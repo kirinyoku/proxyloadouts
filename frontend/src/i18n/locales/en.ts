@@ -77,7 +77,7 @@ const en: TranslationSchema = {
     step2DescShort: 'Import agent equipment by UID',
     step3DescShort: 'Log in with Discord to save your builds',
     step4DescShort: 'Create loadouts for different squads',
-    step5DescShort: 'Build squads for diverse combat content',
+    step5DescShort: 'Build conflict-free squads from saved loadouts',
   },
   login: {
     title: 'ProxyLoadouts',
