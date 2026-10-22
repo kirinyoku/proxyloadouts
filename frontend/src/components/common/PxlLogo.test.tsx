@@ -40,4 +40,12 @@ describe('PxlLogo', () => {
     expect(html).toContain('PROXY')
     expect(html).toContain('LOADOUTS')
   })
+
+  it('renders badgeText when provided', () => {
+    const html = renderToString(<PxlLogo showMark badgeText="ALPHA" />)
+
+    expect(html).toContain('[ALPHA]')
+    expect(html).toContain('text-primary')
+    expect(html).toContain('font-mono')
+  })
 })

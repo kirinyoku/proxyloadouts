@@ -63,16 +63,20 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b-2 border-black bg-background/95 backdrop-blur-sm">
-      <div aria-hidden className="crosshatch absolute inset-x-0 top-0 h-1 opacity-90" style={{ backgroundColor: 'var(--primary)' }} />
+      <div
+        aria-hidden
+        className="crosshatch h-1 w-full opacity-90"
+        style={{ backgroundColor: 'var(--primary)' }}
+      />
       <div className="mx-auto max-w-6xl px-3 sm:px-4">
-        <div className="relative flex h-14 items-center justify-between gap-2 sm:gap-4">
+        <div className="relative flex h-[52px] items-center justify-between gap-2 sm:gap-4">
           <NavLink
             to="/"
             end
             aria-label="ProxyLoadouts"
             className="group flex shrink-0 items-center select-none py-1"
           >
-            <PxlLogo size="md" showMark />
+            <PxlLogo size="md" showMark badgeText="ALPHA" />
           </NavLink>
 
           <nav
@@ -90,7 +94,7 @@ export function AppHeader() {
             ) : (
               <Button
                 size="default"
-                className="h-8 gap-1.5 px-3 text-xs font-semibold"
+                className="h-8 gap-1.5 px-3 text-xs"
                 asChild
               >
                 <Link to="/login">

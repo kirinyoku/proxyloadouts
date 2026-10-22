@@ -9,6 +9,7 @@ interface PxlLogoProps {
   showMark?: boolean
   showWordmark?: boolean
   layout?: 'horizontal' | 'vertical'
+  badgeText?: string
 }
 
 /**
@@ -25,6 +26,7 @@ export function PxlLogo({
   showMark = false,
   showWordmark,
   layout = 'horizontal',
+  badgeText,
 }: PxlLogoProps) {
   const shouldShowWordmark = showWordmark ?? !showMark
 
@@ -99,21 +101,35 @@ export function PxlLogo({
         >
           {/* Legacy Wordmark (only if mark is not present or explicitly enabled) */}
           {shouldShowWordmark && (
-            <span
-              className={cn(
-                'font-display font-black leading-[0.9] text-foreground',
-                titleSizes[size],
+            <div className="flex items-center gap-1.5 leading-none">
+              <span
+                className={cn(
+                  'font-display font-black leading-[0.9] text-foreground',
+                  titleSizes[size],
+                )}
+              >
+                <span aria-hidden>P</span>
+                <span aria-hidden className="text-primary">
+                  X
+                </span>
+                <span aria-hidden>L</span>
+                <span aria-hidden className="text-primary">
+                  .
+                </span>
+              </span>
+              {badgeText && (
+                <span
+                  className={cn(
+                    'font-mono font-bold tracking-wider text-primary select-none leading-none',
+                    size === 'sm' && 'text-[7.5px]',
+                    size === 'md' && 'text-[9.5px]',
+                    size === 'lg' && 'text-[13px]',
+                  )}
+                >
+                  {`[${badgeText}]`}
+                </span>
               )}
-            >
-              <span aria-hidden>P</span>
-              <span aria-hidden className="text-primary">
-                X
-              </span>
-              <span aria-hidden>L</span>
-              <span aria-hidden className="text-primary">
-                .
-              </span>
-            </span>
+            </div>
           )}
 
           {/* Subtitle / Descriptive Tag */}
@@ -139,14 +155,28 @@ export function PxlLogo({
                 </>
               ) : (
                 <>
-                  <span
-                    className={cn(
-                      'font-tech font-bold text-foreground uppercase leading-none',
-                      currentLockup.proxy,
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span
+                      className={cn(
+                        'font-tech font-bold text-foreground uppercase leading-none',
+                        currentLockup.proxy,
+                      )}
+                    >
+                      PROXY
+                    </span>
+                    {badgeText && (
+                      <span
+                        className={cn(
+                          'font-mono font-bold tracking-wider text-primary select-none leading-none',
+                          size === 'sm' && 'text-[7.5px]',
+                          size === 'md' && 'text-[9.5px]',
+                          size === 'lg' && 'text-[13px]',
+                        )}
+                      >
+                        {`[${badgeText}]`}
+                      </span>
                     )}
-                  >
-                    PROXY
-                  </span>
+                  </div>
                   <span
                     className={cn(
                       'font-tech font-bold text-primary uppercase leading-none',

@@ -83,11 +83,13 @@ describe('AppHeader', () => {
     expect(html).toContain('checker-dark')
   })
 
-  it('renders brand logo and title PROXYLOADOUTS visible across mobile and desktop', () => {
+  it('renders brand logo, title PROXYLOADOUTS and ALPHA badge in header', () => {
     const html = renderToString(<AppHeader />)
 
     expect(html).toContain('PROXY')
     expect(html).toContain('LOADOUTS')
+    expect(html).toContain('ALPHA')
+    expect(html).toContain('h-[52px]')
     expect(html).not.toMatch(/class="[^"]*hidden[^"]*font-heading/)
   })
 
