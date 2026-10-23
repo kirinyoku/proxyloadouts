@@ -10,7 +10,7 @@
 [![Frontend](https://img.shields.io/badge/Frontend-React_19_+_TS_6-61DAFB?style=flat&logo=react&logoColor=black)](frontend/README.md)
 [![Backend](https://img.shields.io/badge/Backend-Go_1.26_+_SQLite_WAL-00ADD8?style=flat&logo=go&logoColor=white)](backend/README.md)
 [![API Contract](https://img.shields.io/badge/Contract-OpenAPI_3.1-6BA539?style=flat&logo=openapiinitiative&logoColor=white)](contracts/openapi.yaml)
-[![License](https://img.shields.io/badge/License-MIT-brightgreen?style=flat)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPLv3-blue?style=flat)](LICENSE)
 
 [**Frontend & UI/UX Showcase**](frontend/README.md) · [**Backend Architecture**](backend/README.md) · [**OpenAPI 3.1 Spec**](contracts/openapi.yaml)
 
@@ -134,6 +134,6 @@ proxyloadouts/
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
+Licensed under the [GNU Affero General Public License v3.0 (AGPLv3)](LICENSE).
 
 > **Disclaimer**: *ProxyLoadouts is an independent fan-made project and is not affiliated with or endorsed by HoYoverse / COGNOSPHERE PTE. LTD. All Zenless Zone Zero game assets and trademarks belong to their respective owners.*
