@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/telemetry/client-error": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report unhandled frontend client error
+         * @description Accepts an unhandled browser/React error report and forwards it to the server-side alerting pipeline.
+         */
+        post: operations["reportClientError"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/discord/login": {
         parameters: {
             query?: never;
@@ -776,6 +796,22 @@ export interface components {
             page: number;
             page_size: number;
         };
+        ClientErrorReportRequest: {
+            /** @example TypeError: Cannot read properties of undefined (reading 'id') */
+            message: string;
+            /**
+             * @example TypeError: Cannot read properties of undefined
+             *         at RosterPage (RosterPage.tsx:42:15)
+             */
+            stack?: string;
+            /**
+             * @example at RosterPage
+             *         at ErrorBoundary
+             */
+            component_stack?: string;
+            /** @example https://proxyloadouts.com/roster */
+            url?: string;
+        };
         ErrorEnvelope: {
             /** @example entity not found */
             error: string;
@@ -906,6 +942,31 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    reportClientError: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientErrorReportRequest"];
+            };
+        };
+        responses: {
+            /** @description Error report accepted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequestError"];
+            403: components["responses"]["ForbiddenError"];
+            429: components["responses"]["RateLimitedError"];
         };
     };
     discordLogin: {

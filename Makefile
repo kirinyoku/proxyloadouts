@@ -1,4 +1,5 @@
 .DEFAULT_GOAL := help
+GIT_SHA ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo prod)
 .PHONY: help \
 	dev-backend dev-frontend dev run \
 	codegen \
@@ -20,7 +21,7 @@ help: ## Show this help message
 # ==============================================================================
 
 dev-backend: ## Run Go backend API server (:8080)
-	go -C backend run ./cmd/server
+	go -C backend run -ldflags="-X main.gitSha=$(GIT_SHA)" ./cmd/server
 
 dev-frontend: ## Run Vite frontend dev server with HMR (:5173)
 	npm --prefix frontend run dev
@@ -72,7 +73,7 @@ build: codegen ## Build standalone single-binary with embedded frontend (backend
 	npm --prefix frontend run build
 	rm -rf backend/internal/adapter/http/static/assets
 	cp -r frontend/dist/* backend/internal/adapter/http/static/
-	go -C backend build -trimpath -ldflags="-s -w" -o bin/server ./cmd/server
+	go -C backend build -trimpath -ldflags="-s -w -X main.gitSha=$(GIT_SHA)" -o bin/server ./cmd/server
 
 build-all: build
 
@@ -94,10 +95,10 @@ COMPOSE_OVERRIDE := $(wildcard deploy/docker-compose.override.yml)
 COMPOSE_FLAGS := -f $(COMPOSE_FILE) $(if $(COMPOSE_OVERRIDE),-f $(COMPOSE_OVERRIDE))
 
 docker-build: ## Build production Docker image (proxyloadouts:latest)
-	docker build -t proxyloadouts:latest .
+	docker build --build-arg GIT_SHA=$(GIT_SHA) -t proxyloadouts:latest .
 
 docker-up: ## Start full stack (app + Dozzle logs) in background via Compose
-	docker compose $(COMPOSE_FLAGS) up -d --build
+	GIT_SHA=$(GIT_SHA) docker compose $(COMPOSE_FLAGS) up -d --build
 
 docker-down: ## Stop and remove Compose containers
 	docker compose $(COMPOSE_FLAGS) down

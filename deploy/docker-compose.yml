@@ -11,7 +11,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-${SENTRY_DSN:-}}
+        GIT_SHA: ${GIT_SHA:-prod}
     container_name: proxyloadouts-app
     restart: unless-stopped
     ports:
@@ -25,7 +25,9 @@ services:
       - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
       - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
       - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI:-http://localhost:8080/api/v1/auth/discord/callback}
-      - SENTRY_DSN=${SENTRY_DSN:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_THREAD_ID=${TELEGRAM_THREAD_ID:-0}
       - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
       - proxyloadouts-data:/app/data

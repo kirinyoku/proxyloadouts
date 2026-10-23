@@ -11,8 +11,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/telegram"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/teamsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
@@ -61,28 +61,30 @@ func respondDomainError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, domain.ErrSourceUnavailable):
 		respondError(w, http.StatusBadGateway, err.Error())
 	default:
-		reqID := ""
 		if r != nil {
-			reqID = middleware.GetReqID(r.Context())
+			reqID := middleware.GetReqID(r.Context())
+			caller := callerLocation()
 			slog.ErrorContext(r.Context(), "internal server error",
 				"error", err,
 				"request_id", reqID,
 				"path", r.URL.Path,
 				"method", r.Method,
+				"caller", caller,
 			)
-			if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
-				hub.WithScope(func(scope *sentry.Scope) {
-					if reqID != "" {
-						scope.SetTag("request_id", reqID)
-					}
-					hub.CaptureException(err)
+			if notifier := alertNotifierFromContext(r.Context()); notifier != nil {
+				notifier.NotifyServerError(telegram.ServerErrorAlert{
+					Method:       r.Method,
+					RoutePattern: routePatternFromRequest(r),
+					RequestURI:   r.URL.RequestURI(),
+					RequestID:    reqID,
+					ClientIP:     getClientIP(r),
+					User:         userLabelFromRequest(r),
+					Caller:       caller,
+					Err:          err,
 				})
-			} else {
-				sentry.CaptureException(err)
 			}
 		} else {
 			slog.Error("internal server error", "error", err)
-			sentry.CaptureException(err)
 		}
 		respondError(w, http.StatusInternalServerError, "internal server error")
 	}

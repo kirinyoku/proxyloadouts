@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -29,6 +28,9 @@ type Options struct {
 	// ShowcaseRateLimiter optionally provides the rate limiter for public showcase scans.
 	// If nil, a default limiter of 20 req/min with burst 5 is created.
 	ShowcaseRateLimiter *IPRateLimiter
+	// TelemetryRateLimiter optionally provides the rate limiter for client error reports.
+	// If nil, a default limiter of 6 req/min with burst 3 is created.
+	TelemetryRateLimiter *IPRateLimiter
 }
 
 // Pinger verifies database connectivity for health probes.
@@ -45,6 +47,7 @@ type Deps struct {
 	Accounts *accountsvc.Service
 	Builds   *buildsvc.Service
 	Teams    *teamsvc.Service
+	Alerts   AlertNotifier
 }
 
 // NewRouter builds the full HTTP router: middlewares, health checks,
@@ -55,10 +58,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 	r.Use(middleware.RequestID)
 	r.Use(SlogRequestLogger(nil))
 	r.Use(middleware.Recoverer)
-	r.Use(sentryhttp.New(sentryhttp.Options{
-		Repanic:         true,
-		WaitForDelivery: false,
-	}).Handle)
+	r.Use(alertMiddleware(deps.Alerts))
 	r.Use(securityHeaders(opts))
 	r.Use(middleware.RequestSize(1 << 20)) // 1 MiB maximum request body size (Anti-DoS)
 	r.Use(middleware.Timeout(60 * time.Second))
@@ -108,10 +108,16 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 	accountHandler := NewAccountHandler(deps.Accounts)
 	buildHandler := NewBuildHandler(deps.Builds)
 	teamHandler := NewTeamHandler(deps.Teams)
+	telemetryHandler := NewTelemetryHandler(deps.Alerts)
 
 	showcaseLimiter := opts.ShowcaseRateLimiter
 	if showcaseLimiter == nil {
 		showcaseLimiter = NewIPRateLimiter(rate.Limit(20.0/60.0), 5, 10*time.Minute)
+	}
+
+	telemetryLimiter := opts.TelemetryRateLimiter
+	if telemetryLimiter == nil {
+		telemetryLimiter = NewIPRateLimiter(rate.Limit(6.0/60.0), 3, 10*time.Minute)
 	}
 
 	requireAuth := requireAuth(deps.Auth, deps.Users, opts)
@@ -119,6 +125,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 
 	r.Route("/api/v1", func(api chi.Router) {
 		api.Get("/health", health)
+		api.With(checkOrigin, telemetryLimiter.Handler).Post("/telemetry/client-error", telemetryHandler.handleClientError)
 
 		// Public endpoints: guests may scan showcases (SOW §4).
 		api.Get("/auth/discord/login", authHandler.handleLogin)

@@ -10,8 +10,6 @@ RUN npm ci --legacy-peer-deps
 COPY frontend/ ./
 COPY contracts/ ../contracts/
 
-ARG VITE_SENTRY_DSN=""
-ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 RUN npm run build
 
 # 2. Build Go backend executable with embedded SPA

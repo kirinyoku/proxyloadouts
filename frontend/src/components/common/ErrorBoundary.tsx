@@ -2,7 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { useInRouterContext, useLocation } from 'react-router-dom'
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { reportError } from '@/lib/sentry'
+import { reportError } from '@/lib/error-reporter'
 import i18n from '@/i18n'
 
 export interface ErrorBoundaryProps {

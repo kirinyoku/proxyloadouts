@@ -112,7 +112,8 @@ backend/
 │   │   ├── sqlite/         # CGO-free modernc SQLite driver, WAL pool, and migrator
 │   │   ├── discord/        # Discord OAuth2 HTTP client
 │   │   ├── fairy/          # ZZZ game catalog SDK adapter (github.com/kirinyoku/fairy)
-│   │   └── inmemory/       # Thread-safe generic LRU TTL cache, negative cache & singleflight
+│   │   ├── inmemory/       # Thread-safe generic LRU TTL cache, negative cache & singleflight
+│   │   └── telegram/       # Async deduplicating Telegram Bot API alert notifier
 │   └── config/             # Typed environment parsing with production validation guards
 └── migrations/             # Embedded SQL schema migrations (embed.FS)
 ```
@@ -251,6 +252,7 @@ Configuration variables control specific subsystem boundaries:
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Identity Provider | Discord OAuth2 application credentials used to authenticate user sessions and synchronize identity profiles. |
 | `DISCORD_REDIRECT_URI` | Identity Provider | Registered OAuth2 callback endpoint matching the domain topology. |
 | `ENKA_TIMEOUT` | Upstream Client | Maximum HTTP timeout (seconds) when fetching character showcase snapshots from upstream EnkaNetwork API. |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Observability & Alerting | Optional Telegram Bot API credentials for asynchronous, deduplicated error, panic, and lifecycle notifications. |
 
 > Additional operational parameters governing LRU cache quotas, token-bucket rate limits, and `singleflight` TTL horizons are documented directly in [`.env.example`](.env.example).
 

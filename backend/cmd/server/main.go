@@ -8,11 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/kirinyoku/enkanetwork-go/client/zzz"
 	"golang.org/x/time/rate"
 
@@ -21,6 +22,7 @@ import (
 	httpadapter "github.com/kirinyoku/proxyloadouts/backend/internal/adapter/http"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/inmemory"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/sqlite"
+	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/telegram"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/accountsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/authsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/buildenrich"
@@ -29,6 +31,9 @@ import (
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/teamsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/config"
 )
+
+// gitSha is optionally populated at compile time via -ldflags="-X main.gitSha=...".
+var gitSha string
 
 func main() {
 	if err := run(); err != nil {
@@ -75,29 +80,25 @@ func run() error {
 		return fmt.Errorf("invalid production configuration: %w", err)
 	}
 
-	// 2.1 Initialize Sentry if configured
-	if cfg.SentryDSN != "" {
-		release := os.Getenv("GIT_SHA")
-		if release == "" {
-			release = "proxyloadouts@prod"
+	// 2.1 Initialize Telegram alert notifier if configured
+	release := resolveRelease(cfg.Env)
+
+	alertNotifier := telegram.NewNotifier(telegram.Options{
+		BotToken:    cfg.TelegramBotToken,
+		ChatID:      cfg.TelegramChatID,
+		ThreadID:    cfg.TelegramThreadID,
+		Environment: cfg.Env,
+		Release:     release,
+	})
+	defer func() {
+		flushCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if flushErr := alertNotifier.Close(flushCtx); flushErr != nil {
+			slog.Warn("telegram alert notifier flush timed out", "error", flushErr)
 		}
-		if err := sentry.Init(sentry.ClientOptions{
-			Dsn:         cfg.SentryDSN,
-			Environment: cfg.Env,
-			Release:     release,
-			BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
-				if event.Request != nil {
-					delete(event.Request.Headers, "Cookie")
-					delete(event.Request.Headers, "Authorization")
-				}
-				return event
-			},
-		}); err != nil {
-			slog.Warn("failed to initialize sentry", "error", err)
-		} else {
-			slog.Info("sentry error monitoring initialized", "env", cfg.Env, "release", release)
-			defer sentry.Flush(2 * time.Second)
-		}
+	}()
+	if alertNotifier.Enabled() {
+		slog.Info("telegram alert notifier initialized", "env", cfg.Env, "release", release)
 	}
 
 	if cfg.DiscordClientID == "" || cfg.DiscordClientSecret == "" {
@@ -189,11 +190,15 @@ func run() error {
 	showcaseLimiter := httpadapter.NewIPRateLimiter(rate.Limit(ratePerSec), cfg.ShowcaseBurst, 10*time.Minute)
 	defer showcaseLimiter.Close()
 
+	telemetryLimiter := httpadapter.NewIPRateLimiter(rate.Limit(6.0/60.0), 3, 10*time.Minute)
+	defer telemetryLimiter.Close()
+
 	router := httpadapter.NewRouter(
 		httpadapter.Options{
-			FrontendURL:         cfg.FrontendURL,
-			SecureCookies:       cfg.Env == "production",
-			ShowcaseRateLimiter: showcaseLimiter,
+			FrontendURL:          cfg.FrontendURL,
+			SecureCookies:        cfg.Env == "production",
+			ShowcaseRateLimiter:  showcaseLimiter,
+			TelemetryRateLimiter: telemetryLimiter,
 		},
 		httpadapter.Deps{
 			DB:       db,
@@ -203,6 +208,7 @@ func run() error {
 			Accounts: accountSvc,
 			Builds:   buildSvc,
 			Teams:    teamSvc,
+			Alerts:   alertNotifier,
 		},
 	)
 
@@ -222,6 +228,7 @@ func run() error {
 	serverErrChan := make(chan error, 1)
 	go func() {
 		slog.Info("HTTP server starting", "port", cfg.Port)
+		alertNotifier.NotifyLifecycle("Server Started", "HTTP listener active on port "+cfg.Port)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErrChan <- err
 		}
@@ -230,7 +237,9 @@ func run() error {
 	select {
 	case sig := <-stopChan:
 		slog.Info("shutdown signal received", "signal", sig.String())
+		alertNotifier.NotifyLifecycle("Server Stopping", "Signal received: "+sig.String())
 	case err := <-serverErrChan:
+		alertNotifier.NotifyLifecycle("Server Fatal Error", err.Error())
 		return fmt.Errorf("HTTP server error: %w", err)
 	}
 
@@ -244,4 +253,64 @@ func run() error {
 	}
 
 	return nil
+}
+
+// resolveRelease determines the current build/commit identifier from compile-time
+// ldflags, the GIT_SHA environment variable, Go's embedded VCS build info, or the
+// local .git directory (when running via `go run` where -buildvcs defaults to false).
+func resolveRelease(env string) string {
+	for _, candidate := range []string{gitSha, os.Getenv("GIT_SHA")} {
+		trimmed := strings.TrimSpace(candidate)
+		if trimmed != "" && trimmed != "prod" {
+			return trimmed
+		}
+	}
+
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" && setting.Value != "" {
+				return shortSHA(setting.Value)
+			}
+		}
+	}
+
+	if sha := readGitHeadSHA(); sha != "" {
+		return sha
+	}
+
+	if strings.TrimSpace(gitSha) != "" && strings.TrimSpace(gitSha) != "prod" {
+		return strings.TrimSpace(gitSha)
+	}
+	if strings.TrimSpace(env) != "" {
+		return "proxyloadouts@" + strings.TrimSpace(env)
+	}
+	return "proxyloadouts@dev"
+}
+
+func readGitHeadSHA() string {
+	for _, gitDir := range []string{".git", filepath.Join("..", ".git")} {
+		headBytes, err := os.ReadFile(filepath.Join(gitDir, "HEAD")) //nolint:gosec // static relative paths to local .git metadata
+		if err != nil {
+			continue
+		}
+		head := strings.TrimSpace(string(headBytes))
+		if ref, ok := strings.CutPrefix(head, "ref:"); ok {
+			refPath := filepath.Join(gitDir, filepath.FromSlash(strings.TrimSpace(ref)))
+			if refBytes, err := os.ReadFile(refPath); err == nil { //nolint:gosec // ref path inside local .git directory
+				return shortSHA(strings.TrimSpace(string(refBytes)))
+			}
+			continue
+		}
+		if len(head) >= 7 {
+			return shortSHA(head)
+		}
+	}
+	return ""
+}
+
+func shortSHA(sha string) string {
+	if len(sha) > 7 {
+		return sha[:7]
+	}
+	return sha
 }

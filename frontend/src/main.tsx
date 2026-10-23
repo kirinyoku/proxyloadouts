@@ -5,10 +5,10 @@ import './i18n'
 import { applyCornerStyle, getCornerStyle } from './lib/corner-style'
 import { applyBgAnimationMode, getBgAnimationMode } from './lib/bg-animation'
 import { registerServiceWorker } from './lib/register-service-worker'
-import { initSentry } from './lib/sentry'
+import { initErrorReporter } from './lib/error-reporter'
 import App from './App.tsx'
 
-initSentry()
+initErrorReporter()
 
 // Ensure corner geometry matches user's saved preference in localStorage (default: 'rounded')
 applyCornerStyle(getCornerStyle())

@@ -16,7 +16,9 @@ func TestLoad_Defaults(t *testing.T) {
 	_ = os.Unsetenv("DISCORD_REDIRECT_URI")
 	_ = os.Unsetenv("SESSION_SECRET")
 	_ = os.Unsetenv("FRONTEND_URL")
-	_ = os.Unsetenv("SENTRY_DSN")
+	_ = os.Unsetenv("TELEGRAM_BOT_TOKEN")
+	_ = os.Unsetenv("TELEGRAM_CHAT_ID")
+	_ = os.Unsetenv("TELEGRAM_THREAD_ID")
 	_ = os.Unsetenv("LOG_LEVEL")
 
 	cfg, err := Load()
@@ -36,8 +38,14 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.FrontendURL != "http://localhost:5173" {
 		t.Errorf("expected default FrontendURL http://localhost:5173, got %s", cfg.FrontendURL)
 	}
-	if cfg.SentryDSN != "" {
-		t.Errorf("expected default SentryDSN empty, got %s", cfg.SentryDSN)
+	if cfg.TelegramBotToken != "" {
+		t.Errorf("expected default TelegramBotToken empty, got %s", cfg.TelegramBotToken)
+	}
+	if cfg.TelegramChatID != "" {
+		t.Errorf("expected default TelegramChatID empty, got %s", cfg.TelegramChatID)
+	}
+	if cfg.TelegramThreadID != 0 {
+		t.Errorf("expected default TelegramThreadID 0, got %d", cfg.TelegramThreadID)
 	}
 	if cfg.LogLevel != "info" {
 		t.Errorf("expected default LogLevel info, got %s", cfg.LogLevel)

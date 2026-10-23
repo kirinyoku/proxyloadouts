@@ -26,7 +26,9 @@ type Config struct {
 	NegativeCacheMaxItems int
 	BuildEnrichMaxItems   int
 	BuildEnrichTTL        time.Duration
-	SentryDSN             string
+	TelegramBotToken      string
+	TelegramChatID        string
+	TelegramThreadID      int
 	LogLevel              string
 }
 
@@ -61,7 +63,9 @@ func Load(filenames ...string) (*Config, error) {
 		// memory bound for builds that are never read again.
 		BuildEnrichMaxItems: getEnvInt("BUILD_ENRICH_CACHE_MAX_ITEMS", 2000),
 		BuildEnrichTTL:      time.Duration(getEnvInt("BUILD_ENRICH_CACHE_TTL_SECONDS", 900)) * time.Second,
-		SentryDSN:           getEnv("SENTRY_DSN", ""),
+		TelegramBotToken:    getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:      getEnv("TELEGRAM_CHAT_ID", ""),
+		TelegramThreadID:    getEnvInt("TELEGRAM_THREAD_ID", 0),
 		LogLevel:            getEnv("LOG_LEVEL", "info"),
 	}
 
