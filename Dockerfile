@@ -27,12 +27,12 @@ COPY backend/ ./backend/
 # Copy built SPA directly into the embed directory
 COPY --from=frontend-builder /app/frontend/dist/ ./backend/internal/adapter/http/static/
 
-ARG TARGETOS="linux"
-ARG TARGETARCH="amd64"
+ARG TARGETOS
+ARG TARGETARCH
 ARG GIT_SHA="prod"
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd backend && CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w -X main.gitSha=${GIT_SHA}" -o /bin/proxyloadouts ./cmd/server
+    cd backend && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -trimpath -ldflags="-s -w -X main.gitSha=${GIT_SHA}" -o /bin/proxyloadouts ./cmd/server
 
 # 3. Minimal production runner
 FROM alpine:3.21
