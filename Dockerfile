@@ -4,7 +4,7 @@
 # ==============================================================================
 
 # 1. Build frontend React SPA
-FROM node:22-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
@@ -15,7 +15,7 @@ COPY contracts/ ../contracts/
 RUN npm run build
 
 # 2. Build Go backend executable with embedded SPA
-FROM golang:alpine AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:alpine AS backend-builder
 WORKDIR /app
 RUN apk add --no-cache git ca-certificates tzdata
 
@@ -27,10 +27,12 @@ COPY backend/ ./backend/
 # Copy built SPA directly into the embed directory
 COPY --from=frontend-builder /app/frontend/dist/ ./backend/internal/adapter/http/static/
 
+ARG TARGETOS="linux"
+ARG TARGETARCH="amd64"
 ARG GIT_SHA="prod"
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd backend && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.gitSha=${GIT_SHA}" -o /bin/proxyloadouts ./cmd/server
+    cd backend && CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w -X main.gitSha=${GIT_SHA}" -o /bin/proxyloadouts ./cmd/server
 
 # 3. Minimal production runner
 FROM alpine:3.21
