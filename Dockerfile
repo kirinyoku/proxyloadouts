@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # ==============================================================================
 # Multi-stage production build for ProxyLoadouts (Single-Binary Distribution)
 # ==============================================================================
@@ -6,7 +7,8 @@
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps
 COPY frontend/ ./
 COPY contracts/ ../contracts/
 
@@ -18,14 +20,17 @@ WORKDIR /app
 RUN apk add --no-cache git ca-certificates tzdata
 
 COPY backend/go.mod backend/go.sum ./backend/
-RUN cd backend && go mod download
+RUN --mount=type=cache,target=/go/pkg/mod/ \
+    cd backend && go mod download
 
 COPY backend/ ./backend/
 # Copy built SPA directly into the embed directory
 COPY --from=frontend-builder /app/frontend/dist/ ./backend/internal/adapter/http/static/
 
 ARG GIT_SHA="prod"
-RUN cd backend && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.gitSha=${GIT_SHA}" -o /bin/proxyloadouts ./cmd/server
+RUN --mount=type=cache,target=/go/pkg/mod/ \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd backend && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.gitSha=${GIT_SHA}" -o /bin/proxyloadouts ./cmd/server
 
 # 3. Minimal production runner
 FROM alpine:3.21

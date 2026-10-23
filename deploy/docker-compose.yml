@@ -7,6 +7,7 @@
 
 services:
   app:
+    image: ghcr.io/kirinyoku/proxyloadouts:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: Dockerfile
@@ -15,7 +16,7 @@ services:
     container_name: proxyloadouts-app
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - PORT=8080
       - ENV=${ENV:-development}
@@ -44,7 +45,7 @@ services:
       start_period: 5s
 
   # Lightweight Web Log Viewer (consumes ~10-15 MB RAM)
-  # Open in browser: http://<server-ip>:8888
+  # Bound to 127.0.0.1:8888 — access via SSH tunnel: ssh -L 8888:127.0.0.1:8888 <server>
   dozzle:
     image: amir20/dozzle:latest
     container_name: proxyloadouts-dozzle
@@ -53,7 +54,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - dozzle-data:/data
     ports:
-      - "8888:8080"
+      - "127.0.0.1:8888:8080"
     environment:
       # Show only proxyloadouts containers in the UI
       - DOZZLE_FILTER=name=proxyloadouts
