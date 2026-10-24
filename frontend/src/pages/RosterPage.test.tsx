@@ -9,7 +9,7 @@ vi.mock('react-i18next', async (importOriginal) => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string, options?: { count?: number }) => {
+      t: (key: string, options?: { count?: number; max?: number }) => {
         const translations: Record<string, string> = {
           'nav.roster': 'РОСТЕР',
           'roster.linkUidTitle': 'Привяжите UID',
