@@ -2,7 +2,7 @@ import { useDeferredValue, useMemo, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
-import { useTeams } from '@/api/hooks'
+import { useMe, useTeams } from '@/api/hooks'
 import { TeamFilterBar, type TeamSortOption } from '@/components/teams/TeamFilterBar'
 import { TeamsEmptyState } from '@/components/teams/TeamsEmptyState'
 import { TeamsHeader } from '@/components/teams/TeamsHeader'
@@ -15,8 +15,11 @@ import type { TeamSummary } from '@/types'
 
 export function TeamsPage() {
   const { t, i18n } = useTranslation()
+  const { data: me } = useMe()
   const { activeAccount, accounts, isPending: accountsPending } = useActiveAccount()
   const teamsQuery = useTeams(activeAccount?.id)
+
+  const maxTeams = me?.limits?.max_teams_per_account ?? 100
 
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<TeamSortOption>('newest')
@@ -110,11 +113,11 @@ export function TeamsPage() {
         <TeamsEmptyState variant="no-teams" />
       ) : (
         <div className="space-y-3.5 sm:space-y-4">
-          {totalCount >= 15 && (
+          {totalCount >= maxTeams && (
             <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 sm:px-4 py-2.5 text-xs text-amber-200">
               <AlertCircle className="size-4 shrink-0 text-amber-400" />
               <span>
-                {t('teams.limitBanner')}
+                {t('teams.limitBanner', { count: totalCount, max: maxTeams })}
               </span>
             </div>
           )}
@@ -126,6 +129,7 @@ export function TeamsPage() {
             sortBy={sortBy}
             onSortChange={setSortBy}
             totalCount={totalCount}
+            maxTeams={maxTeams}
           />
 
           {filteredSummaries.length === 0 ? (

@@ -10,7 +10,7 @@ import (
 
 // Build limit and validation constants.
 const (
-	MaxBuildsPerAgent         = 5
+	MaxBuildsPerAgent         = 10
 	MaxBuildNameLength        = 100
 	MaxBuildDescriptionLength = 500
 )

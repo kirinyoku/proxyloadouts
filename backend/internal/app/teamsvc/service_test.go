@@ -19,6 +19,7 @@ import (
 type fixtureEnv struct {
 	db        *sql.DB
 	svc       *Service
+	users     *sqlite.SQLiteUserRepo
 	builds    *sqlite.SQLiteBuildRepo
 	teams     *sqlite.SQLiteTeamRepo
 	accounts  *sqlite.SQLiteAccountRepo
@@ -54,7 +55,8 @@ func newFixture(t *testing.T) *fixtureEnv {
 
 	env := &fixtureEnv{
 		db:       db,
-		svc:      New(teams, builds, accounts),
+		svc:      New(teams, builds, accounts, WithUsers(users)),
+		users:    users,
 		builds:   builds,
 		teams:    teams,
 		accounts: accounts,
@@ -427,7 +429,7 @@ func TestService_CreateTeamLimitReached(t *testing.T) {
 		}
 	}
 
-	// 11th team should fail with ErrConflict
+	// Next team should fail with ErrConflict
 	_, err := env.svc.Create(ctx, CreateInput{
 		UserID:        env.ownerID,
 		GameAccountID: env.accountID,
@@ -436,6 +438,41 @@ func TestService_CreateTeamLimitReached(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrConflict) {
 		t.Errorf("expected ErrConflict when max teams per account is reached, got %v", err)
+	}
+}
+
+func TestService_CreateTeamCustomLimit(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+	ids := env.buildIDs(t)
+
+	// Set lower custom limit: 2 teams
+	customLimit := 2
+	if err := env.users.UpdateLimits(ctx, env.ownerID, nil, &customLimit); err != nil {
+		t.Fatalf("failed to update limits: %v", err)
+	}
+
+	for i := range customLimit {
+		_, err := env.svc.Create(ctx, CreateInput{
+			UserID:        env.ownerID,
+			GameAccountID: env.accountID,
+			Name:          "Team " + strconv.Itoa(i),
+			BuildIDs:      ids[:1],
+		})
+		if err != nil {
+			t.Fatalf("failed to create team %d: %v", i, err)
+		}
+	}
+
+	// 3rd team must fail because custom limit is 2
+	_, err := env.svc.Create(ctx, CreateInput{
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Overflow Team",
+		BuildIDs:      ids[:1],
+	})
+	if !errors.Is(err, domain.ErrConflict) {
+		t.Errorf("expected ErrConflict for lowered custom team limit, got %v", err)
 	}
 }
 

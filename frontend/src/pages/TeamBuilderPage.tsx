@@ -28,8 +28,8 @@ import { generateTeamName } from '@/lib/teams'
 import { useTeamDraftStore, type SlotNumber } from '@/store/useTeamDraftStore'
 import type { Build, ConflictReport, TeamDetail } from '@/types'
 
-/** Maximum number of saved teams per game account (mirrors the backend limit). */
-const MAX_TEAMS_PER_ACCOUNT = 15
+/** Default maximum number of saved teams per game account when not customized for the user. */
+const DEFAULT_MAX_TEAMS_PER_ACCOUNT = 100
 
 function SlotsSkeleton() {
   return <TeamSlotListSkeleton />
@@ -210,7 +210,8 @@ function TeamBuilderForm({
   }
 
   const teamCountQuery = useTeamCount(accountId, { enabled: !isEditing })
-  const isMaxTeams = !isEditing && (teamCountQuery.data?.count ?? 0) >= MAX_TEAMS_PER_ACCOUNT
+  const maxTeams = teamCountQuery.data?.max ?? DEFAULT_MAX_TEAMS_PER_ACCOUNT
+  const isMaxTeams = !isEditing && (teamCountQuery.data?.count ?? 0) >= maxTeams
 
   const isSaving = saveMutation.isPending || updateMutation.isPending
 
@@ -226,7 +227,7 @@ function TeamBuilderForm({
 
   function getSaveHint(): string | null {
     if (!accountId) return t('teamBuilder.hintLinkAccount')
-    if (isMaxTeams) return t('teamBuilder.hintMaxTeams')
+    if (isMaxTeams) return t('teamBuilder.hintMaxTeams', { max: maxTeams })
     if (selectedIds.length === 0) return t('teamBuilder.hintSelectAgent')
     if (!effectiveName) return t('teamBuilder.hintEnterName')
     if (effectiveName.length > 100) return t('teamBuilder.hintNameTooLong')

@@ -19,6 +19,7 @@ interface TeamFilterBarProps {
   sortBy: TeamSortOption
   onSortChange: (sort: TeamSortOption) => void
   totalCount?: number
+  maxTeams?: number
 }
 
 export function TeamFilterBar({
@@ -27,9 +28,10 @@ export function TeamFilterBar({
   sortBy,
   onSortChange,
   totalCount = 0,
+  maxTeams = 100,
 }: TeamFilterBarProps) {
   const { t } = useTranslation()
-  const isMaxTeams = totalCount >= 15
+  const isMaxTeams = totalCount >= maxTeams
 
   return (
     <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -83,7 +85,7 @@ export function TeamFilterBar({
         {isMaxTeams ? (
           <Button
             disabled
-            title={t('teams.limitReachedTooltip')}
+            title={t('teams.limitReachedTooltip', { max: maxTeams })}
             className="h-9 gap-1.5 shrink-0"
           >
             <Plus className="size-4" />

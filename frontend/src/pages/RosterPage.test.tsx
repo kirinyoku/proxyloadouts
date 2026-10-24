@@ -18,7 +18,7 @@ vi.mock('react-i18next', async (importOriginal) => {
           'roster.clearSearchButton': 'Очистить поиск',
           'roster.noFilterResults': 'По выбранным атрибутам и специальностям агентов не найдено.',
           'roster.resetFilters': 'Сбросить фильтры',
-          'roster.buildsLimitTitle': `${options?.count ?? 0}/5 сборок`,
+          'roster.buildsLimitTitle': `${options?.count ?? 0}/${options?.max ?? 10} сборок`,
         }
         return translations[key] ?? key
       },
@@ -46,6 +46,7 @@ vi.mock('@/api/hooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/hooks')>()
   return {
     ...actual,
+    useMe: () => ({ data: undefined, isLoading: false }),
     useBuilds: () => mockUseBuilds(),
     useRenameBuild: () => ({ mutate: vi.fn(), isPending: false }),
     useDeleteBuild: () => ({ mutate: vi.fn(), isPending: false }),

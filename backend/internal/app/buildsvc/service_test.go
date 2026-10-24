@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -56,7 +57,7 @@ func newFixture(t *testing.T) *fixtureEnv {
 	builds := sqlite.NewBuildRepo(db)
 
 	env := &fixtureEnv{
-		svc:      New(builds, accounts),
+		svc:      New(builds, accounts, WithUsers(users)),
 		users:    users,
 		accounts: accounts,
 		builds:   builds,
@@ -333,7 +334,7 @@ func TestService_CreateBuildLimitReached(t *testing.T) {
 	env := newFixture(t)
 	ctx := context.Background()
 
-	// Create 5 builds for agent 1511 (Miyabi)
+	// Create max builds for agent 1511 (Miyabi)
 	for i := range domain.MaxBuildsPerAgent {
 		_, err := env.svc.Create(ctx, CreateInput{
 			UserID:          env.ownerID,
@@ -347,11 +348,11 @@ func TestService_CreateBuildLimitReached(t *testing.T) {
 		}
 	}
 
-	// 6th build for Miyabi must be rejected with ErrConflict
+	// Next build for Miyabi must be rejected with ErrConflict
 	_, err := env.svc.Create(ctx, CreateInput{
 		UserID:          env.ownerID,
 		GameAccountID:   env.accountID,
-		Name:            "Miyabi 6th Build",
+		Name:            "Miyabi Overflow Build",
 		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
 		RawData:         sampleRawAvatar(1511),
 	})
@@ -369,6 +370,42 @@ func TestService_CreateBuildLimitReached(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("expected build for different agent to succeed: %v", err)
+	}
+}
+
+func TestService_CreateBuildCustomLimit(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	// Set lower custom limit: 2 builds
+	customLimit := 2
+	if err := env.users.UpdateLimits(ctx, env.ownerID, &customLimit, nil); err != nil {
+		t.Fatalf("failed to set custom limit: %v", err)
+	}
+
+	for i := range customLimit {
+		_, err := env.svc.Create(ctx, CreateInput{
+			UserID:          env.ownerID,
+			GameAccountID:   env.accountID,
+			Name:            "Miyabi " + strconv.Itoa(i),
+			RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+			RawData:         sampleRawAvatar(1511),
+		})
+		if err != nil {
+			t.Fatalf("failed to create build %d: %v", i, err)
+		}
+	}
+
+	// 3rd build must fail because custom limit is 2
+	_, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Miyabi 3rd",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if !errors.Is(err, domain.ErrConflict) {
+		t.Errorf("expected ErrConflict for lowered custom limit, got %v", err)
 	}
 }
 

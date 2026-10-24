@@ -28,6 +28,7 @@ export interface TeamSummary {
 
 export interface TeamCountResponse {
   count: number
+  max?: number
 }
 
 export interface CreateTeamRequest {

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { AlertCircle, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
-import { useSaveBuild } from '@/api/hooks'
+import { useMe, useSaveBuild } from '@/api/hooks'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -19,7 +19,7 @@ import { agentRoleCircleUrl } from '@/lib/agent-icons'
 import { cn } from '@/lib/utils'
 import type { Agent, GameAccount } from '@/types'
 
-const MAX_BUILDS_PER_AGENT = 5
+const DEFAULT_MAX_BUILDS_PER_AGENT = 10
 
 export interface SaveBuildDialogProps {
   agent: Agent | null
@@ -39,6 +39,7 @@ export function SaveBuildDialog({
   open = true,
 }: SaveBuildDialogProps) {
   const { t } = useTranslation()
+  const { data: me } = useMe()
   const saveMutation = useSaveBuild()
 
   const [name, setName] = useState('')
@@ -49,7 +50,8 @@ export function SaveBuildDialog({
 
   if (!agent) return null
 
-  const isLimitReached = existingBuildsCount >= MAX_BUILDS_PER_AGENT
+  const maxBuilds = me?.limits?.max_builds_per_agent ?? DEFAULT_MAX_BUILDS_PER_AGENT
+  const isLimitReached = existingBuildsCount >= maxBuilds
 
   function handleSave() {
     const finalName = name.trim()
@@ -124,7 +126,7 @@ export function SaveBuildDialog({
                   isLimitReached ? 'text-destructive' : 'text-primary',
                 )}
               >
-                {`${existingBuildsCount} / ${MAX_BUILDS_PER_AGENT}`}
+                {`${existingBuildsCount} / ${maxBuilds}`}
               </span>
             </div>
           </div>
@@ -134,9 +136,9 @@ export function SaveBuildDialog({
             <div className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <p className="font-semibold">{t('saveBuild.limitReachedTitle')}</p>
+                <p className="font-semibold">{t('saveBuild.limitReachedTitle', { count: existingBuildsCount, max: maxBuilds })}</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  {t('saveBuild.limitReachedDesc', { name: agent.name })}{' '}
+                  {t('saveBuild.limitReachedDesc', { name: agent.name, count: existingBuildsCount, max: maxBuilds })}{' '}
                   <Link to="/roster" className="underline font-medium text-foreground hover:text-primary">
                     {t('nav.roster')}
                   </Link>

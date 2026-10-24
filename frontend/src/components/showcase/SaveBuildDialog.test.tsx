@@ -70,6 +70,10 @@ vi.mock('@/api/hooks', () => ({
     isPending: false,
     isError: false,
   }),
+  useMe: () => ({
+    data: undefined,
+    isLoading: false,
+  }),
 }))
 
 describe('SaveBuildDialog', () => {
@@ -87,25 +91,25 @@ describe('SaveBuildDialog', () => {
     expect(html).toContain('Эллен')
     expect(html).toContain(mockGameAccount.uid)
     expect(html).toContain(mockGameAccount.region)
-    expect(html).toContain('2 / 5')
+    expect(html).toContain('2 / 10')
     expect(html).toContain('saveBuild.namePlaceholder')
     expect(html).toContain('saveBuild.descPlaceholder')
     expect(html).toContain('saveBuild.nameRequiredHint')
     expect(html).toMatch(/<button[^>]*disabled[^>]*>saveBuild\.submit<\/button>/)
   })
 
-  it('renders limit reached alert when quota is full (5 of 5)', () => {
+  it('renders limit reached alert when quota is full (10 of 10)', () => {
     const html = renderToString(
       <SaveBuildDialog
         agent={mockEllenAgent}
         targetAccount={mockGameAccount}
-        existingBuildsCount={5}
+        existingBuildsCount={10}
         open={true}
         onOpenChange={() => {}}
       />,
     )
 
-    expect(html).toContain('5 / 5')
+    expect(html).toContain('10 / 10')
     expect(html).toContain('saveBuild.limitReachedTitle')
     expect(html).toContain('href="/roster"')
   })

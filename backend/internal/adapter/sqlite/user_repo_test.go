@@ -167,3 +167,62 @@ func TestUserRepo_NotFoundAndDelete(t *testing.T) {
 		t.Errorf("expected ErrNotFound deleting missing user, got %v", err)
 	}
 }
+
+func TestUserRepo_CustomLimitsRoundtrip(t *testing.T) {
+	db := newMigratedTestDB(t)
+	repo := NewUserRepo(db)
+	ctx := context.Background()
+
+	user := seedUser(t, ctx, repo, "999999999999999999")
+	if user.CustomMaxBuildsPerAgent != nil || user.CustomMaxTeams != nil {
+		t.Fatalf("expected nil custom limits by default, got builds=%v teams=%v", user.CustomMaxBuildsPerAgent, user.CustomMaxTeams)
+	}
+	if user.EffectiveMaxBuildsPerAgent() != domain.MaxBuildsPerAgent {
+		t.Errorf("expected default builds limit %d, got %d", domain.MaxBuildsPerAgent, user.EffectiveMaxBuildsPerAgent())
+	}
+	if user.EffectiveMaxTeams() != domain.MaxTeamsPerAccount {
+		t.Errorf("expected default teams limit %d, got %d", domain.MaxTeamsPerAccount, user.EffectiveMaxTeams())
+	}
+
+	// Update limits
+	customBuilds := 25
+	customTeams := 100
+	if err := repo.UpdateLimits(ctx, user.ID, &customBuilds, &customTeams); err != nil {
+		t.Fatalf("failed to update limits: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("failed to get user: %v", err)
+	}
+	if got.CustomMaxBuildsPerAgent == nil || *got.CustomMaxBuildsPerAgent != 25 {
+		t.Errorf("expected CustomMaxBuildsPerAgent 25, got %v", got.CustomMaxBuildsPerAgent)
+	}
+	if got.CustomMaxTeams == nil || *got.CustomMaxTeams != 100 {
+		t.Errorf("expected CustomMaxTeams 100, got %v", got.CustomMaxTeams)
+	}
+	if got.EffectiveMaxBuildsPerAgent() != 25 {
+		t.Errorf("expected effective builds limit 25, got %d", got.EffectiveMaxBuildsPerAgent())
+	}
+	if got.EffectiveMaxTeams() != 100 {
+		t.Errorf("expected effective teams limit 100, got %d", got.EffectiveMaxTeams())
+	}
+
+	// Reset limits back to NULL (defaults)
+	if err := repo.UpdateLimits(ctx, user.ID, nil, nil); err != nil {
+		t.Fatalf("failed to reset limits: %v", err)
+	}
+	resetUser, err := repo.GetByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("failed to get user after reset: %v", err)
+	}
+	if resetUser.CustomMaxBuildsPerAgent != nil || resetUser.CustomMaxTeams != nil {
+		t.Errorf("expected nil limits after reset, got builds=%v teams=%v", resetUser.CustomMaxBuildsPerAgent, resetUser.CustomMaxTeams)
+	}
+	if resetUser.EffectiveMaxBuildsPerAgent() != domain.MaxBuildsPerAgent {
+		t.Errorf("expected effective builds limit %d, got %d", domain.MaxBuildsPerAgent, resetUser.EffectiveMaxBuildsPerAgent())
+	}
+	if resetUser.EffectiveMaxTeams() != domain.MaxTeamsPerAccount {
+		t.Errorf("expected effective teams limit %d, got %d", domain.MaxTeamsPerAccount, resetUser.EffectiveMaxTeams())
+	}
+}

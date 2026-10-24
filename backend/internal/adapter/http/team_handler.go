@@ -217,9 +217,10 @@ func (h *TeamHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, out)
 }
 
-// teamCountResponse reports how many teams exist on a game account.
+// teamCountResponse reports how many teams exist on a game account along with the effective limit.
 type teamCountResponse struct {
 	Count int `json:"count"`
+	Max   int `json:"max"`
 }
 
 // handleCount returns the number of teams on an owned account without
@@ -238,7 +239,10 @@ func (h *TeamHandler) handleCount(w http.ResponseWriter, r *http.Request) {
 		respondDomainError(w, r, err)
 		return
 	}
-	respondJSON(w, http.StatusOK, teamCountResponse{Count: count})
+	respondJSON(w, http.StatusOK, teamCountResponse{
+		Count: count,
+		Max:   user.EffectiveMaxTeams(),
+	})
 }
 
 // handleGet returns the team roster with full build payloads.

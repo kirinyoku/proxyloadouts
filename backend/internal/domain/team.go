@@ -12,7 +12,7 @@ const (
 	MinTeamSize = 1
 	MaxTeamSize = 3
 
-	MaxTeamsPerAccount       = 15
+	MaxTeamsPerAccount       = 100
 	MaxTeamNameLength        = 100
 	MaxTeamDescriptionLength = 500
 )

@@ -3,7 +3,7 @@ import { Layers, Plus, RotateCcw, ScanLine, Search } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
-import { useBuilds } from '@/api/hooks'
+import { useBuilds, useMe } from '@/api/hooks'
 import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { RosterBuildToolbar } from '@/components/roster/RosterBuildToolbar'
 import { RosterToolbar } from '@/components/roster/RosterToolbar'
@@ -21,8 +21,8 @@ import type { Attribute, Specialty } from '@/types'
 
 type MobileRosterSection = 'discs' | 'stats'
 
-/** Maximum number of saved builds allowed per agent (mirrors the backend limit). */
-const MAX_BUILDS_PER_AGENT = 5
+/** Default maximum number of saved builds per agent when not customized for the user. */
+const DEFAULT_MAX_BUILDS_PER_AGENT = 10
 
 function MobileSectionTabs({
   activeSection,
@@ -82,8 +82,11 @@ export function RosterPage({
   initialSpecialty = null,
 }: RosterPageProps = {}) {
   const { t } = useTranslation()
+  const { data: me } = useMe()
   const { activeAccount, accounts, isPending: accountsPending } = useActiveAccount()
   const buildsQuery = useBuilds(activeAccount?.id)
+
+  const maxBuilds = me?.limits?.max_builds_per_agent ?? DEFAULT_MAX_BUILDS_PER_AGENT
   const [searchParams, setSearchParams] = useSearchParams()
 
   const urlBuildId = searchParams.get('build')
@@ -214,8 +217,8 @@ export function RosterPage({
     return currentGroup.builds[0] ?? null
   }, [currentGroup, selectedBuildIdMap, urlTargetBuild])
 
-  // Saved builds capacity of the active agent (max 5 per agent)
-  const buildsAtLimit = (currentGroup?.builds.length ?? 0) >= MAX_BUILDS_PER_AGENT
+  // Saved builds capacity of the active agent
+  const buildsAtLimit = (currentGroup?.builds.length ?? 0) >= maxBuilds
 
   useEffect(() => {
     if (
@@ -270,8 +273,8 @@ export function RosterPage({
   }
 
   const capacityTitle = buildsAtLimit
-    ? t('roster.buildsLimitMax')
-    : t('roster.buildsLimitTitle', { count: currentGroup?.builds.length ?? 0 })
+    ? t('roster.buildsLimitMax', { count: currentGroup?.builds.length ?? 0, max: maxBuilds })
+    : t('roster.buildsLimitTitle', { count: currentGroup?.builds.length ?? 0, max: maxBuilds })
 
   const capacityChip = currentGroup ? (
     <span
@@ -286,7 +289,7 @@ export function RosterPage({
     >
       <Layers className="size-3 text-primary stroke-[2.5] shrink-0" />
       <span className="whitespace-nowrap">
-        {currentGroup.builds.length}/{MAX_BUILDS_PER_AGENT}
+        {currentGroup.builds.length}/{maxBuilds}
       </span>
     </span>
   ) : null

@@ -13,6 +13,9 @@ type UserRepository interface {
 	GetByDiscordID(ctx context.Context, discordID string) (*User, error)
 	// Update refreshes mutable profile fields (username, avatar) after re-auth.
 	Update(ctx context.Context, user *User) error
+	// UpdateLimits updates the custom per-user limits for builds and teams.
+	// Passing nil for either limit resets it back to the domain default.
+	UpdateLimits(ctx context.Context, id uuid.UUID, maxBuilds *int, maxTeams *int) error
 	// IncrementTokenVersion atomically increments token_version for the given user,
 	// invalidating all previously issued session cookies.
 	IncrementTokenVersion(ctx context.Context, id uuid.UUID) error

@@ -27,11 +27,19 @@ type Service struct {
 	teams    domain.TeamRepository
 	builds   domain.BuildRepository
 	accounts domain.AccountRepository
+	users    domain.UserRepository
 	enricher AgentLocalizer
 }
 
 // Option configures optional Service dependencies.
 type Option func(*Service)
+
+// WithUsers configures an optional UserRepository to enforce custom per-user team quotas.
+func WithUsers(users domain.UserRepository) Option {
+	return func(s *Service) {
+		s.users = users
+	}
+}
 
 // WithEnricher configures the localizer for dynamic multi-language localization.
 func WithEnricher(enricher AgentLocalizer) Option {
@@ -113,12 +121,19 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.Team, 
 		return nil, err
 	}
 
+	maxTeams := domain.MaxTeamsPerAccount
+	if s.users != nil {
+		if u, err := s.users.GetByID(ctx, input.UserID); err == nil && u != nil {
+			maxTeams = u.EffectiveMaxTeams()
+		}
+	}
+
 	count, err := s.teams.CountByAccount(ctx, input.GameAccountID)
 	if err != nil {
 		return nil, err
 	}
-	if count >= domain.MaxTeamsPerAccount {
-		return nil, fmt.Errorf("%w: limit of %d teams reached for this account", domain.ErrConflict, domain.MaxTeamsPerAccount)
+	if count >= maxTeams {
+		return nil, fmt.Errorf("%w: limit of %d teams reached for this account", domain.ErrConflict, maxTeams)
 	}
 
 	buildsList, err := s.loadOwnedBuildsForAccount(ctx, input.UserID, input.GameAccountID, input.BuildIDs)

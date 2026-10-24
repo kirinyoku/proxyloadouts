@@ -35,6 +35,7 @@ type AgentLocalizer = buildenrich.Localizer
 type Service struct {
 	builds   domain.BuildRepository
 	accounts domain.AccountRepository
+	users    domain.UserRepository
 	scanner  ShowcaseValidator
 	enricher AgentLocalizer
 	now      func() time.Time
@@ -42,6 +43,13 @@ type Service struct {
 
 // Option configures optional Service dependencies.
 type Option func(*Service)
+
+// WithUsers configures an optional UserRepository to enforce custom per-user build quotas.
+func WithUsers(users domain.UserRepository) Option {
+	return func(s *Service) {
+		s.users = users
+	}
+}
 
 // WithScanner configures a ShowcaseValidator for verifying that saved builds
 // correspond to real agents showcased on the account's UID.
@@ -142,12 +150,18 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 	}
 
 	// Enforce max builds per agent per account.
+	maxBuilds := domain.MaxBuildsPerAgent
+	if s.users != nil {
+		if u, err := s.users.GetByID(ctx, input.UserID); err == nil && u != nil {
+			maxBuilds = u.EffectiveMaxBuildsPerAgent()
+		}
+	}
 	count, err := s.builds.CountByAccountAndAgent(ctx, input.GameAccountID, extracted.agentID)
 	if err != nil {
 		return nil, err
 	}
-	if count >= domain.MaxBuildsPerAgent {
-		return nil, fmt.Errorf("%w: limit of %d builds reached for agent %s", domain.ErrConflict, domain.MaxBuildsPerAgent, extracted.agentName)
+	if count >= maxBuilds {
+		return nil, fmt.Errorf("%w: limit of %d builds reached for agent %s", domain.ErrConflict, maxBuilds, extracted.agentName)
 	}
 
 	name := strings.TrimSpace(input.Name)

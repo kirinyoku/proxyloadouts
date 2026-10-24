@@ -1089,11 +1089,29 @@ components:
           enum: [Europe, America, Asia, TW/HK/MO]
           example: "Europe"
 
+    UserLimits:
+      type: object
+      required:
+        - max_builds_per_agent
+        - max_teams_per_account
+      properties:
+        max_builds_per_agent:
+          type: integer
+          minimum: 1
+          description: Effective maximum number of saved builds per agent for this user
+          example: 10
+        max_teams_per_account:
+          type: integer
+          minimum: 1
+          description: Effective maximum number of saved teams per account for this user
+          example: 100
+
     MeResponse:
       type: object
       required:
         - user
         - accounts
+        - limits
       properties:
         user:
           $ref: '#/components/schemas/User'
@@ -1101,6 +1119,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/GameAccount'
+        limits:
+          $ref: '#/components/schemas/UserLimits'
         is_admin:
           type: boolean
           description: >
@@ -1269,12 +1289,18 @@ components:
       type: object
       required:
         - count
+        - max
       properties:
         count:
           type: integer
           minimum: 0
           description: Number of teams on the game account
           example: 3
+        max:
+          type: integer
+          minimum: 1
+          description: Effective maximum number of teams allowed on this account for the current user
+          example: 100
 
     CreateTeamRequest:
       type: object

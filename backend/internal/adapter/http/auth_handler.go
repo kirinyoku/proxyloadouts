@@ -134,6 +134,10 @@ func (h *AuthHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, meResponse{
 		User:     newUserResponse(user),
 		Accounts: newAccountListResponse(accounts),
+		Limits: userLimitsResponse{
+			MaxBuildsPerAgent:  user.EffectiveMaxBuildsPerAgent(),
+			MaxTeamsPerAccount: user.EffectiveMaxTeams(),
+		},
 	})
 }
 
@@ -221,8 +225,14 @@ func (h *AuthHandler) handleDeleteMe(w http.ResponseWriter, r *http.Request) {
 }
 
 type meResponse struct {
-	User     userResponse      `json:"user"`
-	Accounts []accountResponse `json:"accounts"`
+	User     userResponse       `json:"user"`
+	Accounts []accountResponse  `json:"accounts"`
+	Limits   userLimitsResponse `json:"limits"`
+}
+
+type userLimitsResponse struct {
+	MaxBuildsPerAgent  int `json:"max_builds_per_agent"`
+	MaxTeamsPerAccount int `json:"max_teams_per_account"`
 }
 
 type userResponse struct {

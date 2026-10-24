@@ -28,6 +28,7 @@ import (
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/buildsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/scannersvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/teamsvc"
+	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
 
 // fixture is a full-stack test environment: migrated SQLite, real services,
@@ -120,8 +121,8 @@ func newFixtureWithOpts(t *testing.T, opts Options) *fixture {
 			Scanner:  scanner,
 			Users:    users,
 			Accounts: accountSvc,
-			Builds:   buildsvc.New(buildsRepo, accounts, buildsvc.WithEnricher(localizer)),
-			Teams:    teamsvc.New(teamsRepo, buildsRepo, accounts, teamsvc.WithEnricher(localizer)),
+			Builds:   buildsvc.New(buildsRepo, accounts, buildsvc.WithEnricher(localizer), buildsvc.WithUsers(users)),
+			Teams:    teamsvc.New(teamsRepo, buildsRepo, accounts, teamsvc.WithEnricher(localizer), teamsvc.WithUsers(users)),
 		},
 	)
 	return &fixture{router: router, db: db, fetcher: scannerFetcher, opts: opts}
@@ -342,6 +343,10 @@ func TestAuthFlow_LoginCallbackMeLogout(t *testing.T) {
 	user, _ := body["user"].(map[string]any)
 	if user == nil || user["username"] != "kirin" {
 		t.Errorf("expected user kirin in /auth/me response, got %v", body)
+	}
+	limits, _ := body["limits"].(map[string]any)
+	if limits == nil || limits["max_builds_per_agent"] != float64(domain.MaxBuildsPerAgent) || limits["max_teams_per_account"] != float64(domain.MaxTeamsPerAccount) {
+		t.Errorf("expected default limits (%d, %d), got %v", domain.MaxBuildsPerAgent, domain.MaxTeamsPerAccount, limits)
 	}
 
 	logoutRec := f.do(t, http.MethodPost, "/api/v1/auth/logout", nil, session)
@@ -797,8 +802,8 @@ func TestShowcaseEndpointRateLimit(t *testing.T) {
 			Scanner:  scanner,
 			Users:    users,
 			Accounts: accountSvc,
-			Builds:   buildsvc.New(buildsRepo, accounts, buildsvc.WithEnricher(localizer)),
-			Teams:    teamsvc.New(teamsRepo, buildsRepo, accounts, teamsvc.WithEnricher(localizer)),
+			Builds:   buildsvc.New(buildsRepo, accounts, buildsvc.WithEnricher(localizer), buildsvc.WithUsers(users)),
+			Teams:    teamsvc.New(teamsRepo, buildsRepo, accounts, teamsvc.WithEnricher(localizer), teamsvc.WithUsers(users)),
 		},
 	)
 

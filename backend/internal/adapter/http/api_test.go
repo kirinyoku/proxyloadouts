@@ -10,6 +10,8 @@ import (
 
 	"github.com/kirinyoku/enkanetwork-go/client/zzz"
 	fairy "github.com/kirinyoku/fairy"
+
+	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
 
 // richShowcaseProfile builds a showcase with three fully equipped agents
@@ -175,6 +177,9 @@ func TestAPI_FullUserJourney(t *testing.T) {
 	}
 	if got := decodeBody(t, countRec)["count"]; got != float64(1) {
 		t.Errorf("expected count 1, got %v", got)
+	}
+	if gotMax := decodeBody(t, countRec)["max"]; gotMax != float64(domain.MaxTeamsPerAccount) {
+		t.Errorf("expected max %d, got %v", domain.MaxTeamsPerAccount, gotMax)
 	}
 
 	// 8b. Update team name and member composition.

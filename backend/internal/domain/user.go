@@ -8,12 +8,32 @@ import (
 
 // User is an authenticated user identified by their Discord identity.
 type User struct {
-	ID           uuid.UUID
-	DiscordID    string
-	Username     string
-	AvatarURL    *string // nil when the Discord profile has no custom avatar
-	TokenVersion int
-	CreatedAt    time.Time
+	ID                      uuid.UUID
+	DiscordID               string
+	Username                string
+	AvatarURL               *string // nil when the Discord profile has no custom avatar
+	TokenVersion            int
+	CustomMaxBuildsPerAgent *int // nil means default (MaxBuildsPerAgent)
+	CustomMaxTeams          *int // nil means default (MaxTeamsPerAccount)
+	CreatedAt               time.Time
+}
+
+// EffectiveMaxBuildsPerAgent returns the per-agent build limit for this user.
+// Returns CustomMaxBuildsPerAgent if configured, otherwise falls back to MaxBuildsPerAgent.
+func (u *User) EffectiveMaxBuildsPerAgent() int {
+	if u != nil && u.CustomMaxBuildsPerAgent != nil && *u.CustomMaxBuildsPerAgent > 0 {
+		return *u.CustomMaxBuildsPerAgent
+	}
+	return MaxBuildsPerAgent
+}
+
+// EffectiveMaxTeams returns the per-account team limit for this user.
+// Returns CustomMaxTeams if configured, otherwise falls back to MaxTeamsPerAccount.
+func (u *User) EffectiveMaxTeams() int {
+	if u != nil && u.CustomMaxTeams != nil && *u.CustomMaxTeams > 0 {
+		return *u.CustomMaxTeams
+	}
+	return MaxTeamsPerAccount
 }
 
 // Session is the authenticated session stored in an encrypted cookie.
