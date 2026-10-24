@@ -1254,3 +1254,25 @@ func TestRequestSizeLimit(t *testing.T) {
 		t.Fatalf("expected 400 Bad Request or 413 Payload Too Large for oversized payload, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestAuthRateLimit(t *testing.T) {
+	limiter := NewIPRateLimiter(rate.Limit(0.01), 2, time.Minute)
+	t.Cleanup(limiter.Close)
+
+	f := newFixtureWithOpts(t, Options{
+		FrontendURL:     "http://localhost:5173",
+		AuthRateLimiter: limiter,
+	})
+
+	for i := range 2 {
+		rec := f.do(t, http.MethodGet, "/api/v1/auth/discord/login", nil)
+		if rec.Code != http.StatusFound {
+			t.Fatalf("attempt %d: expected 302 Found, got %d", i+1, rec.Code)
+		}
+	}
+
+	blocked := f.do(t, http.MethodGet, "/api/v1/auth/discord/login", nil)
+	if blocked.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 Too Many Requests on 3rd rapid login attempt, got %d", blocked.Code)
+	}
+}

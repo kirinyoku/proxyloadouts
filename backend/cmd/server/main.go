@@ -190,6 +190,9 @@ func run() error {
 	showcaseLimiter := httpadapter.NewIPRateLimiter(rate.Limit(ratePerSec), cfg.ShowcaseBurst, 10*time.Minute)
 	defer showcaseLimiter.Close()
 
+	authLimiter := httpadapter.NewIPRateLimiter(rate.Limit(20.0/60.0), 10, 10*time.Minute)
+	defer authLimiter.Close()
+
 	telemetryLimiter := httpadapter.NewIPRateLimiter(rate.Limit(6.0/60.0), 3, 10*time.Minute)
 	defer telemetryLimiter.Close()
 
@@ -198,6 +201,7 @@ func run() error {
 			FrontendURL:          cfg.FrontendURL,
 			SecureCookies:        cfg.Env == "production",
 			ShowcaseRateLimiter:  showcaseLimiter,
+			AuthRateLimiter:      authLimiter,
 			TelemetryRateLimiter: telemetryLimiter,
 		},
 		httpadapter.Deps{

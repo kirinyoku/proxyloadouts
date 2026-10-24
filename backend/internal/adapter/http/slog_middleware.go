@@ -3,7 +3,6 @@ package http
 import (
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -43,14 +42,7 @@ func SlogRequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 					level = slog.LevelWarn
 				}
 
-				clientIP := r.Header.Get("X-Forwarded-For")
-				if clientIP != "" {
-					if comma := strings.Index(clientIP, ","); comma != -1 {
-						clientIP = strings.TrimSpace(clientIP[:comma])
-					}
-				} else {
-					clientIP = r.RemoteAddr
-				}
+				clientIP := getClientIP(r)
 
 				logger.LogAttrs(
 					r.Context(),

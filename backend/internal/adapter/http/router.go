@@ -28,6 +28,9 @@ type Options struct {
 	// ShowcaseRateLimiter optionally provides the rate limiter for public showcase scans.
 	// If nil, a default limiter of 20 req/min with burst 5 is created.
 	ShowcaseRateLimiter *IPRateLimiter
+	// AuthRateLimiter optionally provides the rate limiter for OAuth2 login, callback, and logout endpoints.
+	// If nil, a default limiter of 20 req/min with burst 10 is created.
+	AuthRateLimiter *IPRateLimiter
 	// TelemetryRateLimiter optionally provides the rate limiter for client error reports.
 	// If nil, a default limiter of 6 req/min with burst 3 is created.
 	TelemetryRateLimiter *IPRateLimiter
@@ -115,6 +118,11 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		showcaseLimiter = NewIPRateLimiter(rate.Limit(20.0/60.0), 5, 10*time.Minute)
 	}
 
+	authLimiter := opts.AuthRateLimiter
+	if authLimiter == nil {
+		authLimiter = NewIPRateLimiter(rate.Limit(20.0/60.0), 10, 10*time.Minute)
+	}
+
 	telemetryLimiter := opts.TelemetryRateLimiter
 	if telemetryLimiter == nil {
 		telemetryLimiter = NewIPRateLimiter(rate.Limit(6.0/60.0), 3, 10*time.Minute)
@@ -128,9 +136,9 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		api.With(checkOrigin, telemetryLimiter.Handler).Post("/telemetry/client-error", telemetryHandler.handleClientError)
 
 		// Public endpoints: guests may scan showcases (SOW §4).
-		api.Get("/auth/discord/login", authHandler.handleLogin)
-		api.Get("/auth/discord/callback", authHandler.handleCallback)
-		api.With(checkOrigin).Post("/auth/logout", authHandler.handleLogout)
+		api.With(authLimiter.Handler).Get("/auth/discord/login", authHandler.handleLogin)
+		api.With(authLimiter.Handler).Get("/auth/discord/callback", authHandler.handleCallback)
+		api.With(checkOrigin, authLimiter.Handler).Post("/auth/logout", authHandler.handleLogout)
 		api.With(showcaseLimiter.Handler).Get("/showcase/{uid}", showcaseHandler.handle)
 
 		api.With(requireAuth).Get("/auth/me", authHandler.handleMe)

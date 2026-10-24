@@ -24,6 +24,8 @@ func TestSlogRequestLogger(t *testing.T) {
 
 	mw := SlogRequestLogger(logger)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/builds", nil)
+	req.Header.Set("CF-Connecting-IP", "198.51.100.42")
+	req.Header.Set("X-Forwarded-For", "203.0.113.10")
 	req = req.WithContext(context.WithValue(req.Context(), middleware.RequestIDKey, "test-req-123"))
 	rec := httptest.NewRecorder()
 
@@ -49,6 +51,9 @@ func TestSlogRequestLogger(t *testing.T) {
 	}
 	if entry["request_id"] != "test-req-123" {
 		t.Errorf("expected request_id 'test-req-123', got %v", entry["request_id"])
+	}
+	if entry["ip"] != "198.51.100.42" {
+		t.Errorf("expected ip '198.51.100.42' from CF-Connecting-IP, got %v", entry["ip"])
 	}
 	if _, ok := entry["duration_ms"]; !ok {
 		t.Errorf("expected duration_ms attribute in log")
