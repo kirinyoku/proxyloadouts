@@ -64,6 +64,44 @@ func (l *IPRateLimiter) Close() {
 	})
 }
 
+// LimiterStats reports runtime metrics and configuration of an IPRateLimiter.
+type LimiterStats struct {
+	ActiveIPs     int     `json:"active_ips"`
+	MaxEntries    int     `json:"max_entries"`
+	RatePerMinute float64 `json:"rate_per_minute"`
+	Burst         int     `json:"burst"`
+	TTLSeconds    int     `json:"ttl_seconds"`
+}
+
+// Stats returns a snapshot of the rate limiter's current state.
+func (l *IPRateLimiter) Stats() LimiterStats {
+	l.mu.Lock()
+	active := len(l.ips)
+	l.mu.Unlock()
+
+	return LimiterStats{
+		ActiveIPs:     active,
+		MaxEntries:    l.maxEntries,
+		RatePerMinute: math.Round(float64(l.rate)*60.0*100) / 100,
+		Burst:         l.burst,
+		TTLSeconds:    int(l.ttl.Seconds()),
+	}
+}
+
+// Clear removes all tracked IP buckets from the rate limiter.
+func (l *IPRateLimiter) Clear() {
+	l.mu.Lock()
+	l.ips = make(map[string]*ipLimiter)
+	l.mu.Unlock()
+}
+
+// DeleteIP removes a specific IP bucket from the rate limiter.
+func (l *IPRateLimiter) DeleteIP(ip string) {
+	l.mu.Lock()
+	delete(l.ips, strings.TrimSpace(ip))
+	l.mu.Unlock()
+}
+
 // Handler returns a Chi-compatible HTTP middleware that enforces the rate limit.
 func (l *IPRateLimiter) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

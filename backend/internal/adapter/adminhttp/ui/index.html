@@ -1,0 +1,3493 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ProxyLoadouts — Admin Workbench</title>
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('pl_admin_theme');
+        if (saved === 'light' || saved === 'dark') {
+          document.documentElement.setAttribute('data-theme', saved);
+        }
+      } catch (_) {}
+    })();
+  </script>
+  <style>
+    :root,
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg-canvas: #0d1117;
+      --bg-surface: #161b22;
+      --bg-elevated: #1c2128;
+      --bg-subtle: #21262d;
+      --bg-hover: rgba(177, 186, 196, 0.08);
+      --bg-selected: rgba(56, 139, 253, 0.14);
+      --border-default: #30363d;
+      --border-muted: #21262d;
+      --border-strong: #484f58;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-fg: #ffffff;
+      --accent-subtle: rgba(59, 130, 246, 0.15);
+      --accent-text: #58a6ff;
+      --success: #10b981;
+      --success-subtle: rgba(16, 185, 129, 0.14);
+      --warning: #f59e0b;
+      --warning-subtle: rgba(245, 158, 11, 0.15);
+      --danger: #ef4444;
+      --danger-subtle: rgba(239, 68, 68, 0.15);
+      --cyan: #06b6d4;
+      --cyan-subtle: rgba(6, 182, 212, 0.14);
+      --code-bg: #090c10;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 8px 24px rgba(1, 4, 9, 0.65);
+    }
+
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg-canvas: #f6f8fa;
+      --bg-surface: #ffffff;
+      --bg-elevated: #f6f8fa;
+      --bg-subtle: #eaeef2;
+      --bg-hover: rgba(208, 215, 222, 0.35);
+      --bg-selected: rgba(9, 105, 218, 0.1);
+      --border-default: #d0d7de;
+      --border-muted: #eaeef2;
+      --border-strong: #8c959f;
+      --text-primary: #1f2328;
+      --text-secondary: #59636e;
+      --text-muted: #6e7781;
+      --accent: #0969da;
+      --accent-hover: #0550ae;
+      --accent-fg: #ffffff;
+      --accent-subtle: rgba(9, 105, 218, 0.1);
+      --accent-text: #0969da;
+      --success: #1a7f37;
+      --success-subtle: rgba(26, 127, 55, 0.1);
+      --warning: #9a6700;
+      --warning-subtle: rgba(154, 103, 0, 0.12);
+      --danger: #cf222e;
+      --danger-subtle: rgba(207, 34, 46, 0.1);
+      --cyan: #0969da;
+      --cyan-subtle: rgba(9, 105, 218, 0.1);
+      --code-bg: #f6f8fa;
+      --shadow-sm: 0 1px 2px rgba(31, 35, 40, 0.06);
+      --shadow-md: 0 8px 24px rgba(31, 35, 40, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      line-height: 1.45;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    code, pre, .mono {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Top System & Navigation Header */
+    .app-header {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-default);
+      flex-shrink: 0;
+      z-index: 30;
+    }
+
+    .telemetry-strip {
+      height: 36px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      background: var(--bg-elevated);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .brand-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--accent-subtle);
+      color: var(--accent-text);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      text-transform: uppercase;
+    }
+
+    .vitals-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: var(--text-secondary);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .vital-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+    }
+
+    .vital-item strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .vital-sep {
+      color: var(--border-default);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+    }
+
+    .nav-strip {
+      height: 44px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      list-style: none;
+    }
+
+    .nav-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    .nav-tab:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .nav-tab.active {
+      background: var(--bg-selected);
+      color: var(--accent-text);
+      border-color: rgba(59, 130, 246, 0.35);
+    }
+
+    .nav-count {
+      font-size: 11px;
+      padding: 0 5px;
+      border-radius: 4px;
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .nav-tab.active .nav-count {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--accent-text);
+    }
+
+    .kbd-hint {
+      font-size: 10px;
+      padding: 0 4px;
+      border-radius: 3px;
+      border: 1px solid var(--border-default);
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+    }
+
+    .global-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quick-uid-form {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Buttons & Inputs */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--border-default);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      cursor: pointer;
+      white-space: nowrap;
+      text-decoration: none;
+      transition: background 0.1s ease, border-color 0.1s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--bg-subtle);
+      border-color: var(--border-strong);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-sm {
+      height: 24px;
+      padding: 0 7px;
+      font-size: 11px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-danger {
+      background: var(--danger-subtle);
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--danger);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .input, .select {
+      height: 28px;
+      padding: 0 9px;
+      border-radius: 5px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      font-size: 12px;
+      outline: none;
+    }
+
+    .input:focus, .select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-subtle);
+    }
+
+    .segmented {
+      display: inline-flex;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .segmented button {
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .segmented button:hover {
+      color: var(--text-primary);
+    }
+
+    .segmented button.active {
+      background: var(--bg-surface);
+      color: var(--accent-text);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Badges & Clickable Chips */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-default);
+      white-space: nowrap;
+    }
+
+    .badge-accent {
+      background: var(--accent-subtle);
+      color: var(--accent-text);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .badge-success {
+      background: var(--success-subtle);
+      color: var(--success);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-warning {
+      background: var(--warning-subtle);
+      color: var(--warning);
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    .badge-danger {
+      background: var(--danger-subtle);
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    .badge-uid {
+      background: var(--cyan-subtle);
+      color: var(--cyan);
+      border-color: rgba(6, 182, 212, 0.3);
+    }
+
+    .entity-link {
+      color: var(--accent-text);
+      cursor: pointer;
+      font-weight: 600;
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: inherit;
+      text-align: left;
+    }
+
+    .entity-link:hover {
+      text-decoration: underline;
+    }
+
+    .copy-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 11px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      background: transparent;
+    }
+
+    .copy-chip:hover {
+      background: var(--bg-subtle);
+      border-color: var(--border-default);
+      color: var(--text-primary);
+    }
+
+    /* Main Workspace Container */
+    .workspace {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .error-banner {
+      background: var(--danger-subtle);
+      border-bottom: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tab-pane {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    .tab-pane.split-mode.active {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 460px;
+      gap: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    @media (min-width: 1600px) {
+      .tab-pane.split-mode.active {
+        grid-template-columns: minmax(0, 1fr) 540px;
+      }
+    }
+
+    /* Master-Detail Left & Right Panes */
+    .master-pane {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+      border-right: 1px solid var(--border-default);
+    }
+
+    .pane-toolbar {
+      padding: 10px 14px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-default);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .search-input-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .search-input-wrap .input {
+      width: 300px;
+      padding-right: 26px;
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 6px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      display: none;
+    }
+
+    .search-clear:hover {
+      color: var(--text-primary);
+    }
+
+    .table-wrapper {
+      flex: 1;
+      overflow: auto;
+      max-inline-size: 100%;
+      container-type: inline-size;
+      background: var(--bg-canvas);
+    }
+
+    .pane-footer {
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-default);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .detail-pane {
+      height: 100%;
+      overflow-y: auto;
+      background: var(--bg-surface);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .detail-empty {
+      margin: auto;
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      max-width: 320px;
+    }
+
+    .detail-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-default);
+      background: var(--bg-elevated);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .detail-body {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .inspector-box {
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      background: var(--bg-canvas);
+      padding: 12px;
+    }
+
+    .inspector-box-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Tables (following modern-web-guidance responsive-table sticky header semantics) */
+    .data-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 12.5px;
+    }
+
+    .data-table thead {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 2;
+    }
+
+    .data-table th {
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border-default);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .data-table th.sortable {
+      cursor: pointer;
+    }
+
+    .data-table th.sortable:hover {
+      color: var(--text-primary);
+      background: var(--bg-subtle);
+    }
+
+    .data-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border-muted);
+      vertical-align: middle;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .data-table tbody tr {
+      cursor: pointer;
+      transition: background 0.08s ease;
+    }
+
+    .data-table tbody tr:hover {
+      background: var(--bg-hover);
+    }
+
+    .data-table tbody tr.selected {
+      background: var(--bg-selected);
+    }
+
+    .data-table tbody tr.selected td:first-child {
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+
+    .num-col {
+      text-align: right;
+    }
+
+    /* Cards & Grids for Overview and Infra */
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      padding: 14px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-muted);
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .kpi-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color 0.12s ease, background 0.12s ease;
+    }
+
+    .kpi-card:hover {
+      border-color: var(--accent);
+      background: var(--bg-elevated);
+    }
+
+    .kpi-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .kpi-num {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 4px 0 6px;
+      color: var(--text-primary);
+    }
+
+    .kpi-sub {
+      display: flex;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+    }
+
+    .kpi-sub b {
+      color: var(--success);
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .infra-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    /* Activity Chart */
+    .chart-bars {
+      height: 170px;
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      padding-top: 12px;
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .chart-col {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 1px;
+      cursor: pointer;
+    }
+
+    .chart-col:hover {
+      background: var(--bg-hover);
+    }
+
+    .bar-seg {
+      width: 78%;
+      min-width: 3px;
+      border-radius: 1px 1px 0 0;
+    }
+
+    .progress-track {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--bg-subtle);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+    }
+
+    .kv-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .kv-box {
+      padding: 8px 10px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-muted);
+      border-radius: 5px;
+    }
+
+    .kv-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .kv-val {
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* Slot Table for Discs */
+    .slots-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .slot-cell {
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-surface);
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .json-viewer {
+      background: var(--code-bg);
+      border: 1px solid var(--border-default);
+      border-radius: 5px;
+      padding: 10px;
+      font-size: 11.5px;
+      line-height: 1.4;
+      color: var(--text-primary);
+      max-height: 340px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Toast Stack (modern-web-guidance persistent-toast-notifications) */
+    .toast-stack {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast-item {
+      pointer-events: auto;
+      margin: 0;
+      inset: auto;
+      position: relative;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      box-shadow: var(--shadow-md);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      transition-behavior: allow-discrete;
+    }
+
+    .toast-item[popover]:is(:popover-open, .\:popover-open) {
+      display: flex;
+    }
+
+    .toast-item + .toast-item {
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <!-- TOP SYSTEM & NAVIGATION BAR -->
+  <header class="app-header">
+    <div class="telemetry-strip">
+      <div class="brand-group">
+        <span>ProxyLoadouts</span>
+        <span class="brand-tag">Admin Workbench</span>
+        <span class="vital-item mono"><span class="status-dot"></span><span id="hdr-env-rel">local</span></span>
+      </div>
+
+      <div class="vitals-group mono">
+        <span class="vital-item" title="Server Uptime">Up: <strong id="hdr-uptime">—</strong></span>
+        <span class="vital-sep">·</span>
+        <span class="vital-item" title="Go Heap Alloc / Goroutines">RAM: <strong id="hdr-ram">—</strong> (<span id="hdr-goroutines">—</span> gr)</span>
+        <span class="vital-sep">·</span>
+        <span class="vital-item" title="SQLite DB File Size and WAL Size">SQLite: <strong id="hdr-db-size">—</strong> (WAL: <strong id="hdr-wal-size">—</strong>)</span>
+        <span class="vital-sep">·</span>
+        <span class="vital-item" title="In-Memory Caches (Profile / Negative / Enrich)">Caches: <strong id="hdr-cache-summary">—</strong></span>
+        <span class="vital-sep">·</span>
+        <span class="vital-item" id="hdr-sync-time">sync: —</span>
+      </div>
+    </div>
+
+    <div class="nav-strip">
+      <ul class="nav-tabs" id="nav-tabs" role="tablist">
+        <li>
+          <button type="button" class="nav-tab active" data-tab="overview" role="tab">
+            <span class="kbd-hint">1</span>
+            <span>Overview</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="nav-tab" data-tab="users" role="tab">
+            <span class="kbd-hint">2</span>
+            <span>Users & Quotas</span>
+            <span class="nav-count mono" id="nav-count-users">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="nav-tab" data-tab="inspector" role="tab">
+            <span class="kbd-hint">3</span>
+            <span>Builds & Squads</span>
+            <span class="nav-count mono" id="nav-count-content">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="nav-tab" data-tab="infra" role="tab">
+            <span class="kbd-hint">4</span>
+            <span>Infra, Caches & SQLite</span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="global-actions">
+        <form class="quick-uid-form" id="quick-uid-form" title="Quickly purge Enka Profile & 404 Cache for a ZZZ UID from anywhere">
+          <input type="text" id="quick-uid-input" class="input mono" style="width: 145px;" placeholder="UID cache purge..." />
+          <button type="submit" class="btn btn-sm">Purge UID</button>
+        </form>
+
+        <select id="auto-refresh-select" class="select mono" title="Auto-refresh interval">
+          <option value="0">Auto: Off</option>
+          <option value="15000">Auto: 15s</option>
+          <option value="30000">Auto: 30s</option>
+        </select>
+
+        <button type="button" class="btn" id="btn-refresh" title="Refresh active view (Shortcut: R)">↻ Refresh</button>
+        <a href="/api/admin/sqlite/backup" class="btn" title="Download consistent SQLite hot backup (.db)">⬇ Backup DB</a>
+        <button type="button" class="btn" id="btn-theme-toggle" title="Toggle Dark / Light Theme">◐ Theme</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <div id="error-box" class="error-banner">
+      <span id="error-box-text"></span>
+      <button type="button" class="btn btn-sm" id="error-box-close">Dismiss</button>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TAB 1: OVERVIEW & ANALYTICS                                         -->
+    <!-- =================================================================== -->
+    <section id="tab-overview" class="tab-pane active">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <h1 style="font-size: 15px; font-weight: 700;">Platform Overview & Telemetry</h1>
+          <span class="badge mono" id="ov-defaults-badge">Defaults: 10 bld/agent · 100 sqd/acc · 3 UID/user</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 12px; color: var(--text-secondary);">Timeline window:</span>
+          <div class="segmented mono" id="days-selector">
+            <button type="button" data-days="7">7D</button>
+            <button type="button" data-days="14">14D</button>
+            <button type="button" data-days="30" class="active">30D</button>
+            <button type="button" data-days="90">90D</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6 Clickable KPI Cards -->
+      <div class="kpi-strip">
+        <div class="kpi-card" data-kpi-jump="users:all" title="Click to view all users">
+          <div class="kpi-top"><span>Discord Users</span><span>→</span></div>
+          <div class="kpi-num mono" id="kpi-users-total">—</div>
+          <div class="kpi-sub mono">
+            <span>24h: <b id="kpi-users-24h">+0</b></span>
+            <span>7d: <b id="kpi-users-7d">+0</b></span>
+            <span>30d: <b id="kpi-users-30d">+0</b></span>
+          </div>
+        </div>
+
+        <div class="kpi-card" data-kpi-jump="users:all" title="Click to inspect users & linked UIDs">
+          <div class="kpi-top"><span>Linked ZZZ UIDs</span><span>→</span></div>
+          <div class="kpi-num mono" id="kpi-accounts-total">—</div>
+          <div class="kpi-sub mono">
+            <span>24h: <b id="kpi-accounts-24h">+0</b></span>
+            <span>7d: <b id="kpi-accounts-7d">+0</b></span>
+            <span>30d: <b id="kpi-accounts-30d">+0</b></span>
+          </div>
+        </div>
+
+        <div class="kpi-card" data-kpi-jump="inspector:builds" title="Click to inspect saved agent builds">
+          <div class="kpi-top"><span>Saved Builds</span><span>→</span></div>
+          <div class="kpi-num mono" id="kpi-builds-total">—</div>
+          <div class="kpi-sub mono">
+            <span>24h: <b id="kpi-builds-24h">+0</b></span>
+            <span>7d: <b id="kpi-builds-7d">+0</b></span>
+            <span>30d: <b id="kpi-builds-30d">+0</b></span>
+          </div>
+        </div>
+
+        <div class="kpi-card" data-kpi-jump="inspector:teams" title="Click to inspect saved squads">
+          <div class="kpi-top"><span>Saved Squads</span><span>→</span></div>
+          <div class="kpi-num mono" id="kpi-teams-total">—</div>
+          <div class="kpi-sub mono">
+            <span>24h: <b id="kpi-teams-24h">+0</b></span>
+            <span>7d: <b id="kpi-teams-7d">+0</b></span>
+            <span>30d: <b id="kpi-teams-30d">+0</b></span>
+          </div>
+        </div>
+
+        <div class="kpi-card" data-kpi-jump="users:custom_limits" title="Click to filter users with custom quotas">
+          <div class="kpi-top"><span>Custom Quotas</span><span>→</span></div>
+          <div class="kpi-num mono" id="kpi-custom-users" style="color: var(--warning);">0</div>
+          <div class="kpi-sub"><span>Users with override limits</span></div>
+        </div>
+
+        <div class="kpi-card" data-kpi-jump="users:banned" title="Click to filter banned users">
+          <div class="kpi-top"><span>Banned Users</span><span>→</span></div>
+          <div class="kpi-num mono" id="kpi-banned-users" style="color: var(--danger);">0</div>
+          <div class="kpi-sub"><span>Suspended accounts</span></div>
+        </div>
+      </div>
+
+      <!-- Daily Activity + Regions & Quick Ops -->
+      <div class="overview-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="panel-title">Daily Creation Activity (UTC)</span>
+              <span class="badge mono" id="chart-period-summary">—</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="mono" style="display: flex; gap: 10px; font-size: 11px; color: var(--text-secondary);">
+                <span><b style="color: var(--accent);">■</b> Builds</span>
+                <span><b style="color: var(--cyan);">■</b> Squads</span>
+                <span><b style="color: var(--success);">■</b> Users</span>
+              </div>
+              <button type="button" class="btn btn-sm" id="btn-toggle-daily-table">Table View</button>
+            </div>
+          </div>
+
+          <div id="activity-chart-wrap">
+            <div class="chart-bars" id="activity-chart"></div>
+            <div class="mono" style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text-muted);">
+              <span id="chart-start-label">—</span>
+              <span id="chart-mid-label">—</span>
+              <span id="chart-end-label">—</span>
+            </div>
+          </div>
+
+          <div id="activity-table-wrap" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 6px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date (UTC)</th>
+                  <th class="num-col">New Users</th>
+                  <th class="num-col">Saved Builds</th>
+                  <th class="num-col">Created Squads</th>
+                  <th class="num-col">Total Events</th>
+                </tr>
+              </thead>
+              <tbody id="activity-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel" style="display: flex; flex-direction: column; justify-content: space-between; gap: 12px;">
+          <div>
+            <div class="panel-header">
+              <span class="panel-title">Linked ZZZ Accounts by Server Region</span>
+            </div>
+            <div id="regions-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+
+          <div style="border-top: 1px solid var(--border-muted); padding-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <span style="font-size: 11.5px; color: var(--text-secondary);">Quick navigation:</span>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm" data-kpi-jump="users:custom_limits">Custom Quotas</button>
+              <button type="button" class="btn btn-sm" data-kpi-jump="infra:all">Caches & SQLite</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Agents Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <span class="panel-title">Agent Popularity Leaderboard</span>
+            <span style="font-size: 11.5px; color: var(--text-secondary); margin-left: 8px;">Click any row to inspect saved builds for that agent</span>
+          </div>
+        </div>
+        <div class="table-wrapper" style="max-height: 320px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 48px;">Rank</th>
+                <th>Agent Name</th>
+                <th>Catalog ID</th>
+                <th class="num-col">Saved Builds</th>
+                <th style="width: 220px;">Share of Builds</th>
+                <th class="num-col">In Squads</th>
+                <th class="num-col">Inspect</th>
+              </tr>
+            </thead>
+            <tbody id="top-agents-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: USERS, QUOTAS & MODERATION (MASTER-DETAIL SPLIT VIEW)        -->
+    <!-- =================================================================== -->
+    <section id="tab-users" class="tab-pane split-mode">
+      <div class="master-pane">
+        <div class="pane-toolbar">
+          <div class="toolbar-left">
+            <form id="users-search-form" style="display: flex; gap: 6px; align-items: center;">
+              <div class="search-input-wrap">
+                <input
+                  type="search"
+                  id="users-search-input"
+                  class="input"
+                  placeholder="Search username, Discord ID, UUID, or ZZZ UID... (/)"
+                />
+                <button type="button" class="search-clear" id="users-search-clear" title="Clear search">✕</button>
+              </div>
+              <button type="submit" class="btn btn-primary">Search</button>
+            </form>
+
+            <div class="segmented" id="users-filter-group">
+              <button type="button" data-filter="all" class="active">All</button>
+              <button type="button" data-filter="custom_limits">Custom Quotas</button>
+              <button type="button" data-filter="banned">Banned</button>
+            </div>
+          </div>
+
+          <div class="toolbar-right">
+            <span class="badge mono" id="users-total-badge">0 users</span>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table" id="users-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort-users="username">User / Discord</th>
+                <th>Linked ZZZ UIDs</th>
+                <th class="num-col sortable" data-sort-users="builds_count">Builds</th>
+                <th class="num-col sortable" data-sort-users="teams_count">Squads</th>
+                <th>Quota (Bld / Sqd)</th>
+                <th class="num-col sortable" data-sort-users="token_version">Token</th>
+                <th class="sortable" data-sort-users="created_at">Created</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body"></tbody>
+          </table>
+        </div>
+
+        <div class="pane-footer">
+          <div class="mono" id="users-page-info">Showing 0–0 of 0</div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <select id="users-limit-select" class="select mono" style="height: 24px;">
+              <option value="50">50 / page</option>
+              <option value="100" selected>100 / page</option>
+              <option value="200">200 / page</option>
+            </select>
+            <button type="button" class="btn btn-sm" id="users-prev-btn" disabled>← Prev</button>
+            <button type="button" class="btn btn-sm" id="users-next-btn" disabled>Next →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Docked User Inspector -->
+      <aside class="detail-pane" id="user-detail-pane">
+        <div class="detail-empty" id="user-detail-empty">
+          <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">No User Selected</div>
+          <div>Click any user row on the left to inspect linked ZZZ UIDs, edit custom build/squad quotas, or moderate sessions.</div>
+        </div>
+
+        <div id="user-detail-content" style="display: none;">
+          <div class="detail-header">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <h2 style="font-size: 15px; font-weight: 700;" id="um-title">—</h2>
+                <span id="um-status-badge" class="badge badge-success">ACTIVE</span>
+                <span id="um-token-ver" class="badge mono">v1</span>
+              </div>
+              <div class="mono" style="margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; font-size: 11px; color: var(--text-secondary);">
+                <button type="button" class="copy-chip mono" id="um-copy-uuid" title="Click to copy User UUID">UUID: —</button>
+                <button type="button" class="copy-chip mono" id="um-copy-discord" title="Click to copy Discord ID">Discord: —</button>
+                <span id="um-created-at">—</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost" id="um-close" title="Close inspector (Esc)">✕</button>
+          </div>
+
+          <div class="detail-body">
+            <!-- 1. Custom Quotas -->
+            <div class="inspector-box">
+              <div class="inspector-box-title">
+                <span>Custom Quotas (Limits)</span>
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" class="btn btn-sm" data-preset-builds="" data-preset-teams="">Default (10/100)</button>
+                  <button type="button" class="btn btn-sm" data-preset-builds="25" data-preset-teams="200">Creator (25/200)</button>
+                  <button type="button" class="btn btn-sm" data-preset-builds="50" data-preset-teams="300">VIP (50/300)</button>
+                </div>
+              </div>
+              <div class="kv-grid" style="margin-bottom: 8px;">
+                <div>
+                  <label style="display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" for="um-limit-builds">Max Builds / Agent (1–500)</label>
+                  <input type="number" id="um-limit-builds" class="input mono" style="width: 100%;" min="1" max="500" placeholder="Default (10)" />
+                </div>
+                <div>
+                  <label style="display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" for="um-limit-teams">Max Squads / UID (1–500)</label>
+                  <input type="number" id="um-limit-teams" class="input mono" style="width: 100%;" min="1" max="500" placeholder="Default (100)" />
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 6px;">
+                <button type="button" class="btn btn-sm" id="um-btn-reset-limits">Reset Default</button>
+                <button type="button" class="btn btn-sm btn-primary" id="um-btn-save-limits">Save Quotas</button>
+              </div>
+            </div>
+
+            <!-- 2. Linked Game Accounts (ZZZ UIDs) with Cross-Links -->
+            <div class="inspector-box">
+              <div class="inspector-box-title">
+                <span>Linked Game Accounts (ZZZ UIDs)</span>
+                <span class="mono" id="um-accounts-count-label">0 / 3</span>
+              </div>
+              <div id="um-accounts-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+
+            <!-- 3. Moderation & Session Controls -->
+            <div class="inspector-box">
+              <div class="inspector-box-title">
+                <span>Security, Sessions & Moderation</span>
+              </div>
+              <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                <input type="text" id="um-ban-reason" class="input" style="flex: 1;" placeholder="Ban reason (visible in audit table)..." />
+                <button type="button" class="btn btn-danger" id="um-btn-toggle-ban">Ban User</button>
+              </div>
+              <div style="display: flex; justify-content: space-between; gap: 6px; border-top: 1px solid var(--border-muted); padding-top: 10px;">
+                <button type="button" class="btn btn-sm" id="um-btn-revoke" title="Increments token_version to invalidate all active sessions">Revoke Sessions (token++)</button>
+                <button type="button" class="btn btn-sm btn-danger" id="um-btn-delete-user">Delete User Permanently</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: CONTENT INSPECTOR — BUILDS & SQUADS (MASTER-DETAIL)          -->
+    <!-- =================================================================== -->
+    <section id="tab-inspector" class="tab-pane split-mode">
+      <div class="master-pane">
+        <div class="pane-toolbar">
+          <div class="toolbar-left">
+            <div class="segmented" id="insp-mode-group">
+              <button type="button" data-mode="builds" class="active">Agent Builds</button>
+              <button type="button" data-mode="teams">Squads (Teams)</button>
+            </div>
+
+            <form id="insp-search-form" style="display: flex; gap: 6px; align-items: center;">
+              <div class="search-input-wrap">
+                <input
+                  type="search"
+                  id="insp-search-input"
+                  class="input"
+                  style="width: 260px;"
+                  placeholder="Search name, agent, UID, @user, weapon, UUID..."
+                />
+                <button type="button" class="search-clear" id="insp-search-clear" title="Clear search">✕</button>
+              </div>
+              <input
+                type="text"
+                id="insp-agent-input"
+                list="known-agents-datalist"
+                class="input mono"
+                style="width: 130px;"
+                placeholder="Agent ID..."
+                title="Filter by catalog Agent ID (e.g. 1011)"
+              />
+              <datalist id="known-agents-datalist"></datalist>
+              <button type="submit" class="btn btn-primary">Filter</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="insp-reset-btn" style="display: none;">Reset</button>
+            </form>
+          </div>
+
+          <div class="toolbar-right">
+            <span class="badge mono" id="insp-total-badge">0 records</span>
+          </div>
+        </div>
+
+        <!-- Builds Table -->
+        <div class="table-wrapper" id="insp-builds-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort-builds="agent_name">Agent & Build Preset</th>
+                <th class="sortable" data-sort-builds="username">Owner & ZZZ UID</th>
+                <th>Equipment (W-Engine / Discs)</th>
+                <th class="num-col sortable" data-sort-builds="teams_used_count">In Squads</th>
+                <th class="sortable" data-sort-builds="updated_at">Updated</th>
+              </tr>
+            </thead>
+            <tbody id="insp-builds-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Squads Table -->
+        <div class="table-wrapper" id="insp-teams-wrap" style="display: none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort-teams="name">Squad Name</th>
+                <th class="sortable" data-sort-teams="username">Owner & ZZZ UID</th>
+                <th>Roster (Slots 1 / 2 / 3)</th>
+                <th class="sortable" data-sort-teams="updated_at">Updated</th>
+              </tr>
+            </thead>
+            <tbody id="insp-teams-body"></tbody>
+          </table>
+        </div>
+
+        <div class="pane-footer">
+          <div class="mono" id="insp-page-info">Showing 0–0 of 0</div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <select id="insp-limit-select" class="select mono" style="height: 24px;">
+              <option value="50">50 / page</option>
+              <option value="100" selected>100 / page</option>
+              <option value="200">200 / page</option>
+            </select>
+            <button type="button" class="btn btn-sm" id="insp-prev-btn" disabled>← Prev</button>
+            <button type="button" class="btn btn-sm" id="insp-next-btn" disabled>Next →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Docked Build / Squad Inspector -->
+      <aside class="detail-pane" id="insp-detail-pane">
+        <div class="detail-empty" id="insp-detail-empty">
+          <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">No Record Selected</div>
+          <div>Select a build or squad from the table on the left to inspect equipment slots, Conflict Engine UIDs, squad memberships, and raw Enka JSON.</div>
+        </div>
+
+        <!-- BUILD INSPECTOR VIEW -->
+        <div id="build-detail-content" style="display: none;">
+          <div class="detail-header">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span class="badge badge-accent mono" id="bm-agent-badge">#—</span>
+                <h2 style="font-size: 14.5px; font-weight: 700;" id="bm-title">—</h2>
+              </div>
+              <div class="mono" style="margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; font-size: 11px; color: var(--text-secondary);">
+                <button type="button" class="copy-chip mono" id="bm-copy-id" title="Copy Build UUID">UUID: —</button>
+                <span id="bm-timestamps">—</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost" id="bm-close" title="Close inspector (Esc)">✕</button>
+          </div>
+
+          <div class="detail-body">
+            <!-- Owner & Quick Cross-Links -->
+            <div class="inspector-box">
+              <div class="inspector-box-title">
+                <span>Owner & Account Context</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <div>
+                  <div style="font-weight: 600;" id="bm-owner-name">—</div>
+                  <div class="mono" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;" id="bm-owner-uid">—</div>
+                </div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-sm" id="bm-jump-user">User Profile →</button>
+                  <button type="button" class="btn btn-sm" id="bm-filter-uid">All UID Builds</button>
+                  <button type="button" class="btn btn-sm" id="bm-purge-uid">Purge UID Cache</button>
+                </div>
+              </div>
+              <div id="bm-desc-box" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-muted); font-size: 12px; color: var(--text-secondary); display: none;"></div>
+            </div>
+
+            <!-- Equipment & Conflict Engine Slots (1-6) -->
+            <div class="inspector-box">
+              <div class="inspector-box-title">
+                <span>Conflict Engine Equipment (W-Engine & 6 Disc Slots)</span>
+              </div>
+              <div id="bm-weapon-box" class="mono" style="font-size: 12px; margin-bottom: 8px;"></div>
+              <div class="slots-grid mono" id="bm-slots-grid"></div>
+              <div id="bm-raw-summary" class="mono" style="margin-top: 8px; font-size: 11px; color: var(--text-secondary);"></div>
+            </div>
+
+            <!-- Squad Memberships -->
+            <div class="inspector-box">
+              <div class="inspector-box-title">
+                <span>Referenced in Squads</span>
+                <span class="mono" id="bm-teams-count">0</span>
+              </div>
+              <div id="bm-teams-list" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+            </div>
+
+            <!-- Raw Enka JSON Viewer -->
+            <div class="inspector-box">
+              <div class="inspector-box-title">
+                <span>Raw Enka Snapshot (raw_data JSON)</span>
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" class="btn btn-sm" id="bm-copy-json">Copy JSON</button>
+                  <button type="button" class="btn btn-sm" id="bm-download-json">⬇ .json</button>
+                </div>
+              </div>
+              <div style="margin-bottom: 6px;">
+                <input type="search" id="bm-json-filter" class="input mono" style="width: 100%; height: 24px; font-size: 11px;" placeholder="Filter lines in JSON (e.g. PropertyId, Level, Uid)..." />
+              </div>
+              <pre class="json-viewer mono" id="bm-raw-json"></pre>
+            </div>
+
+            <!-- Destructive Actions -->
+            <div style="display: flex; justify-content: space-between; gap: 8px;">
+              <button type="button" class="btn btn-danger" id="bm-btn-delete">Delete Build</button>
+              <button type="button" class="btn btn-danger" id="bm-btn-force-delete">Force Delete (Unlink from Squads)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SQUAD INSPECTOR VIEW -->
+        <div id="team-detail-content" style="display: none;">
+          <div class="detail-header">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="badge badge-uid">SQUAD</span>
+                <h2 style="font-size: 14.5px; font-weight: 700;" id="tm-title">—</h2>
+              </div>
+              <div class="mono" style="margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; font-size: 11px; color: var(--text-secondary);">
+                <button type="button" class="copy-chip mono" id="tm-copy-id">UUID: —</button>
+                <span id="tm-updated-at">—</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost" id="tm-close" title="Close inspector (Esc)">✕</button>
+          </div>
+
+          <div class="detail-body">
+            <div class="inspector-box">
+              <div class="inspector-box-title"><span>Owner & Account</span></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <div>
+                  <div style="font-weight: 600;" id="tm-owner-name">—</div>
+                  <div class="mono" style="font-size: 11px; color: var(--text-secondary);" id="tm-owner-uid">—</div>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                  <button type="button" class="btn btn-sm" id="tm-jump-user">User Profile →</button>
+                  <button type="button" class="btn btn-sm" id="tm-filter-builds">UID Builds →</button>
+                </div>
+              </div>
+              <div id="tm-desc-box" style="margin-top: 8px; font-size: 12px; color: var(--text-secondary); display: none;"></div>
+            </div>
+
+            <div class="inspector-box">
+              <div class="inspector-box-title"><span>Squad Roster (Slots 1 – 3)</span></div>
+              <div id="tm-slots-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end;">
+              <button type="button" class="btn btn-danger" id="tm-btn-delete">Delete Squad</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 4: INFRA, CACHES, RATE LIMITERS & SQLITE (UNIFIED OPS VIEW)     -->
+    <!-- =================================================================== -->
+    <section id="tab-infra" class="tab-pane">
+      <div class="infra-grid">
+        <!-- LEFT COLUMN: CACHES & IP RATE LIMITERS -->
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Targeted Cache Purge & IP Unblock</span>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-sm btn-danger" id="btn-flush-all-caches">Flush All Caches</button>
+                <button type="button" class="btn btn-sm btn-danger" id="btn-flush-all-limiters">Reset All IP Limiters</button>
+              </div>
+            </div>
+            <div class="kv-grid">
+              <form id="purge-uid-form" style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600;" for="purge-uid-input">Evict ZZZ UID (Profile + 404 Shield)</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="text" id="purge-uid-input" class="input mono" style="flex: 1;" placeholder="UID e.g. 1504687050" />
+                  <button type="submit" class="btn btn-primary">Purge UID</button>
+                </div>
+              </form>
+
+              <form id="unblock-ip-form" style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600;" for="unblock-ip-input">Unblock Client IP (Clear 429 Counters)</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="text" id="unblock-ip-input" class="input mono" style="flex: 1;" placeholder="IP e.g. 203.0.113.42" />
+                  <button type="submit" class="btn btn-primary">Unblock IP</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">In-Memory LRU Caches</span>
+            </div>
+            <div id="caches-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Token-Bucket IP Rate Limiters</span>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Limiter</th>
+                    <th class="num-col">Active IPs</th>
+                    <th class="num-col">Max Slots</th>
+                    <th class="num-col">Rate / min</th>
+                    <th class="num-col">Burst</th>
+                    <th class="num-col">TTL</th>
+                    <th class="num-col">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="limiters-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: SQLITE OPERATIONS, GO RUNTIME & TELEGRAM ALERTS -->
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <span class="panel-title">SQLite Database & WAL Maintenance</span>
+                <span class="badge badge-accent mono" id="sys-journal-mode" style="margin-left: 6px;">WAL</span>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-sm" id="btn-sqlite-maint">⚙ WAL Checkpoint + Optimize</button>
+                <a href="/api/admin/sqlite/backup" class="btn btn-sm btn-primary">⬇ Hot Backup (.db)</a>
+              </div>
+            </div>
+
+            <div class="mono" style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 10px;" id="sys-db-path">path: —</div>
+
+            <div class="kv-grid mono" style="margin-bottom: 10px;">
+              <div class="kv-box">
+                <div class="kv-label">Logical Size (Pages)</div>
+                <div class="kv-val" id="sys-db-logical">—</div>
+                <div style="font-size: 11px; color: var(--text-secondary);" id="sys-pages-info">—</div>
+              </div>
+              <div class="kv-box">
+                <div class="kv-label">Disk Files (.db / -wal / -shm)</div>
+                <div class="kv-val" id="sys-files-breakdown">—</div>
+                <div style="font-size: 11px; color: var(--text-secondary);" id="sys-freelist-info">freelist: —</div>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 600;">Applied Schema Migrations:</div>
+              <div id="sys-migrations-list" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Go Runtime Telemetry</span>
+              <span class="badge mono" id="sys-go-ver">go—</span>
+            </div>
+            <div class="kv-grid mono">
+              <div class="kv-box">
+                <div class="kv-label">Heap Alloc / InUse</div>
+                <div class="kv-val" id="sys-heap-alloc">—</div>
+              </div>
+              <div class="kv-box">
+                <div class="kv-label">Sys Memory / GC Cycles</div>
+                <div class="kv-val" id="sys-mem-sys">—</div>
+              </div>
+              <div class="kv-box">
+                <div class="kv-label">Active Goroutines</div>
+                <div class="kv-val" id="sys-goroutines">—</div>
+              </div>
+              <div class="kv-box">
+                <div class="kv-label">CPU Cores & Arch</div>
+                <div class="kv-val" id="sys-cpus">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Telegram Alert Notifier Diagnostics</span>
+              <span class="badge mono" id="sys-tg-status">—</span>
+            </div>
+            <form id="tg-test-form" style="display: flex; gap: 8px;">
+              <input type="text" id="tg-test-msg" class="input" style="flex: 1;" placeholder="Diagnostic test message (optional)..." />
+              <button type="submit" class="btn btn-primary" id="btn-tg-test">Send Test Alert</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast Stack Container -->
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+  <script>
+    // =========================================================================
+    // STATE & UTILITIES
+    // =========================================================================
+    let activeTab = 'overview';
+    let currentDays = 30;
+    let showDailyTable = false;
+    let autoRefreshTimer = null;
+
+    const usersState = {
+      query: '',
+      filter: 'all',
+      limit: 100,
+      offset: 0,
+      total: 0,
+      items: [],
+      sortKey: 'created_at',
+      sortDir: 'desc',
+      selectedId: null,
+      detail: null,
+    };
+
+    const inspState = {
+      mode: 'builds', // 'builds' | 'teams'
+      query: '',
+      agentId: '',
+      limit: 100,
+      offset: 0,
+      total: 0,
+      items: [],
+      sortKey: 'updated_at',
+      sortDir: 'desc',
+      selectedBuildId: null,
+      buildDetail: null,
+      selectedTeamId: null,
+      selectedTeam: null,
+    };
+
+    const knownAgentsMap = new Map();
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function formatUptime(sec) {
+      if (!sec || sec < 0) return '0s';
+      const d = Math.floor(sec / 86400);
+      const h = Math.floor((sec % 86400) / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      if (d > 0) return `${d}d ${h}h`;
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m ${Math.floor(sec % 60)}s`;
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let val = bytes;
+      let idx = 0;
+      while (val >= 1024 && idx < units.length - 1) {
+        val /= 1024;
+        idx++;
+      }
+      return `${val.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+    }
+
+    function formatShortTime(iso) {
+      if (!iso) return '—';
+      return String(iso).slice(0, 16).replace('T', ' ');
+    }
+
+    function showToast(message, tone = 'success') {
+      const stack = document.getElementById('toast-stack');
+      const el = document.createElement('div');
+      el.className = 'toast-item';
+      el.setAttribute('popover', 'manual');
+
+      const borderColor =
+        tone === 'danger' ? 'var(--danger)' :
+        tone === 'warning' ? 'var(--warning)' : 'var(--success)';
+      el.style.borderLeft = `3px solid ${borderColor}`;
+
+      const span = document.createElement('span');
+      span.textContent = message;
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'btn btn-sm btn-ghost';
+      closeBtn.textContent = '✕';
+      closeBtn.setAttribute('popovertargetaction', 'hide');
+
+      const dismiss = () => {
+        try {
+          if (typeof el.hidePopover === 'function') el.hidePopover();
+        } catch (_) {}
+        el.remove();
+      };
+      closeBtn.addEventListener('click', dismiss);
+
+      el.appendChild(span);
+      el.appendChild(closeBtn);
+      stack.appendChild(el);
+
+      try {
+        if (typeof el.showPopover === 'function') {
+          el.showPopover();
+        } else {
+          el.classList.add(':popover-open');
+        }
+      } catch (_) {
+        el.classList.add(':popover-open');
+      }
+
+      setTimeout(dismiss, 3500);
+    }
+
+    function showError(msg) {
+      const box = document.getElementById('error-box');
+      const txt = document.getElementById('error-box-text');
+      if (!msg) {
+        box.style.display = 'none';
+        return;
+      }
+      txt.textContent = msg;
+      box.style.display = 'flex';
+    }
+
+    document.getElementById('error-box-close').addEventListener('click', () => showError(null));
+
+    async function copyText(val, label = 'Value') {
+      if (!val) return;
+      try {
+        await navigator.clipboard.writeText(String(val));
+        showToast(`Copied ${label}: ${val}`);
+      } catch (_) {
+        showToast(`Copy failed`, 'danger');
+      }
+    }
+
+    function sortItems(items, key, dir) {
+      const mult = dir === 'asc' ? 1 : -1;
+      return [...items].sort((a, b) => {
+        const va = a?.[key] ?? '';
+        const vb = b?.[key] ?? '';
+        if (typeof va === 'number' && typeof vb === 'number') {
+          return (va - vb) * mult;
+        }
+        return String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: 'base' }) * mult;
+      });
+    }
+
+    // Theme switcher
+    document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+      const root = document.documentElement;
+      const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      root.setAttribute('data-theme', next);
+      try {
+        localStorage.setItem('pl_admin_theme', next);
+      } catch (_) {}
+    });
+
+    // =========================================================================
+    // GLOBAL TOPBAR TELEMETRY & QUICK ACTIONS
+    // =========================================================================
+    async function loadGlobalVitals() {
+      try {
+        const [sysRes, cacheRes] = await Promise.all([
+          fetch('/api/admin/system'),
+          fetch('/api/admin/caches'),
+        ]);
+        if (sysRes.ok) {
+          const sys = await sysRes.json();
+          const rt = sys.runtime || {};
+          const sq = sys.sqlite || {};
+          document.getElementById('hdr-env-rel').textContent = `${rt.env || 'dev'} // ${rt.release || 'local'}`;
+          document.getElementById('hdr-uptime').textContent = formatUptime(rt.uptime_seconds);
+          document.getElementById('hdr-ram').textContent = formatBytes(rt.heap_alloc_bytes);
+          document.getElementById('hdr-goroutines').textContent = rt.goroutines ?? 0;
+          document.getElementById('hdr-db-size').textContent = formatBytes(sq.db_file_size_bytes || sq.logical_size_bytes);
+          const walEl = document.getElementById('hdr-wal-size');
+          walEl.textContent = formatBytes(sq.wal_file_size_bytes);
+          walEl.style.color = (sq.wal_file_size_bytes || 0) > 16 * 1024 * 1024 ? 'var(--warning)' : '';
+          if (activeTab === 'infra') {
+            renderSystem(sys);
+          }
+        }
+        if (cacheRes.ok) {
+          const caches = await cacheRes.json();
+          const cList = caches.caches || [];
+          const summary = cList.map((c) => `${c.size}/${c.capacity}`).join(' · ');
+          document.getElementById('hdr-cache-summary').textContent = summary || '0';
+          if (activeTab === 'infra') {
+            renderCachesAndLimiters(caches);
+          }
+        }
+        document.getElementById('hdr-sync-time').textContent = 'sync ' + new Date().toLocaleTimeString();
+      } catch (_) {}
+    }
+
+    async function purgeUidCache(uid) {
+      const clean = String(uid || '').trim();
+      if (!clean) return;
+      try {
+        const res = await fetch('/api/admin/caches/purge-uid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: clean }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        showToast(`Purged Enka profile & 404 cache for UID ${clean}`);
+        if (activeTab === 'infra') renderCachesAndLimiters(data);
+        loadGlobalVitals();
+      } catch (err) {
+        showToast(`UID purge failed: ${err.message}`, 'danger');
+      }
+    }
+
+    document.getElementById('quick-uid-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('quick-uid-input');
+      const uid = input.value.trim();
+      if (!uid) return;
+      purgeUidCache(uid);
+      input.value = '';
+    });
+
+    // =========================================================================
+    // NAVIGATION & CROSS-ENTITY JUMP HELPERS
+    // =========================================================================
+    function switchTab(tabName, skipLoad = false) {
+      activeTab = tabName;
+      document.querySelectorAll('#nav-tabs .nav-tab').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+      document.querySelectorAll('.tab-pane').forEach((sec) => {
+        sec.classList.toggle('active', sec.id === `tab-${tabName}`);
+      });
+
+      if (skipLoad) return;
+      if (tabName === 'overview') loadStats();
+      else if (tabName === 'users') loadUsers();
+      else if (tabName === 'inspector') loadInspector();
+      else if (tabName === 'infra') loadInfra();
+    }
+
+    document.getElementById('nav-tabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('.nav-tab');
+      if (!btn) return;
+      switchTab(btn.dataset.tab);
+    });
+
+    async function jumpToUser(userId, fallbackQuery = '') {
+      switchTab('users', true);
+      if (fallbackQuery) {
+        usersState.query = fallbackQuery;
+        usersState.filter = 'all';
+        usersState.offset = 0;
+        document.getElementById('users-search-input').value = fallbackQuery;
+        syncUsersFilterButtons();
+      }
+      await loadUsers();
+      if (userId) {
+        openUserInspector(userId);
+      }
+    }
+
+    function jumpToBuilds({ query = '', agentId = '' } = {}) {
+      inspState.mode = 'builds';
+      inspState.query = query;
+      inspState.agentId = agentId ? String(agentId) : '';
+      inspState.offset = 0;
+      syncInspectorControls();
+      switchTab('inspector');
+    }
+
+    function jumpToTeams({ query = '' } = {}) {
+      inspState.mode = 'teams';
+      inspState.query = query;
+      inspState.agentId = '';
+      inspState.offset = 0;
+      syncInspectorControls();
+      switchTab('inspector');
+    }
+
+    // =========================================================================
+    // TAB 1: OVERVIEW & ANALYTICS
+    // =========================================================================
+    async function loadStats() {
+      showError(null);
+      try {
+        const res = await fetch(`/api/admin/stats?days=${currentDays}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const stats = await res.json();
+        renderStats(stats);
+        loadGlobalVitals();
+      } catch (err) {
+        showError('Failed to load overview stats: ' + err.message);
+      }
+    }
+
+    function setKpiCard(prefix, obj) {
+      document.getElementById(`kpi-${prefix}-total`).textContent = (obj?.total ?? 0).toLocaleString('en-US');
+      document.getElementById(`kpi-${prefix}-24h`).textContent = `+${obj?.last_24h ?? 0}`;
+      document.getElementById(`kpi-${prefix}-7d`).textContent = `+${obj?.last_7d ?? 0}`;
+      document.getElementById(`kpi-${prefix}-30d`).textContent = `+${obj?.last_30d ?? 0}`;
+    }
+
+    function renderStats(stats) {
+      const c = stats.counts || {};
+      setKpiCard('users', c.users);
+      setKpiCard('accounts', c.accounts);
+      setKpiCard('builds', c.builds);
+      setKpiCard('teams', c.teams);
+
+      document.getElementById('kpi-custom-users').textContent = (c.custom_limits_users ?? 0).toLocaleString('en-US');
+      document.getElementById('kpi-banned-users').textContent = (c.banned_users ?? 0).toLocaleString('en-US');
+
+      document.getElementById('nav-count-users').textContent = c.users?.total ?? 0;
+      document.getElementById('nav-count-content').textContent = `${c.builds?.total ?? 0} / ${c.teams?.total ?? 0}`;
+
+      const def = stats.defaults || {};
+      document.getElementById('ov-defaults-badge').textContent =
+        `Defaults: ${def.max_builds_per_agent ?? 10} bld/agent · ${def.max_teams_per_account ?? 100} sqd/UID · ${def.max_accounts_per_user ?? 3} UID/user`;
+
+      // Populate known agents datalist for Content Inspector
+      for (const ag of (stats.top_agents || [])) {
+        knownAgentsMap.set(ag.agent_id, ag.agent_name);
+      }
+      renderKnownAgentsDatalist();
+
+      const daily = stats.daily_activity || [];
+      renderChart(daily);
+      renderDailyTable(daily);
+      renderRegions(stats.regions || [], c.accounts?.total || 0);
+      renderTopAgents(stats.top_agents || [], c.builds?.total || 0);
+    }
+
+    function renderKnownAgentsDatalist() {
+      const dl = document.getElementById('known-agents-datalist');
+      dl.innerHTML = '';
+      for (const [id, name] of knownAgentsMap.entries()) {
+        const opt = document.createElement('option');
+        opt.value = String(id);
+        opt.label = `${name} (#${id})`;
+        dl.appendChild(opt);
+      }
+    }
+
+    function renderChart(series) {
+      const container = document.getElementById('activity-chart');
+      container.innerHTML = '';
+      if (!series.length) return;
+
+      let maxTotal = 1;
+      let sumUsers = 0;
+      let sumBuilds = 0;
+      let sumTeams = 0;
+
+      for (const pt of series) {
+        const u = pt.users || 0;
+        const b = pt.builds || 0;
+        const t = pt.teams || 0;
+        sumUsers += u;
+        sumBuilds += b;
+        sumTeams += t;
+        if (u + b + t > maxTotal) maxTotal = u + b + t;
+      }
+
+      document.getElementById('chart-period-summary').textContent =
+        `${series.length}d sum: +${sumBuilds} bld · +${sumTeams} sqd · +${sumUsers} usr`;
+
+      for (const pt of series) {
+        const col = document.createElement('div');
+        col.className = 'chart-col';
+        col.title = `${pt.date}\nBuilds: ${pt.builds}\nSquads: ${pt.teams}\nUsers: ${pt.users}`;
+
+        const bH = Math.round(((pt.builds || 0) / maxTotal) * 145);
+        const tH = Math.round(((pt.teams || 0) / maxTotal) * 145);
+        const uH = Math.round(((pt.users || 0) / maxTotal) * 145);
+
+        if (uH > 0) {
+          const el = document.createElement('div');
+          el.className = 'bar-seg';
+          el.style.height = `${Math.max(uH, 3)}px`;
+          el.style.background = 'var(--success)';
+          col.appendChild(el);
+        }
+        if (tH > 0) {
+          const el = document.createElement('div');
+          el.className = 'bar-seg';
+          el.style.height = `${Math.max(tH, 3)}px`;
+          el.style.background = 'var(--cyan)';
+          col.appendChild(el);
+        }
+        if (bH > 0) {
+          const el = document.createElement('div');
+          el.className = 'bar-seg';
+          el.style.height = `${Math.max(bH, 3)}px`;
+          el.style.background = 'var(--accent)';
+          col.appendChild(el);
+        }
+        if (uH === 0 && tH === 0 && bH === 0) {
+          const el = document.createElement('div');
+          el.className = 'bar-seg';
+          el.style.height = '2px';
+          el.style.background = 'var(--border-default)';
+          col.appendChild(el);
+        }
+        container.appendChild(col);
+      }
+
+      document.getElementById('chart-start-label').textContent = series[0]?.date || '—';
+      document.getElementById('chart-mid-label').textContent = series[Math.floor(series.length / 2)]?.date || '—';
+      document.getElementById('chart-end-label').textContent = series[series.length - 1]?.date || '—';
+    }
+
+    function renderDailyTable(series) {
+      const tbody = document.getElementById('activity-table-body');
+      tbody.innerHTML = '';
+      const reversed = [...series].reverse();
+      for (const pt of reversed) {
+        const total = (pt.users || 0) + (pt.builds || 0) + (pt.teams || 0);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${escapeHtml(pt.date)}</td>
+          <td class="num-col mono">${pt.users || 0}</td>
+          <td class="num-col mono" style="color: var(--accent-text); font-weight: 600;">${pt.builds || 0}</td>
+          <td class="num-col mono">${pt.teams || 0}</td>
+          <td class="num-col mono"><strong>${total}</strong></td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    document.getElementById('btn-toggle-daily-table').addEventListener('click', () => {
+      showDailyTable = !showDailyTable;
+      document.getElementById('activity-chart-wrap').style.display = showDailyTable ? 'none' : 'block';
+      document.getElementById('activity-table-wrap').style.display = showDailyTable ? 'block' : 'none';
+      document.getElementById('btn-toggle-daily-table').textContent = showDailyTable ? 'Chart View' : 'Table View';
+    });
+
+    function renderRegions(regions, totalAccounts) {
+      const wrap = document.getElementById('regions-list');
+      wrap.innerHTML = '';
+      for (const r of regions) {
+        const pct = totalAccounts > 0 ? Math.round((r.count / totalAccounts) * 100) : 0;
+        const row = document.createElement('div');
+        row.innerHTML = `
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+            <span style="font-weight: 600;">${escapeHtml(r.region)}</span>
+            <span class="mono" style="color: var(--text-secondary);">${r.count} UIDs (${pct}%)</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: ${pct}%;"></div>
+          </div>
+        `;
+        wrap.appendChild(row);
+      }
+    }
+
+    function renderTopAgents(agents, totalBuilds) {
+      const tbody = document.getElementById('top-agents-body');
+      tbody.innerHTML = '';
+      if (!agents.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">No saved agent builds yet</td></tr>';
+        return;
+      }
+
+      agents.forEach((ag, idx) => {
+        const pct = totalBuilds > 0 ? Math.round((ag.builds_count / totalBuilds) * 100) : 0;
+        const tr = document.createElement('tr');
+        tr.dataset.jumpAgent = String(ag.agent_id);
+        tr.innerHTML = `
+          <td class="mono" style="color: var(--text-secondary);">#${idx + 1}</td>
+          <td style="font-weight: 600;">${escapeHtml(ag.agent_name)}</td>
+          <td class="mono"><span class="badge mono">#${ag.agent_id}</span></td>
+          <td class="num-col mono" style="font-weight: 700; color: var(--accent-text);">${ag.builds_count}</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="progress-track" style="flex: 1;">
+                <div class="progress-fill" style="width: ${pct}%;"></div>
+              </div>
+              <span class="mono" style="font-size: 11px; color: var(--text-secondary); width: 34px; text-align: right;">${pct}%</span>
+            </div>
+          </td>
+          <td class="num-col mono">${ag.teams_count}</td>
+          <td class="num-col">
+            <button type="button" class="btn btn-sm" data-jump-agent="${ag.agent_id}">Builds →</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('days-selector').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-days]');
+      if (!btn) return;
+      currentDays = parseInt(btn.dataset.days, 10) || 30;
+      document.querySelectorAll('#days-selector button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadStats();
+    });
+
+    document.getElementById('tab-overview').addEventListener('click', (e) => {
+      const kpi = e.target.closest('[data-kpi-jump]');
+      if (kpi) {
+        const [targetTab, sub] = kpi.dataset.kpiJump.split(':');
+        if (targetTab === 'users') {
+          usersState.filter = sub || 'all';
+          usersState.query = '';
+          usersState.offset = 0;
+          document.getElementById('users-search-input').value = '';
+          syncUsersFilterButtons();
+          switchTab('users');
+        } else if (targetTab === 'inspector') {
+          inspState.mode = sub === 'teams' ? 'teams' : 'builds';
+          inspState.query = '';
+          inspState.agentId = '';
+          inspState.offset = 0;
+          syncInspectorControls();
+          switchTab('inspector');
+        } else if (targetTab === 'infra') {
+          switchTab('infra');
+        }
+        return;
+      }
+
+      const agTrigger = e.target.closest('[data-jump-agent]');
+      if (agTrigger) {
+        jumpToBuilds({ agentId: agTrigger.dataset.jumpAgent });
+      }
+    });
+
+    // =========================================================================
+    // TAB 2: USERS, QUOTAS & MODERATION (MASTER-DETAIL)
+    // =========================================================================
+    function syncUsersFilterButtons() {
+      document.querySelectorAll('#users-filter-group button').forEach((b) => {
+        b.classList.toggle('active', b.dataset.filter === usersState.filter);
+      });
+      document.getElementById('users-search-clear').style.display = usersState.query ? 'inline' : 'none';
+    }
+
+    async function loadUsers() {
+      showError(null);
+      try {
+        const params = new URLSearchParams({
+          q: usersState.query,
+          filter: usersState.filter,
+          limit: String(usersState.limit),
+          offset: String(usersState.offset),
+        });
+        const res = await fetch(`/api/admin/users?${params.toString()}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        usersState.total = data.total ?? 0;
+        usersState.items = data.items || [];
+        document.getElementById('nav-count-users').textContent = usersState.total;
+        renderUsersTable();
+      } catch (err) {
+        showError('Failed to load users: ' + err.message);
+      }
+    }
+
+    function renderUsersTable() {
+      document.getElementById('users-total-badge').textContent = `${usersState.total} users`;
+      const tbody = document.getElementById('users-table-body');
+      tbody.innerHTML = '';
+
+      const sorted = sortItems(usersState.items, usersState.sortKey, usersState.sortDir);
+      if (!sorted.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 28px; color: var(--text-muted);">No users match the current filter</td></tr>';
+      } else {
+        for (const u of sorted) {
+          const tr = document.createElement('tr');
+          tr.dataset.userId = u.id;
+          if (usersState.selectedId === u.id) tr.classList.add('selected');
+
+          const hasCustom = u.custom_max_builds_per_agent != null || u.custom_max_teams != null;
+          const uidsHtml = (u.uids && u.uids.length)
+            ? u.uids.map((uid) => `<button type="button" class="badge badge-uid mono" data-uid-builds="${escapeHtml(uid)}" title="Inspect builds for UID ${escapeHtml(uid)}">${escapeHtml(uid)}</button>`).join(' ')
+            : '<span style="color: var(--text-muted); font-size: 11px;">none</span>';
+
+          const statusHtml = u.banned_at
+            ? `<span class="badge badge-danger" title="${escapeHtml(u.ban_reason || 'Banned')}">BANNED${u.ban_reason ? ': ' + escapeHtml(u.ban_reason.slice(0, 18)) : ''}</span>`
+            : '';
+
+          const quotaBadge = hasCustom
+            ? `<span class="badge badge-warning mono">CUSTOM ${u.effective_max_builds_per_agent}/${u.effective_max_teams}</span>`
+            : `<span class="badge mono">${u.effective_max_builds_per_agent}/${u.effective_max_teams}</span>`;
+
+          tr.innerHTML = `
+            <td>
+              <div style="display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                <span>${escapeHtml(u.username)}</span>
+                ${statusHtml}
+              </div>
+              <div class="mono" style="font-size: 11px; color: var(--text-muted);">
+                dc:${escapeHtml(u.discord_id)} · ${escapeHtml(u.id.slice(0, 8))}
+              </div>
+            </td>
+            <td><div style="display: flex; gap: 4px; flex-wrap: wrap;">${uidsHtml}</div></td>
+            <td class="num-col mono">${u.builds_count}</td>
+            <td class="num-col mono">${u.teams_count}</td>
+            <td>${quotaBadge}</td>
+            <td class="num-col mono" style="color: var(--text-secondary);">v${u.token_version}</td>
+            <td class="mono" style="color: var(--text-secondary); font-size: 11.5px;">${escapeHtml((u.created_at || '').slice(0, 10))}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      const start = usersState.total === 0 ? 0 : usersState.offset + 1;
+      const end = Math.min(usersState.offset + sorted.length, usersState.total);
+      document.getElementById('users-page-info').textContent = `Showing ${start}–${end} of ${usersState.total}`;
+      document.getElementById('users-prev-btn').disabled = usersState.offset <= 0;
+      document.getElementById('users-next-btn').disabled = usersState.offset + usersState.limit >= usersState.total;
+    }
+
+    // Users Search, Filter, Sort & Pagination
+    let usersSearchTimer = null;
+    const usersSearchInput = document.getElementById('users-search-input');
+
+    usersSearchInput.addEventListener('input', () => {
+      clearTimeout(usersSearchTimer);
+      usersSearchTimer = setTimeout(() => {
+        usersState.query = usersSearchInput.value.trim();
+        usersState.offset = 0;
+        syncUsersFilterButtons();
+        loadUsers();
+      }, 220);
+    });
+
+    document.getElementById('users-search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      clearTimeout(usersSearchTimer);
+      usersState.query = usersSearchInput.value.trim();
+      usersState.offset = 0;
+      syncUsersFilterButtons();
+      loadUsers();
+    });
+
+    document.getElementById('users-search-clear').addEventListener('click', () => {
+      usersSearchInput.value = '';
+      usersState.query = '';
+      usersState.offset = 0;
+      syncUsersFilterButtons();
+      loadUsers();
+    });
+
+    document.getElementById('users-filter-group').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-filter]');
+      if (!btn) return;
+      usersState.filter = btn.dataset.filter;
+      usersState.offset = 0;
+      syncUsersFilterButtons();
+      loadUsers();
+    });
+
+    document.querySelectorAll('[data-sort-users]').forEach((th) => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sortUsers;
+        if (usersState.sortKey === key) {
+          usersState.sortDir = usersState.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          usersState.sortKey = key;
+          usersState.sortDir = 'desc';
+        }
+        renderUsersTable();
+      });
+    });
+
+    document.getElementById('users-limit-select').addEventListener('change', (e) => {
+      usersState.limit = parseInt(e.target.value, 10) || 100;
+      usersState.offset = 0;
+      loadUsers();
+    });
+
+    document.getElementById('users-prev-btn').addEventListener('click', () => {
+      usersState.offset = Math.max(0, usersState.offset - usersState.limit);
+      loadUsers();
+    });
+
+    document.getElementById('users-next-btn').addEventListener('click', () => {
+      usersState.offset += usersState.limit;
+      loadUsers();
+    });
+
+    document.getElementById('users-table-body').addEventListener('click', (e) => {
+      const uidBtn = e.target.closest('button[data-uid-builds]');
+      if (uidBtn) {
+        e.stopPropagation();
+        jumpToBuilds({ query: uidBtn.dataset.uidBuilds });
+        return;
+      }
+      const tr = e.target.closest('tr[data-user-id]');
+      if (!tr) return;
+      openUserInspector(tr.dataset.userId);
+    });
+
+    async function openUserInspector(userId) {
+      usersState.selectedId = userId;
+      document.querySelectorAll('#users-table-body tr').forEach((tr) => {
+        tr.classList.toggle('selected', tr.dataset.userId === userId);
+      });
+      try {
+        const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const detail = await res.json();
+        populateUserInspector(detail);
+      } catch (err) {
+        showToast('Failed to load user details: ' + err.message, 'danger');
+      }
+    }
+
+    function closeUserInspector() {
+      usersState.selectedId = null;
+      usersState.detail = null;
+      document.getElementById('user-detail-empty').style.display = 'block';
+      document.getElementById('user-detail-content').style.display = 'none';
+      document.querySelectorAll('#users-table-body tr.selected').forEach((tr) => tr.classList.remove('selected'));
+    }
+
+    document.getElementById('um-close').addEventListener('click', closeUserInspector);
+
+    function populateUserInspector(detail) {
+      usersState.detail = detail;
+      const u = detail.user;
+
+      document.getElementById('user-detail-empty').style.display = 'none';
+      document.getElementById('user-detail-content').style.display = 'block';
+
+      document.getElementById('um-title').textContent = u.username;
+      document.getElementById('um-token-ver').textContent = `token v${u.token_version}`;
+
+      const uuidBtn = document.getElementById('um-copy-uuid');
+      uuidBtn.textContent = `UUID: ${u.id.slice(0, 8)}…`;
+      uuidBtn.onclick = () => copyText(u.id, 'User UUID');
+
+      const dcBtn = document.getElementById('um-copy-discord');
+      dcBtn.textContent = `Discord: ${u.discord_id}`;
+      dcBtn.onclick = () => copyText(u.discord_id, 'Discord ID');
+
+      document.getElementById('um-created-at').textContent = `Created: ${formatShortTime(u.created_at)}`;
+
+      const statusBadge = document.getElementById('um-status-badge');
+      const banBtn = document.getElementById('um-btn-toggle-ban');
+      const banReasonInput = document.getElementById('um-ban-reason');
+      if (u.banned_at) {
+        statusBadge.textContent = 'BANNED';
+        statusBadge.className = 'badge badge-danger';
+        banBtn.textContent = 'Unban User';
+        banBtn.className = 'btn btn-primary';
+        banReasonInput.value = u.ban_reason || '';
+      } else {
+        statusBadge.textContent = 'ACTIVE';
+        statusBadge.className = 'badge badge-success';
+        banBtn.textContent = 'Ban User';
+        banBtn.className = 'btn btn-danger';
+        banReasonInput.value = '';
+      }
+
+      document.getElementById('um-limit-builds').value = u.custom_max_builds_per_agent ?? '';
+      document.getElementById('um-limit-teams').value = u.custom_max_teams ?? '';
+
+      const accounts = detail.accounts || [];
+      document.getElementById('um-accounts-count-label').textContent = `${accounts.length} linked`;
+      const accWrap = document.getElementById('um-accounts-list');
+      accWrap.innerHTML = '';
+
+      if (!accounts.length) {
+        accWrap.innerHTML = '<div style="color: var(--text-muted); font-size: 12px;">No linked ZZZ game accounts</div>';
+      } else {
+        for (const acc of accounts) {
+          const card = document.createElement('div');
+          card.style.cssText = 'padding: 10px; border-radius: 5px; background: var(--bg-surface); border: 1px solid var(--border-default);';
+          const agentsHtml = (acc.agents && acc.agents.length)
+            ? acc.agents.map((ag) => `
+                <button type="button" class="badge mono" data-acc-agent="${ag.agent_id}" data-acc-uid="${escapeHtml(acc.uid)}" title="Inspect ${escapeHtml(ag.agent_name)} builds for this UID">
+                  ${escapeHtml(ag.agent_name)}: ${ag.builds_count}/${u.effective_max_builds_per_agent}
+                </button>
+              `).join(' ')
+            : '<span style="color: var(--text-muted); font-size: 11px;">no saved builds</span>';
+
+          card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button type="button" class="badge badge-uid mono" data-copy-uid="${escapeHtml(acc.uid)}" title="Click to copy UID">UID ${escapeHtml(acc.uid)}</button>
+                <span class="badge">${escapeHtml(acc.region)}</span>
+                <span class="mono" style="font-size: 11px; color: var(--text-secondary);">
+                  Bld: <b>${acc.builds_count}</b> · Sqd: <b>${acc.teams_count}/${u.effective_max_teams}</b>
+                </span>
+              </div>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-sm" data-uid-jump-builds="${escapeHtml(acc.uid)}">Builds →</button>
+                <button type="button" class="btn btn-sm" data-uid-jump-teams="${escapeHtml(acc.uid)}">Squads →</button>
+                <button type="button" class="btn btn-sm" data-uid-purge="${escapeHtml(acc.uid)}" title="Purge Enka cache for this UID">Purge Cache</button>
+                <button type="button" class="btn btn-sm btn-danger" data-del-account="${escapeHtml(acc.id)}" data-del-uid="${escapeHtml(acc.uid)}">Delete</button>
+              </div>
+            </div>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">${agentsHtml}</div>
+          `;
+          accWrap.appendChild(card);
+        }
+      }
+    }
+
+    document.getElementById('user-detail-pane').addEventListener('click', (e) => {
+      const presetBtn = e.target.closest('button[data-preset-builds]');
+      if (presetBtn) {
+        document.getElementById('um-limit-builds').value = presetBtn.dataset.presetBuilds;
+        document.getElementById('um-limit-teams').value = presetBtn.dataset.presetTeams;
+        return;
+      }
+
+      const copyUidBtn = e.target.closest('button[data-copy-uid]');
+      if (copyUidBtn) {
+        copyText(copyUidBtn.dataset.copyUid, 'ZZZ UID');
+        return;
+      }
+
+      const jumpBuildsBtn = e.target.closest('button[data-uid-jump-builds]');
+      if (jumpBuildsBtn) {
+        jumpToBuilds({ query: jumpBuildsBtn.dataset.uidJumpBuilds });
+        return;
+      }
+
+      const jumpTeamsBtn = e.target.closest('button[data-uid-jump-teams]');
+      if (jumpTeamsBtn) {
+        jumpToTeams({ query: jumpTeamsBtn.dataset.uidJumpTeams });
+        return;
+      }
+
+      const agBtn = e.target.closest('button[data-acc-agent]');
+      if (agBtn) {
+        jumpToBuilds({ query: agBtn.dataset.accUid, agentId: agBtn.dataset.accAgent });
+        return;
+      }
+
+      const purgeBtn = e.target.closest('button[data-uid-purge]');
+      if (purgeBtn) {
+        purgeUidCache(purgeBtn.dataset.uidPurge);
+        return;
+      }
+
+      const delAccBtn = e.target.closest('button[data-del-account]');
+      if (delAccBtn && usersState.detail) {
+        const accID = delAccBtn.dataset.delAccount;
+        const uid = delAccBtn.dataset.delUid;
+        if (!confirm(`Delete game account UID ${uid} along with all of its saved builds and squads?`)) return;
+        fetch(`/api/admin/accounts/${encodeURIComponent(accID)}`, { method: 'DELETE' })
+          .then((res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            showToast(`Deleted UID ${uid}`);
+            openUserInspector(usersState.detail.user.id);
+            loadUsers();
+          })
+          .catch((err) => showToast('Failed to delete UID: ' + err.message, 'danger'));
+      }
+    });
+
+    async function saveUserLimits(buildsVal, teamsVal) {
+      if (!usersState.detail) return;
+      const body = {
+        custom_max_builds_per_agent: buildsVal === '' || buildsVal === null ? null : parseInt(buildsVal, 10),
+        custom_max_teams: teamsVal === '' || teamsVal === null ? null : parseInt(teamsVal, 10),
+      };
+      try {
+        const res = await fetch(`/api/admin/users/${encodeURIComponent(usersState.detail.user.id)}/limits`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        populateUserInspector(data);
+        showToast('User quotas updated');
+        loadUsers();
+      } catch (err) {
+        showToast('Failed to save quotas: ' + err.message, 'danger');
+      }
+    }
+
+    document.getElementById('um-btn-save-limits').addEventListener('click', () => {
+      saveUserLimits(
+        document.getElementById('um-limit-builds').value.trim(),
+        document.getElementById('um-limit-teams').value.trim()
+      );
+    });
+
+    document.getElementById('um-btn-reset-limits').addEventListener('click', () => {
+      saveUserLimits(null, null);
+    });
+
+    document.getElementById('um-btn-revoke').addEventListener('click', async () => {
+      if (!usersState.detail) return;
+      try {
+        const res = await fetch(`/api/admin/users/${encodeURIComponent(usersState.detail.user.id)}/revoke-sessions`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        populateUserInspector(data);
+        showToast('All active sessions revoked (token_version++)');
+        loadUsers();
+      } catch (err) {
+        showToast('Failed to revoke sessions: ' + err.message, 'danger');
+      }
+    });
+
+    document.getElementById('um-btn-toggle-ban').addEventListener('click', async () => {
+      if (!usersState.detail) return;
+      const wantBan = !usersState.detail.user.banned_at;
+      const reason = document.getElementById('um-ban-reason').value.trim();
+      try {
+        const res = await fetch(`/api/admin/users/${encodeURIComponent(usersState.detail.user.id)}/ban`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ banned: wantBan, reason }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        populateUserInspector(data);
+        showToast(wantBan ? 'User banned & sessions revoked' : 'User unbanned', wantBan ? 'warning' : 'success');
+        loadUsers();
+      } catch (err) {
+        showToast('Failed to update ban status: ' + err.message, 'danger');
+      }
+    });
+
+    document.getElementById('um-btn-delete-user').addEventListener('click', async () => {
+      if (!usersState.detail) return;
+      const u = usersState.detail.user;
+      if (!confirm(`Permanently delete user "${u.username}" (${u.discord_id}) and ALL of their accounts, builds, and squads?`)) return;
+      try {
+        const res = await fetch(`/api/admin/users/${encodeURIComponent(u.id)}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        showToast(`Deleted user ${u.username}`, 'warning');
+        closeUserInspector();
+        loadUsers();
+      } catch (err) {
+        showToast('Failed to delete user: ' + err.message, 'danger');
+      }
+    });
+    // =========================================================================
+    // TAB 3: CONTENT INSPECTOR — BUILDS & SQUADS (MASTER-DETAIL)
+    // =========================================================================
+    function syncInspectorControls() {
+      document.querySelectorAll('#insp-mode-group button').forEach((b) => {
+        b.classList.toggle('active', b.dataset.mode === inspState.mode);
+      });
+
+      const buildsWrap = document.getElementById('insp-builds-wrap');
+      const teamsWrap = document.getElementById('insp-teams-wrap');
+      const agentInput = document.getElementById('insp-agent-input');
+
+      if (inspState.mode === 'builds') {
+        buildsWrap.style.display = 'block';
+        teamsWrap.style.display = 'none';
+        agentInput.style.display = 'inline-block';
+      } else {
+        buildsWrap.style.display = 'none';
+        teamsWrap.style.display = 'block';
+        agentInput.style.display = 'none';
+      }
+
+      document.getElementById('insp-search-input').value = inspState.query;
+      agentInput.value = inspState.agentId;
+      document.getElementById('insp-search-clear').style.display = inspState.query ? 'inline' : 'none';
+      document.getElementById('insp-reset-btn').style.display =
+        (inspState.query || inspState.agentId) ? 'inline-flex' : 'none';
+    }
+
+    async function loadInspector() {
+      showError(null);
+      syncInspectorControls();
+      try {
+        const params = new URLSearchParams({
+          q: inspState.query,
+          limit: String(inspState.limit),
+          offset: String(inspState.offset),
+        });
+        if (inspState.mode === 'builds') {
+          if (inspState.agentId) params.set('agent_id', inspState.agentId);
+          const res = await fetch(`/api/admin/builds?${params.toString()}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          inspState.total = data.total ?? 0;
+          inspState.items = data.items || [];
+          renderInspectorBuilds();
+        } else {
+          const res = await fetch(`/api/admin/teams?${params.toString()}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          inspState.total = data.total ?? 0;
+          inspState.items = data.items || [];
+          renderInspectorTeams();
+        }
+      } catch (err) {
+        showError('Failed to load Content Inspector: ' + err.message);
+      }
+    }
+
+    function updateInspectorPagination(rowCount) {
+      const start = inspState.total === 0 ? 0 : inspState.offset + 1;
+      const end = Math.min(inspState.offset + rowCount, inspState.total);
+      document.getElementById('insp-page-info').textContent = `Showing ${start}–${end} of ${inspState.total}`;
+      document.getElementById('insp-prev-btn').disabled = inspState.offset <= 0;
+      document.getElementById('insp-next-btn').disabled = inspState.offset + inspState.limit >= inspState.total;
+    }
+
+    function renderInspectorBuilds() {
+      document.getElementById('insp-total-badge').textContent = `${inspState.total} builds`;
+      const tbody = document.getElementById('insp-builds-body');
+      tbody.innerHTML = '';
+
+      const sorted = sortItems(inspState.items, inspState.sortKey, inspState.sortDir);
+      if (!sorted.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 28px; color: var(--text-muted);">No agent builds match the current filter</td></tr>';
+      } else {
+        for (const b of sorted) {
+          knownAgentsMap.set(b.agent_id, b.agent_name);
+          const tr = document.createElement('tr');
+          tr.dataset.buildId = b.id;
+          if (inspState.selectedBuildId === b.id) tr.classList.add('selected');
+
+          const weaponHtml = b.weapon_uid
+            ? `<span class="badge mono" title="Weapon UID: ${escapeHtml(b.weapon_uid)}">W:#${b.weapon_id || '?'}</span>`
+            : `<span class="badge" style="color: var(--text-muted);">No W-Eng</span>`;
+
+          const discBadgeClass = b.disc_count === 6 ? 'badge badge-success mono' : 'badge mono';
+
+          tr.innerHTML = `
+            <td>
+              <div style="display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                <span class="badge badge-accent mono">#${b.agent_id} ${escapeHtml(b.agent_name)}</span>
+                <span>${escapeHtml(b.name)}</span>
+              </div>
+              <div class="mono" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                ${escapeHtml(b.id.slice(0, 8))}… ${b.description ? '· ' + escapeHtml(b.description.slice(0, 40)) : ''}
+              </div>
+            </td>
+            <td>
+              <div>
+                <button type="button" class="entity-link" data-jump-user="${escapeHtml(b.user_id)}" title="Open User Inspector">${escapeHtml(b.username)}</button>
+              </div>
+              <div style="margin-top: 2px;">
+                <button type="button" class="badge badge-uid mono" data-filter-uid="${escapeHtml(b.uid)}" title="Filter by UID ${escapeHtml(b.uid)}">${escapeHtml(b.uid)}</button>
+                <span style="font-size: 11px; color: var(--text-muted);">${escapeHtml(b.region)}</span>
+              </div>
+            </td>
+            <td>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                ${weaponHtml}
+                <span class="${discBadgeClass}">Discs ${b.disc_count}/6</span>
+              </div>
+            </td>
+            <td class="num-col mono" style="font-weight: 700; color: ${b.teams_used_count > 0 ? 'var(--warning)' : 'var(--text-muted)'};">
+              ${b.teams_used_count}
+            </td>
+            <td class="mono" style="font-size: 11.5px; color: var(--text-secondary);">
+              ${escapeHtml(formatShortTime(b.updated_at))}
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+        renderKnownAgentsDatalist();
+      }
+      updateInspectorPagination(sorted.length);
+    }
+
+    function renderInspectorTeams() {
+      document.getElementById('insp-total-badge').textContent = `${inspState.total} squads`;
+      const tbody = document.getElementById('insp-teams-body');
+      tbody.innerHTML = '';
+
+      const sorted = sortItems(inspState.items, inspState.sortKey, inspState.sortDir);
+      if (!sorted.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 28px; color: var(--text-muted);">No squads match the current filter</td></tr>';
+      } else {
+        for (const t of sorted) {
+          const tr = document.createElement('tr');
+          tr.dataset.teamId = t.id;
+          if (inspState.selectedTeamId === t.id) tr.classList.add('selected');
+
+          const membersHtml = (t.members || []).map((m) => `
+            <span class="badge mono" data-inspect-build="${escapeHtml(m.build_id)}" title="Click to inspect build ${escapeHtml(m.build_name)}">
+              S${m.slot_number}: <b>${escapeHtml(m.agent_name)}</b> (${escapeHtml(m.build_name)})
+            </span>
+          `).join(' ');
+
+          tr.innerHTML = `
+            <td>
+              <div style="font-weight: 600;">${escapeHtml(t.name)}</div>
+              <div class="mono" style="font-size: 11px; color: var(--text-muted);">
+                ${escapeHtml(t.id.slice(0, 8))}… ${t.description ? '· ' + escapeHtml(t.description.slice(0, 42)) : ''}
+              </div>
+            </td>
+            <td>
+              <div>
+                <button type="button" class="entity-link" data-jump-user="${escapeHtml(t.user_id)}">${escapeHtml(t.username)}</button>
+              </div>
+              <div style="margin-top: 2px;">
+                <button type="button" class="badge badge-uid mono" data-filter-uid="${escapeHtml(t.uid)}">${escapeHtml(t.uid)}</button>
+                <span style="font-size: 11px; color: var(--text-muted);">${escapeHtml(t.region)}</span>
+              </div>
+            </td>
+            <td><div style="display: flex; gap: 4px; flex-wrap: wrap;">${membersHtml}</div></td>
+            <td class="mono" style="font-size: 11.5px; color: var(--text-secondary);">
+              ${escapeHtml(formatShortTime(t.updated_at))}
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+      updateInspectorPagination(sorted.length);
+    }
+
+    // Inspector Mode, Search, Filter, Sort & Pagination Events
+    document.getElementById('insp-mode-group').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-mode]');
+      if (!btn) return;
+      inspState.mode = btn.dataset.mode;
+      inspState.offset = 0;
+      loadInspector();
+    });
+
+    let inspSearchTimer = null;
+    const inspSearchInput = document.getElementById('insp-search-input');
+    const inspAgentInput = document.getElementById('insp-agent-input');
+
+    inspSearchInput.addEventListener('input', () => {
+      clearTimeout(inspSearchTimer);
+      inspSearchTimer = setTimeout(() => {
+        inspState.query = inspSearchInput.value.trim();
+        inspState.offset = 0;
+        loadInspector();
+      }, 220);
+    });
+
+    document.getElementById('insp-search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      clearTimeout(inspSearchTimer);
+      inspState.query = inspSearchInput.value.trim();
+      inspState.agentId = inspAgentInput.value.trim();
+      inspState.offset = 0;
+      loadInspector();
+    });
+
+    document.getElementById('insp-search-clear').addEventListener('click', () => {
+      inspSearchInput.value = '';
+      inspState.query = '';
+      inspState.offset = 0;
+      loadInspector();
+    });
+
+    document.getElementById('insp-reset-btn').addEventListener('click', () => {
+      inspState.query = '';
+      inspState.agentId = '';
+      inspState.offset = 0;
+      loadInspector();
+    });
+
+    document.querySelectorAll('[data-sort-builds], [data-sort-teams]').forEach((th) => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sortBuilds || th.dataset.sortTeams;
+        if (inspState.sortKey === key) {
+          inspState.sortDir = inspState.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          inspState.sortKey = key;
+          inspState.sortDir = 'desc';
+        }
+        if (inspState.mode === 'builds') renderInspectorBuilds();
+        else renderInspectorTeams();
+      });
+    });
+
+    document.getElementById('insp-limit-select').addEventListener('change', (e) => {
+      inspState.limit = parseInt(e.target.value, 10) || 100;
+      inspState.offset = 0;
+      loadInspector();
+    });
+
+    document.getElementById('insp-prev-btn').addEventListener('click', () => {
+      inspState.offset = Math.max(0, inspState.offset - inspState.limit);
+      loadInspector();
+    });
+
+    document.getElementById('insp-next-btn').addEventListener('click', () => {
+      inspState.offset += inspState.limit;
+      loadInspector();
+    });
+
+    // Click delegation inside Content Inspector tables
+    document.getElementById('tab-inspector').addEventListener('click', (e) => {
+      const userLink = e.target.closest('[data-jump-user]');
+      if (userLink) {
+        e.stopPropagation();
+        jumpToUser(userLink.dataset.jumpUser);
+        return;
+      }
+
+      const uidChip = e.target.closest('[data-filter-uid]');
+      if (uidChip) {
+        e.stopPropagation();
+        inspState.query = uidChip.dataset.filterUid;
+        inspState.offset = 0;
+        loadInspector();
+        return;
+      }
+
+      const buildBadge = e.target.closest('[data-inspect-build]');
+      if (buildBadge) {
+        e.stopPropagation();
+        openBuildInspector(buildBadge.dataset.inspectBuild);
+        return;
+      }
+
+      const buildRow = e.target.closest('tr[data-build-id]');
+      if (buildRow) {
+        openBuildInspector(buildRow.dataset.buildId);
+        return;
+      }
+
+      const teamRow = e.target.closest('tr[data-team-id]');
+      if (teamRow) {
+        const teamObj = inspState.items.find((t) => t.id === teamRow.dataset.teamId);
+        if (teamObj) openTeamInspector(teamObj);
+      }
+    });
+
+    function closeContentInspector() {
+      inspState.selectedBuildId = null;
+      inspState.buildDetail = null;
+      inspState.selectedTeamId = null;
+      inspState.selectedTeam = null;
+      document.getElementById('insp-detail-empty').style.display = 'block';
+      document.getElementById('build-detail-content').style.display = 'none';
+      document.getElementById('team-detail-content').style.display = 'none';
+      document.querySelectorAll('#insp-builds-body tr.selected, #insp-teams-body tr.selected').forEach((tr) => {
+        tr.classList.remove('selected');
+      });
+    }
+
+    document.getElementById('bm-close').addEventListener('click', closeContentInspector);
+    document.getElementById('tm-close').addEventListener('click', closeContentInspector);
+
+    async function openBuildInspector(buildId) {
+      inspState.selectedBuildId = buildId;
+      inspState.selectedTeamId = null;
+      document.querySelectorAll('#insp-builds-body tr').forEach((tr) => {
+        tr.classList.toggle('selected', tr.dataset.buildId === buildId);
+      });
+
+      try {
+        const res = await fetch(`/api/admin/builds/${encodeURIComponent(buildId)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const detail = await res.json();
+        populateBuildInspector(detail);
+      } catch (err) {
+        showToast('Failed to load build details: ' + err.message, 'danger');
+      }
+    }
+
+    function populateBuildInspector(detail) {
+      inspState.buildDetail = detail;
+      const b = detail.build;
+
+      document.getElementById('insp-detail-empty').style.display = 'none';
+      document.getElementById('team-detail-content').style.display = 'none';
+      document.getElementById('build-detail-content').style.display = 'block';
+
+      document.getElementById('bm-agent-badge').textContent = `#${b.agent_id} ${b.agent_name}`;
+      document.getElementById('bm-title').textContent = b.name;
+
+      const copyIdBtn = document.getElementById('bm-copy-id');
+      copyIdBtn.textContent = `UUID: ${b.id.slice(0, 8)}…`;
+      copyIdBtn.onclick = () => copyText(b.id, 'Build UUID');
+
+      document.getElementById('bm-timestamps').textContent = `Updated: ${formatShortTime(b.updated_at)}`;
+      document.getElementById('bm-owner-name').textContent = b.username;
+      document.getElementById('bm-owner-uid').textContent = `UID ${b.uid} (${b.region})`;
+
+      document.getElementById('bm-jump-user').onclick = () => jumpToUser(b.user_id);
+      document.getElementById('bm-filter-uid').onclick = () => jumpToBuilds({ query: b.uid });
+      document.getElementById('bm-purge-uid').onclick = () => purgeUidCache(b.uid);
+
+      const descBox = document.getElementById('bm-desc-box');
+      if (b.description) {
+        descBox.textContent = `Note: ${b.description}`;
+        descBox.style.display = 'block';
+      } else {
+        descBox.style.display = 'none';
+      }
+
+      // Weapon & 6 Disc Slots
+      const weaponBox = document.getElementById('bm-weapon-box');
+      if (b.weapon_uid) {
+        weaponBox.innerHTML = `W-Engine: <span class="badge badge-accent mono">#${b.weapon_id || '?'}</span> · UID: <button type="button" class="copy-chip mono" data-copy-val="${escapeHtml(b.weapon_uid)}">${escapeHtml(b.weapon_uid)} ⧉</button>`;
+      } else {
+        weaponBox.innerHTML = `W-Engine: <span style="color: var(--text-muted);">None equipped</span>`;
+      }
+
+      // Map slot (1..6) -> disc UID using disc_slots (which maps disc_uid -> slot) and raw_data fallback
+      const slotToUid = {};
+      const discSlots = detail.disc_slots || {};
+      for (const [dUid, slotNum] of Object.entries(discSlots)) {
+        slotToUid[Number(slotNum)] = String(dUid);
+      }
+
+      const raw = detail.raw_data || {};
+      const equippedBySlot = {};
+      if (Array.isArray(raw.EquippedList)) {
+        for (const eq of raw.EquippedList) {
+          if (eq && eq.Slot && eq.Equipment) {
+            equippedBySlot[Number(eq.Slot)] = eq.Equipment;
+            if (!slotToUid[Number(eq.Slot)] && eq.Equipment.Uid != null) {
+              slotToUid[Number(eq.Slot)] = String(eq.Equipment.Uid);
+            }
+          }
+        }
+      }
+
+      const slotsGrid = document.getElementById('bm-slots-grid');
+      slotsGrid.innerHTML = '';
+      for (let s = 1; s <= 6; s++) {
+        const uid = slotToUid[s];
+        const eq = equippedBySlot[s];
+        const cell = document.createElement('div');
+        cell.className = 'slot-cell';
+        if (uid) {
+          const extra = eq ? `ID:${eq.Id ?? '?'} Lv.${eq.Level ?? 0}` : 'Equipped';
+          cell.innerHTML = `
+            <div style="display: flex; justify-content: space-between; color: var(--text-secondary);">
+              <strong>Slot ${s}</strong>
+              <span>${escapeHtml(extra)}</span>
+            </div>
+            <button type="button" class="copy-chip mono" style="padding: 0; color: var(--accent-text);" data-copy-val="${escapeHtml(uid)}" title="Click to copy Disc UID">
+              UID: ${escapeHtml(uid)}
+            </button>
+          `;
+        } else {
+          cell.innerHTML = `
+            <div style="color: var(--text-muted);"><strong>Slot ${s}</strong></div>
+            <div style="color: var(--text-muted);">Empty</div>
+          `;
+        }
+        slotsGrid.appendChild(cell);
+      }
+
+      // Raw data quick summary
+      const rawSummary = document.getElementById('bm-raw-summary');
+      const parts = [];
+      if (raw.Level != null) parts.push(`Agent Lv.${raw.Level}`);
+      if (raw.PromotionLevel != null) parts.push(`Promo:${raw.PromotionLevel}`);
+      if (raw.TalentLevel != null) parts.push(`Mindscape:${raw.TalentLevel}`);
+      if (raw.CoreSkillEnhancement != null) parts.push(`Core:${raw.CoreSkillEnhancement}`);
+      rawSummary.textContent = parts.length ? `Snapshot stats: ${parts.join(' · ')}` : '';
+
+      // Squad memberships
+      const teams = detail.teams || [];
+      document.getElementById('bm-teams-count').textContent = String(teams.length);
+      const teamsWrap = document.getElementById('bm-teams-list');
+      if (!teams.length) {
+        teamsWrap.innerHTML = '<span class="badge badge-success">Not used in any squad (safe to delete)</span>';
+      } else {
+        teamsWrap.innerHTML = teams.map((t) => `
+          <button type="button" class="badge badge-warning mono" data-jump-team-name="${escapeHtml(t.team_name)}" title="View squad in Squads mode">
+            Squad "${escapeHtml(t.team_name)}" (Slot ${t.slot_number}) →
+          </button>
+        `).join(' ');
+      }
+
+      document.getElementById('bm-json-filter').value = '';
+      renderBuildRawJson('');
+    }
+
+    function renderBuildRawJson(filterStr) {
+      if (!inspState.buildDetail) return;
+      const fullJson = JSON.stringify(inspState.buildDetail.raw_data ?? {}, null, 2);
+      const pre = document.getElementById('bm-raw-json');
+      const q = String(filterStr || '').trim().toLowerCase();
+      if (!q) {
+        pre.textContent = fullJson;
+        return;
+      }
+      const lines = fullJson.split('\n');
+      const matched = [];
+      lines.forEach((line, idx) => {
+        if (line.toLowerCase().includes(q)) {
+          matched.push(`${String(idx + 1).padStart(4, ' ')}: ${line}`);
+        }
+      });
+      pre.textContent = matched.length ? matched.join('\n') : `// No lines matching "${filterStr}"`;
+    }
+
+    document.getElementById('bm-json-filter').addEventListener('input', (e) => {
+      renderBuildRawJson(e.target.value);
+    });
+
+    document.getElementById('bm-copy-json').addEventListener('click', () => {
+      if (!inspState.buildDetail) return;
+      copyText(JSON.stringify(inspState.buildDetail.raw_data ?? {}, null, 2), 'raw_data JSON');
+    });
+
+    document.getElementById('bm-download-json').addEventListener('click', () => {
+      if (!inspState.buildDetail) return;
+      const b = inspState.buildDetail.build;
+      const blob = new Blob([JSON.stringify(inspState.buildDetail.raw_data ?? {}, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `build-${b.agent_name}-${b.id.slice(0, 8)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('build-detail-content').addEventListener('click', (e) => {
+      const copyBtn = e.target.closest('[data-copy-val]');
+      if (copyBtn) {
+        copyText(copyBtn.dataset.copyVal, 'Equipment UID');
+        return;
+      }
+      const teamJump = e.target.closest('[data-jump-team-name]');
+      if (teamJump) {
+        jumpToTeams({ query: teamJump.dataset.jumpTeamName });
+      }
+    });
+
+    async function deleteActiveBuild(force) {
+      if (!inspState.buildDetail) return;
+      const b = inspState.buildDetail.build;
+      const msg = force
+        ? `Force delete build "${b.name}" (${b.agent_name}) and unlink it from all squads?`
+        : `Delete build "${b.name}" (${b.agent_name})?`;
+      if (!confirm(msg)) return;
+      try {
+        const res = await fetch(`/api/admin/builds/${encodeURIComponent(b.id)}?force=${force ? 'true' : 'false'}`, {
+          method: 'DELETE',
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${res.status}`);
+        }
+        showToast(`Deleted build "${b.name}"`, 'warning');
+        closeContentInspector();
+        loadInspector();
+      } catch (err) {
+        showToast('Delete build failed: ' + err.message, 'danger');
+      }
+    }
+
+    document.getElementById('bm-btn-delete').addEventListener('click', () => deleteActiveBuild(false));
+    document.getElementById('bm-btn-force-delete').addEventListener('click', () => deleteActiveBuild(true));
+
+    // Squad Inspector
+    function openTeamInspector(team) {
+      inspState.selectedTeamId = team.id;
+      inspState.selectedBuildId = null;
+      inspState.selectedTeam = team;
+
+      document.querySelectorAll('#insp-teams-body tr').forEach((tr) => {
+        tr.classList.toggle('selected', tr.dataset.teamId === team.id);
+      });
+
+      document.getElementById('insp-detail-empty').style.display = 'none';
+      document.getElementById('build-detail-content').style.display = 'none';
+      document.getElementById('team-detail-content').style.display = 'block';
+
+      document.getElementById('tm-title').textContent = team.name;
+      const copyId = document.getElementById('tm-copy-id');
+      copyId.textContent = `UUID: ${team.id.slice(0, 8)}…`;
+      copyId.onclick = () => copyText(team.id, 'Squad UUID');
+
+      document.getElementById('tm-updated-at').textContent = `Updated: ${formatShortTime(team.updated_at)}`;
+      document.getElementById('tm-owner-name').textContent = team.username;
+      document.getElementById('tm-owner-uid').textContent = `UID ${team.uid} (${team.region})`;
+
+      document.getElementById('tm-jump-user').onclick = () => jumpToUser(team.user_id);
+      document.getElementById('tm-filter-builds').onclick = () => jumpToBuilds({ query: team.uid });
+
+      const descBox = document.getElementById('tm-desc-box');
+      if (team.description) {
+        descBox.textContent = `Description: ${team.description}`;
+        descBox.style.display = 'block';
+      } else {
+        descBox.style.display = 'none';
+      }
+
+      const slotsWrap = document.getElementById('tm-slots-list');
+      slotsWrap.innerHTML = '';
+      for (const m of (team.members || [])) {
+        const card = document.createElement('div');
+        card.style.cssText = 'padding: 10px; border-radius: 5px; background: var(--bg-surface); border: 1px solid var(--border-default); display: flex; justify-content: space-between; align-items: center; gap: 8px;';
+        card.innerHTML = `
+          <div>
+            <div style="font-weight: 600;">
+              <span class="badge badge-accent mono">Slot ${m.slot_number}</span>
+              <span style="margin-left: 6px;">${escapeHtml(m.agent_name)} (#${m.agent_id})</span>
+            </div>
+            <div class="mono" style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+              Preset: <b>${escapeHtml(m.build_name)}</b> · W-UID: ${escapeHtml(m.weapon_uid || 'none')}
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm" data-open-member-build="${escapeHtml(m.build_id)}">Inspect Build →</button>
+        `;
+        slotsWrap.appendChild(card);
+      }
+    }
+
+    document.getElementById('tm-slots-list').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-open-member-build]');
+      if (!btn) return;
+      openBuildInspector(btn.dataset.openMemberBuild);
+    });
+
+    document.getElementById('tm-btn-delete').addEventListener('click', async () => {
+      if (!inspState.selectedTeam) return;
+      const t = inspState.selectedTeam;
+      if (!confirm(`Delete squad "${t.name}" (${t.id})?`)) return;
+      try {
+        const res = await fetch(`/api/admin/teams/${encodeURIComponent(t.id)}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        showToast(`Deleted squad "${t.name}"`, 'warning');
+        closeContentInspector();
+        loadInspector();
+      } catch (err) {
+        showToast('Failed to delete squad: ' + err.message, 'danger');
+      }
+    });
+
+    // =========================================================================
+    // TAB 4: INFRA, CACHES, RATE LIMITERS & SQLITE
+    // =========================================================================
+    async function loadInfra() {
+      showError(null);
+      await loadGlobalVitals();
+    }
+
+    function renderCachesAndLimiters(data) {
+      const cachesWrap = document.getElementById('caches-list');
+      cachesWrap.innerHTML = '';
+      for (const c of (data.caches || [])) {
+        const pct = Math.min(c.usage_percent || 0, 100);
+        const row = document.createElement('div');
+        row.style.cssText = 'padding: 10px 12px; border-radius: 5px; background: var(--bg-canvas); border: 1px solid var(--border-default);';
+        row.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <div>
+              <span style="font-weight: 600;">${escapeHtml(c.label)}</span>
+              <span class="badge mono" style="margin-left: 6px;">${escapeHtml(c.name)}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="mono" style="font-size: 12px;">
+                <strong>${c.size}</strong> / ${c.capacity} (${c.usage_percent}%)
+              </span>
+              <button type="button" class="btn btn-sm btn-danger" data-flush-cache="${escapeHtml(c.name)}">Flush</button>
+            </div>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: ${pct}%; background: ${pct > 85 ? 'var(--warning)' : 'var(--accent)'};"></div>
+          </div>
+        `;
+        cachesWrap.appendChild(row);
+      }
+
+      const limBody = document.getElementById('limiters-table-body');
+      limBody.innerHTML = '';
+      for (const l of (data.rate_limiters || [])) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div style="font-weight: 600;">${escapeHtml(l.label)}</div>
+            <div class="mono" style="font-size: 11px; color: var(--text-muted);">${escapeHtml(l.name)}</div>
+          </td>
+          <td class="num-col mono" style="font-weight: 700; color: var(--accent-text);">${l.active_ips}</td>
+          <td class="num-col mono">${l.max_entries}</td>
+          <td class="num-col mono">${l.rate_per_minute}</td>
+          <td class="num-col mono">${l.burst}</td>
+          <td class="num-col mono">${l.ttl_seconds}s</td>
+          <td class="num-col">
+            <button type="button" class="btn btn-sm btn-danger" data-flush-limiter="${escapeHtml(l.name)}">Clear IPs</button>
+          </td>
+        `;
+        limBody.appendChild(tr);
+      }
+    }
+
+    function renderSystem(data) {
+      const rt = data.runtime || {};
+      const sq = data.sqlite || {};
+      const tg = data.telegram || {};
+
+      document.getElementById('sys-heap-alloc').textContent = `${formatBytes(rt.heap_alloc_bytes)} / ${formatBytes(rt.heap_inuse_bytes)}`;
+      document.getElementById('sys-mem-sys').textContent = `${formatBytes(rt.sys_bytes)} (GC: ${rt.num_gc ?? 0})`;
+      document.getElementById('sys-goroutines').textContent = `${rt.goroutines ?? 0} (up ${formatUptime(rt.uptime_seconds)})`;
+      document.getElementById('sys-cpus').textContent = `${rt.num_cpu ?? 1} (${rt.os_arch || ''})`;
+      document.getElementById('sys-go-ver').textContent = rt.go_version || 'go';
+
+      document.getElementById('sys-db-path').textContent = `path: ${sq.database_path || ':memory:'}`;
+      document.getElementById('sys-journal-mode').textContent = (sq.journal_mode || 'wal').toUpperCase();
+      document.getElementById('sys-db-logical').textContent = formatBytes(sq.logical_size_bytes);
+      document.getElementById('sys-pages-info').textContent = `${sq.page_count ?? 0} × ${sq.page_size ?? 4096} B`;
+      document.getElementById('sys-freelist-info').textContent = `freelist: ${sq.freelist_count ?? 0} pages`;
+      document.getElementById('sys-files-breakdown').textContent =
+        `${formatBytes(sq.db_file_size_bytes)} / ${formatBytes(sq.wal_file_size_bytes)} / ${formatBytes(sq.shm_file_size_bytes)}`;
+
+      const tgBadge = document.getElementById('sys-tg-status');
+      tgBadge.textContent = tg.enabled ? 'ENABLED' : 'DISABLED';
+      tgBadge.className = tg.enabled ? 'badge badge-success mono' : 'badge mono';
+
+      const migWrap = document.getElementById('sys-migrations-list');
+      const migs = sq.applied_migrations || [];
+      migWrap.innerHTML = migs.length
+        ? migs.map((m) => `<span class="badge badge-uid mono">${escapeHtml(m)}</span>`).join(' ')
+        : '<span class="badge mono">none</span>';
+    }
+
+    document.getElementById('purge-uid-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('purge-uid-input');
+      const uid = input.value.trim();
+      if (!uid) return;
+      purgeUidCache(uid);
+      input.value = '';
+    });
+
+    document.getElementById('unblock-ip-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('unblock-ip-input');
+      const ip = input.value.trim();
+      if (!ip) return;
+      try {
+        const res = await fetch('/api/admin/ratelimiters/flush', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: 'all', ip }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        renderCachesAndLimiters(data);
+        input.value = '';
+        showToast(`Cleared rate-limit counters for IP ${ip}`);
+      } catch (err) {
+        showToast('Failed to unblock IP: ' + err.message, 'danger');
+      }
+    });
+
+    document.getElementById('tab-infra').addEventListener('click', async (e) => {
+      const cacheBtn = e.target.closest('button[data-flush-cache]');
+      if (cacheBtn) {
+        const target = cacheBtn.dataset.flushCache;
+        try {
+          const res = await fetch('/api/admin/caches/flush', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          renderCachesAndLimiters(data);
+          loadGlobalVitals();
+          showToast(`Flushed cache "${target}"`);
+        } catch (err) {
+          showToast('Flush cache failed: ' + err.message, 'danger');
+        }
+        return;
+      }
+
+      const limBtn = e.target.closest('button[data-flush-limiter]');
+      if (limBtn) {
+        const target = limBtn.dataset.flushLimiter;
+        try {
+          const res = await fetch('/api/admin/ratelimiters/flush', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          renderCachesAndLimiters(data);
+          showToast(`Cleared IP rate limiter "${target}"`);
+        } catch (err) {
+          showToast('Reset limiter failed: ' + err.message, 'danger');
+        }
+      }
+    });
+
+    document.getElementById('btn-flush-all-caches').addEventListener('click', async () => {
+      if (!confirm('Flush all three in-memory caches (Profile, Negative, Build Enrich)?')) return;
+      const res = await fetch('/api/admin/caches/flush', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: 'all' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        renderCachesAndLimiters(data);
+        loadGlobalVitals();
+        showToast('Flushed all in-memory caches', 'warning');
+      }
+    });
+
+    document.getElementById('btn-flush-all-limiters').addEventListener('click', async () => {
+      if (!confirm('Clear all tracked IP addresses across all rate limiters?')) return;
+      const res = await fetch('/api/admin/ratelimiters/flush', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: 'all' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        renderCachesAndLimiters(data);
+        showToast('Reset all IP rate limiters', 'warning');
+      }
+    });
+
+    document.getElementById('btn-sqlite-maint').addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/admin/sqlite/maintenance', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        const m = data.maintenance || {};
+        showToast(`WAL Checkpoint + Optimize done (checkpointed: ${m.checkpointed_pages ?? 0}, log: ${m.log_pages ?? 0})`);
+        loadGlobalVitals();
+      } catch (err) {
+        showToast('SQLite maintenance failed: ' + err.message, 'danger');
+      }
+    });
+
+    document.getElementById('tg-test-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('tg-test-msg');
+      const message = input.value.trim();
+      try {
+        const res = await fetch('/api/admin/alerts/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        input.value = '';
+        showToast('Test alert queued for Telegram delivery');
+      } catch (err) {
+        showToast('Telegram test failed: ' + err.message, 'danger');
+      }
+    });
+
+    // =========================================================================
+    // REFRESH, AUTO-REFRESH & KEYBOARD SHORTCUTS
+    // =========================================================================
+    function refreshCurrentView() {
+      if (activeTab === 'overview') loadStats();
+      else if (activeTab === 'users') {
+        loadUsers();
+        if (usersState.selectedId) openUserInspector(usersState.selectedId);
+      } else if (activeTab === 'inspector') {
+        loadInspector();
+        if (inspState.selectedBuildId) openBuildInspector(inspState.selectedBuildId);
+      } else if (activeTab === 'infra') {
+        loadInfra();
+      }
+      loadGlobalVitals();
+    }
+
+    document.getElementById('btn-refresh').addEventListener('click', () => {
+      refreshCurrentView();
+      showToast('Refreshed current view');
+    });
+
+    document.getElementById('auto-refresh-select').addEventListener('change', (e) => {
+      clearInterval(autoRefreshTimer);
+      const ms = parseInt(e.target.value, 10) || 0;
+      if (ms > 0) {
+        autoRefreshTimer = setInterval(refreshCurrentView, ms);
+        showToast(`Auto-refresh enabled (${ms / 1000}s)`);
+      } else {
+        showToast('Auto-refresh disabled');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      const tag = (e.target?.tagName || '').toLowerCase();
+      const inInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable;
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (activeTab === 'users') document.getElementById('users-search-input').focus();
+        else if (activeTab === 'inspector') document.getElementById('insp-search-input').focus();
+        else document.getElementById('quick-uid-input').focus();
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (inInput) {
+          e.target.blur();
+          return;
+        }
+        if (activeTab === 'users') closeUserInspector();
+        else if (activeTab === 'inspector') closeContentInspector();
+        return;
+      }
+
+      if (inInput || e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === '1') switchTab('overview');
+      else if (e.key === '2') switchTab('users');
+      else if (e.key === '3') switchTab('inspector');
+      else if (e.key === '4') switchTab('infra');
+      else if (e.key === '/') {
+        e.preventDefault();
+        if (activeTab === 'users') document.getElementById('users-search-input').focus();
+        else if (activeTab === 'inspector') document.getElementById('insp-search-input').focus();
+        else document.getElementById('quick-uid-input').focus();
+      } else if (e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        refreshCurrentView();
+        showToast('Refreshed current view');
+      }
+    });
+
+    // Bootstrap
+    loadStats();
+  </script>
+</body>
+</html>

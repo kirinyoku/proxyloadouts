@@ -17,8 +17,11 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"
+      # Internal Admin Console — access via SSH tunnel: ssh -L 8889:127.0.0.1:8889 <server>
+      - "127.0.0.1:8889:8081"
     environment:
       - PORT=8080
+      - ADMIN_PORT=${ADMIN_PORT:-8081}
       - ENV=${ENV:-development}
       - DATABASE_PATH=/app/data/proxyloadouts.db
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}

@@ -12,6 +12,7 @@ import (
 // Config holds all configuration parameters for the application.
 type Config struct {
 	Port                  string
+	AdminPort             string
 	Env                   string
 	DatabasePath          string
 	DiscordClientID       string
@@ -46,6 +47,7 @@ func Load(filenames ...string) (*Config, error) {
 
 	cfg := &Config{
 		Port:                  getEnv("PORT", "8080"),
+		AdminPort:             getEnv("ADMIN_PORT", "8081"),
 		Env:                   getEnv("ENV", "development"),
 		DatabasePath:          getEnv("DATABASE_PATH", "./data/proxyloadouts.db"),
 		DiscordClientID:       getEnv("DISCORD_CLIENT_ID", ""),

@@ -45,7 +45,7 @@ RUN apk add --no-cache ca-certificates tzdata && \
 COPY --from=backend-builder /bin/proxyloadouts /app/proxyloadouts
 
 USER appuser
-EXPOSE 8080
+EXPOSE 8080 8081
 VOLUME ["/app/data"]
 
 ENTRYPOINT ["/app/proxyloadouts"]

@@ -293,6 +293,26 @@ func (s *SingleflightService[T]) Close() {
 	s.cache.Close()
 }
 
+// Len returns the current number of entries in the underlying cache.
+func (s *SingleflightService[T]) Len() int {
+	return s.cache.Len()
+}
+
+// Capacity returns the maximum capacity of the underlying cache.
+func (s *SingleflightService[T]) Capacity() int {
+	return s.cache.Capacity()
+}
+
+// Clear removes all entries from the underlying cache.
+func (s *SingleflightService[T]) Clear() {
+	s.cache.Clear()
+}
+
+// Delete removes a specific key from the underlying cache.
+func (s *SingleflightService[T]) Delete(key string) {
+	s.cache.Delete(key)
+}
+
 // FetchResult contains the returned data and cache metadata.
 type FetchResult[T any] struct {
 	Data         T
@@ -407,6 +427,26 @@ func (c *ProfileCache[T]) Close() {
 	c.sf.Close()
 }
 
+// Len returns the current number of entries in the profile cache.
+func (c *ProfileCache[T]) Len() int {
+	return c.sf.Len()
+}
+
+// Capacity returns the maximum capacity of the profile cache.
+func (c *ProfileCache[T]) Capacity() int {
+	return c.sf.Capacity()
+}
+
+// Clear removes all entries from the profile cache.
+func (c *ProfileCache[T]) Clear() {
+	c.sf.Clear()
+}
+
+// Delete removes a specific key from the profile cache.
+func (c *ProfileCache[T]) Delete(key string) {
+	c.sf.Delete(key)
+}
+
 // GetOrFetch fetches or returns cached data.
 func (c *ProfileCache[T]) GetOrFetch(
 	ctx context.Context,
@@ -448,6 +488,21 @@ func (n *NegativeCache) Has(key string) bool {
 // Delete removes a key from the negative cache.
 func (n *NegativeCache) Delete(key string) {
 	n.cache.Delete(key)
+}
+
+// Len returns the current number of entries in the negative cache.
+func (n *NegativeCache) Len() int {
+	return n.cache.Len()
+}
+
+// Capacity returns the maximum capacity of the negative cache.
+func (n *NegativeCache) Capacity() int {
+	return n.cache.Capacity()
+}
+
+// Clear removes all entries from the negative cache.
+func (n *NegativeCache) Clear() {
+	n.cache.Clear()
 }
 
 // Close stops the background cleanup goroutine of the underlying cache.

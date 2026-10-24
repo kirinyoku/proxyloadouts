@@ -17,6 +17,7 @@ import (
 	"github.com/kirinyoku/enkanetwork-go/client/zzz"
 	"golang.org/x/time/rate"
 
+	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/adminhttp"
 	discordadapter "github.com/kirinyoku/proxyloadouts/backend/internal/adapter/discord"
 	fairyadapter "github.com/kirinyoku/proxyloadouts/backend/internal/adapter/fairy"
 	httpadapter "github.com/kirinyoku/proxyloadouts/backend/internal/adapter/http"
@@ -122,10 +123,12 @@ func run() error {
 	slog.Info("sqlite database connected and migrated")
 
 	// 4. Initialize repositories
+	startedAt := time.Now()
 	users := sqlite.NewUserRepo(db)
 	accounts := sqlite.NewAccountRepo(db)
 	buildsRepo := sqlite.NewBuildRepo(db)
 	teamsRepo := sqlite.NewTeamRepo(db)
+	adminRepo := sqlite.NewAdminRepo(db)
 
 	// 5. Initialize fairy adapter and Scanner Service
 	fairyClient, err := fairyadapter.NewClient(fairyadapter.Options{
@@ -216,7 +219,7 @@ func run() error {
 		},
 	)
 
-	// 8. Start HTTP Server
+	// 8. Start HTTP Server (and internal Admin Console if enabled)
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           router,
@@ -226,10 +229,40 @@ func run() error {
 		IdleTimeout:       60 * time.Second,
 	}
 
+	var adminServer *http.Server
+	if cfg.AdminPort != "" && cfg.AdminPort != "0" && !strings.EqualFold(cfg.AdminPort, "off") {
+		adminRouter := adminhttp.NewRouter(adminhttp.Deps{
+			AdminRepo:        adminRepo,
+			Users:            users,
+			Accounts:         accounts,
+			Builds:           buildsRepo,
+			Teams:            teamsRepo,
+			ProfileCache:     scanCache,
+			NegativeCache:    negCache,
+			EnrichCache:      enrichStore,
+			ShowcaseLimiter:  showcaseLimiter,
+			AuthLimiter:      authLimiter,
+			TelemetryLimiter: telemetryLimiter,
+			Alerts:           alertNotifier,
+			DatabasePath:     cfg.DatabasePath,
+			Env:              cfg.Env,
+			Release:          release,
+			StartedAt:        startedAt,
+		})
+		adminServer = &http.Server{
+			Addr:              ":" + cfg.AdminPort,
+			Handler:           adminRouter,
+			ReadHeaderTimeout: 5 * time.Second,
+			ReadTimeout:       15 * time.Second,
+			WriteTimeout:      60 * time.Second,
+			IdleTimeout:       60 * time.Second,
+		}
+	}
+
 	stopChan := make(chan os.Signal, 1)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
-	serverErrChan := make(chan error, 1)
+	serverErrChan := make(chan error, 2)
 	go func() {
 		slog.Info("HTTP server starting", "port", cfg.Port)
 		alertNotifier.NotifyLifecycle("Server Started", "HTTP listener active on port "+cfg.Port)
@@ -237,6 +270,15 @@ func run() error {
 			serverErrChan <- err
 		}
 	}()
+
+	if adminServer != nil {
+		go func() {
+			slog.Info("Admin Console HTTP server starting", "admin_port", cfg.AdminPort)
+			if err := adminServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				serverErrChan <- fmt.Errorf("admin server: %w", err)
+			}
+		}()
+	}
 
 	select {
 	case sig := <-stopChan:
@@ -249,6 +291,14 @@ func run() error {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	if adminServer != nil {
+		if err := adminServer.Shutdown(shutdownCtx); err != nil {
+			slog.Error("admin server forced to shutdown", "error", err)
+		} else {
+			slog.Info("admin server gracefully stopped")
+		}
+	}
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("server forced to shutdown", "error", err)
