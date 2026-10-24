@@ -153,6 +153,9 @@ func (s *Service) upsertUser(ctx context.Context, profile *domain.User) (*domain
 	existing, err := s.users.GetByDiscordID(ctx, profile.DiscordID)
 	switch {
 	case err == nil:
+		if existing.IsBanned() {
+			return nil, fmt.Errorf("%w: user %s is banned", domain.ErrUserBanned, existing.ID)
+		}
 		existing.Username = profile.Username
 		existing.AvatarURL = profile.AvatarURL
 		if updateErr := s.users.Update(ctx, existing); updateErr != nil {

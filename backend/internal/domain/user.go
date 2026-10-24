@@ -13,9 +13,16 @@ type User struct {
 	Username                string
 	AvatarURL               *string // nil when the Discord profile has no custom avatar
 	TokenVersion            int
-	CustomMaxBuildsPerAgent *int // nil means default (MaxBuildsPerAgent)
-	CustomMaxTeams          *int // nil means default (MaxTeamsPerAccount)
+	CustomMaxBuildsPerAgent *int       // nil means default (MaxBuildsPerAgent)
+	CustomMaxTeams          *int       // nil means default (MaxTeamsPerAccount)
+	BannedAt                *time.Time // non-nil when the user is banned
+	BanReason               *string
 	CreatedAt               time.Time
+}
+
+// IsBanned reports whether the user account is currently suspended.
+func (u *User) IsBanned() bool {
+	return u != nil && u.BannedAt != nil
 }
 
 // EffectiveMaxBuildsPerAgent returns the per-agent build limit for this user.

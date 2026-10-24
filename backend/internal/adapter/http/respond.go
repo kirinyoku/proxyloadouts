@@ -50,7 +50,7 @@ func respondDomainError(w http.ResponseWriter, r *http.Request, err error) {
 		respondError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, domain.ErrUnauthorized):
 		respondError(w, http.StatusUnauthorized, err.Error())
-	case errors.Is(err, domain.ErrForbidden):
+	case errors.Is(err, domain.ErrForbidden), errors.Is(err, domain.ErrUserBanned):
 		respondError(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, domain.ErrNotFound):
 		respondError(w, http.StatusNotFound, err.Error())

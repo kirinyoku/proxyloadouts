@@ -16,6 +16,9 @@ type UserRepository interface {
 	// UpdateLimits updates the custom per-user limits for builds and teams.
 	// Passing nil for either limit resets it back to the domain default.
 	UpdateLimits(ctx context.Context, id uuid.UUID, maxBuilds *int, maxTeams *int) error
+	// SetBan sets or clears the ban status for the given user. When banned is true,
+	// token_version is also incremented to immediately revoke active sessions.
+	SetBan(ctx context.Context, id uuid.UUID, banned bool, reason *string) error
 	// IncrementTokenVersion atomically increments token_version for the given user,
 	// invalidating all previously issued session cookies.
 	IncrementTokenVersion(ctx context.Context, id uuid.UUID) error

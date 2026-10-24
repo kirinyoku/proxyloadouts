@@ -226,3 +226,45 @@ func TestUserRepo_CustomLimitsRoundtrip(t *testing.T) {
 		t.Errorf("expected effective teams limit %d, got %d", domain.MaxTeamsPerAccount, resetUser.EffectiveMaxTeams())
 	}
 }
+
+func TestUserRepo_BanAndUnban(t *testing.T) {
+	db := newMigratedTestDB(t)
+	repo := NewUserRepo(db)
+	ctx := context.Background()
+
+	user := seedUser(t, ctx, repo, "888888888888888888")
+	if user.IsBanned() {
+		t.Fatalf("expected user not to be banned initially")
+	}
+
+	reason := "Terms of Service violation"
+	if err := repo.SetBan(ctx, user.ID, true, &reason); err != nil {
+		t.Fatalf("SetBan(true) failed: %v", err)
+	}
+
+	bannedUser, err := repo.GetByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if !bannedUser.IsBanned() || bannedUser.BannedAt == nil {
+		t.Errorf("expected user to be banned, got BannedAt=%v", bannedUser.BannedAt)
+	}
+	if bannedUser.BanReason == nil || *bannedUser.BanReason != reason {
+		t.Errorf("expected ban reason %q, got %v", reason, bannedUser.BanReason)
+	}
+	if bannedUser.TokenVersion != 2 {
+		t.Errorf("expected token_version incremented to 2 upon ban, got %d", bannedUser.TokenVersion)
+	}
+
+	// Unban
+	if err := repo.SetBan(ctx, user.ID, false, nil); err != nil {
+		t.Fatalf("SetBan(false) failed: %v", err)
+	}
+	unbannedUser, err := repo.GetByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if unbannedUser.IsBanned() || unbannedUser.BannedAt != nil || unbannedUser.BanReason != nil {
+		t.Errorf("expected user to be unbanned, got BannedAt=%v BanReason=%v", unbannedUser.BannedAt, unbannedUser.BanReason)
+	}
+}

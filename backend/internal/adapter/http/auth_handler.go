@@ -2,6 +2,7 @@ package http
 
 import (
 	"crypto/subtle"
+	"errors"
 	"net/http"
 	"net/url"
 	"time"
@@ -97,6 +98,10 @@ func (h *AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	user, err := h.auth.ExchangeCode(r.Context(), code)
 	if err != nil {
+		if errors.Is(err, domain.ErrUserBanned) {
+			http.Redirect(w, r, h.opts.FrontendURL+"/login?error=account_banned", http.StatusFound)
+			return
+		}
 		respondDomainError(w, r, err)
 		return
 	}

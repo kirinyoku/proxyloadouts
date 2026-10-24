@@ -82,6 +82,11 @@ func requireAuth(auth *authsvc.Service, users domain.UserRepository, opts Option
 				return
 			}
 
+			if user.IsBanned() {
+				respondError(w, http.StatusForbidden, "account is banned")
+				return
+			}
+
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userContextKey{}, user)))
 		})
 	}

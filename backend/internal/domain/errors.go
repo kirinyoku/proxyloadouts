@@ -20,6 +20,9 @@ var (
 	// an entity they do not own.
 	ErrForbidden = errors.New("forbidden")
 
+	// ErrUserBanned is returned when a suspended user attempts to log in or access the API.
+	ErrUserBanned = errors.New("user account is banned")
+
 	// ErrInvalidInput is returned when request input fails format validation,
 	// e.g. a malformed ZZZ UID.
 	ErrInvalidInput = errors.New("invalid input")
