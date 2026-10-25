@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { PxlLogo } from '@/components/common/PxlLogo'
+import { preloadRoute } from '@/lib/route-preload'
 
 const ENKA_NETWORK_URL = 'https://enka.network'
 const GITHUB_PROFILE_URL = 'https://github.com/kirinyoku'
@@ -69,7 +70,7 @@ export function AppFooter() {
           </p>
 
           <div className="flex flex-col gap-3 border-t border-white/[0.04] pt-2.5 lg:flex-row lg:items-center lg:justify-between text-muted-foreground/85">
-            {/* Attributions: Data & Creator in a unified inline flow */}
+            {/* Attribution: Upstream Data */}
             <p className="min-w-0 leading-relaxed">
               <span>{t('footer.poweredBy')}</span>{' '}
               <a
@@ -82,11 +83,52 @@ export function AppFooter() {
                   {t('footer.enkaNetwork')}
                 </span>
                 <ExternalLink className="size-3 opacity-60 transition-opacity group-hover:opacity-100" />
-              </a>{' '}
+              </a>
+            </p>
+
+            {/* Links, Copyright & Author */}
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 shrink-0">
+              <nav
+                aria-label={t('footer.aria')}
+                className="flex flex-wrap items-center gap-x-4 gap-y-1"
+              >
+                <Link
+                  to="/about"
+                  onMouseEnter={() => preloadRoute('/about')}
+                  onFocus={() => preloadRoute('/about')}
+                  className="inline-flex min-h-7 items-center whitespace-nowrap transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+                >
+                  {t('footer.about')}
+                </Link>
+                <Link
+                  to="/settings"
+                  onMouseEnter={() => preloadRoute('/settings')}
+                  onFocus={() => preloadRoute('/settings')}
+                  className="inline-flex min-h-7 items-center whitespace-nowrap transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+                >
+                  {t('settings.title')}
+                </Link>
+                <Link
+                  to="/privacy"
+                  onMouseEnter={() => preloadRoute('/privacy')}
+                  onFocus={() => preloadRoute('/privacy')}
+                  className="inline-flex min-h-7 items-center whitespace-nowrap transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+                >
+                  {t('footer.privacy')}
+                </Link>
+              </nav>
+
+              <span aria-hidden="true" className="hidden text-white/20 sm:inline">
+                ·
+              </span>
+
+              <span className="whitespace-nowrap">© {currentYear} ProxyLoadouts</span>
+
+              <span aria-hidden="true" className="hidden text-white/20 sm:inline">
+                ·
+              </span>
+
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                <span aria-hidden="true" className="text-white/20">
-                  ·
-                </span>
                 <span>{t('footer.createdBy')}</span>
                 <a
                   href={GITHUB_PROFILE_URL}
@@ -100,33 +142,6 @@ export function AppFooter() {
                   <ExternalLink className="size-2.5 opacity-60 transition-opacity group-hover:opacity-100" />
                 </a>
               </span>
-            </p>
-
-            {/* Links & Copyright */}
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 shrink-0">
-              <nav
-                aria-label={t('footer.aria')}
-                className="flex flex-wrap items-center gap-x-4 gap-y-1"
-              >
-                <Link
-                  to="/settings"
-                  className="inline-flex min-h-7 items-center whitespace-nowrap transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-                >
-                  {t('settings.title')}
-                </Link>
-                <Link
-                  to="/privacy"
-                  className="inline-flex min-h-7 items-center whitespace-nowrap transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-                >
-                  {t('footer.privacy')}
-                </Link>
-              </nav>
-
-              <span aria-hidden="true" className="hidden text-white/20 sm:inline">
-                ·
-              </span>
-
-              <span className="whitespace-nowrap">© {currentYear} ProxyLoadouts</span>
             </div>
           </div>
         </div>

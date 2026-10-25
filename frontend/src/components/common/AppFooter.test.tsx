@@ -13,6 +13,7 @@ vi.mock('react-i18next', () => ({
         'footer.poweredBy': 'Данные профилей и экипировки предоставлены',
         'footer.enkaNetwork': 'EnkaNetwork',
         'footer.disclaimer': 'ProxyLoadouts — независимый фанатский проект, не связанный с COGNOSPHERE PTE. LTD. и miHoYo.',
+        'footer.about': 'О проекте',
         'footer.privacy': 'Конфиденциальность и условия',
         'footer.createdBy': 'created by',
         'settings.title': 'Настройки',
@@ -68,8 +69,9 @@ describe('AppFooter', () => {
     expect(html).toContain('EnkaNetwork')
   })
 
-  it('renders settings and privacy links', () => {
+  it('renders about, settings, and privacy links', () => {
     const html = renderToString(<AppFooter />)
+    expect(html).toContain('href="/about"')
     expect(html).toContain('href="/settings"')
     expect(html).toContain('href="/privacy"')
   })
@@ -81,21 +83,23 @@ describe('AppFooter', () => {
     expect(cleanText).toContain(`© ${currentYear} ProxyLoadouts`)
   })
 
-  it('renders elements in bottom bar in correct order: enka -> createdBy -> settings -> privacy -> copyright', () => {
+  it('renders elements in bottom bar in correct order: enka -> about -> settings -> privacy -> copyright -> createdBy', () => {
     const html = renderToString(<AppFooter />)
     const cleanText = html.replace(/<!--.*?-->/g, '')
     const currentYear = new Date().getFullYear().toString()
     const enkaIndex = cleanText.indexOf('https://enka.network')
-    const createdByIndex = cleanText.indexOf('created by')
+    const aboutIndex = cleanText.indexOf('href="/about"')
     const settingsIndex = cleanText.indexOf('href="/settings"')
     const privacyIndex = cleanText.indexOf('href="/privacy"')
     const copyrightIndex = cleanText.indexOf(`© ${currentYear} ProxyLoadouts`)
+    const createdByIndex = cleanText.indexOf('created by')
 
     expect(enkaIndex).toBeGreaterThan(-1)
-    expect(createdByIndex).toBeGreaterThan(enkaIndex)
-    expect(settingsIndex).toBeGreaterThan(createdByIndex)
+    expect(aboutIndex).toBeGreaterThan(enkaIndex)
+    expect(settingsIndex).toBeGreaterThan(aboutIndex)
     expect(privacyIndex).toBeGreaterThan(settingsIndex)
     expect(copyrightIndex).toBeGreaterThan(privacyIndex)
+    expect(createdByIndex).toBeGreaterThan(copyrightIndex)
   })
 
   it('contains email only in the alpha notice, not as a redundant navigation link', () => {
