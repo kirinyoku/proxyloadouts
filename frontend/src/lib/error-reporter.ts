@@ -1,3 +1,5 @@
+import { isChunkLoadError, isRecentChunkReload, reloadOnChunkError } from './chunk-reload'
+
 const CLIENT_ERROR_ENDPOINT = '/api/v1/telemetry/client-error'
 const MAX_MESSAGE_LEN = 500
 const MAX_STACK_LEN = 4000
@@ -43,6 +45,12 @@ function extractErrorDetails(error: unknown): { message: string; stack?: string 
  * which deduplicates and forwards the alert to the configured Telegram bot.
  */
 export function reportError(error: unknown, context?: ErrorReportContext): void {
+  // Suppress reporting if this is an expected chunk loading failure due to a new deployment,
+  // and an automatic reload has been scheduled or performed recently.
+  if (isChunkLoadError(error) && (reloadOnChunkError() || isRecentChunkReload())) {
+    return
+  }
+
   console.error('Reported uncaught error:', error, context)
 
   const { message: rawMessage, stack: rawStack } = extractErrorDetails(error)

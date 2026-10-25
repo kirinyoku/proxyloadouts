@@ -617,6 +617,8 @@ const en: TranslationSchema = {
   errorBoundary: {
     title: 'Interface Error',
     description: 'Something went wrong while displaying the page. Try reloading the page or returning home.',
+    chunkErrorTitle: 'Update Available',
+    chunkErrorDescription: 'A new version of the application is available. Reload the page to load the latest update.',
     reload: 'Reload page',
     goHome: 'Go to home',
   },

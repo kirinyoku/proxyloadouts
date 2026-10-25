@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import type React from 'react'
 import { ErrorBoundary, ErrorBoundaryClass } from './ErrorBoundary'
+import * as errorReporter from '@/lib/error-reporter'
+import * as chunkReload from '@/lib/chunk-reload'
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
@@ -83,6 +85,42 @@ describe('ErrorBoundary component', () => {
     )
 
     expect(nextState).toBeNull()
+  })
+
+  it('renders specialized chunk error title and description when error is a chunk failure', () => {
+    const boundary = new ErrorBoundaryClass({ children: <div>Child</div> })
+    boundary.state = {
+      hasError: true,
+      error: new TypeError('Importing a module script failed.'),
+    }
+
+    const element = boundary.render()
+    const html = renderToString(element as React.ReactElement)
+
+    expect(html).toContain('Update Available')
+    expect(html).toContain('A new version of the application is available')
+  })
+
+  it('componentDidCatch triggers reloadOnChunkError and skips reporting when chunk error occurs', () => {
+    const boundary = new ErrorBoundaryClass({ children: null })
+    const reloadSpy = vi.spyOn(chunkReload, 'reloadOnChunkError').mockReturnValue(true)
+    const reportSpy = vi.spyOn(errorReporter, 'reportError').mockImplementation(() => {})
+
+    const chunkErr = new TypeError('Importing a module script failed.')
+    boundary.componentDidCatch(chunkErr, { componentStack: 'at Component' })
+
+    expect(reloadSpy).toHaveBeenCalled()
+    expect(reportSpy).not.toHaveBeenCalled()
+  })
+
+  it('componentDidCatch delegates to reportError when error is not a chunk error', () => {
+    const boundary = new ErrorBoundaryClass({ children: null })
+    const reportSpy = vi.spyOn(errorReporter, 'reportError').mockImplementation(() => {})
+
+    const runtimeErr = new Error('Regular runtime error')
+    boundary.componentDidCatch(runtimeErr, { componentStack: 'at Component' })
+
+    expect(reportSpy).toHaveBeenCalledWith(runtimeErr, { componentStack: 'at Component' })
   })
 
   it('handleReload calls window.location.reload', () => {

@@ -6,9 +6,11 @@ import { applyCornerStyle, getCornerStyle } from './lib/corner-style'
 import { applyBgAnimationMode, getBgAnimationMode } from './lib/bg-animation'
 import { registerServiceWorker } from './lib/register-service-worker'
 import { initErrorReporter } from './lib/error-reporter'
+import { initVitePreloadErrorHandler } from './lib/chunk-reload'
 import App from './App.tsx'
 
 initErrorReporter()
+initVitePreloadErrorHandler()
 
 // Ensure corner geometry matches user's saved preference in localStorage (default: 'rounded')
 applyCornerStyle(getCornerStyle())

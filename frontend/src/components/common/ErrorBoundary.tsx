@@ -3,6 +3,7 @@ import { useInRouterContext, useLocation } from 'react-router-dom'
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { reportError } from '@/lib/error-reporter'
+import { isChunkLoadError, reloadOnChunkError } from '@/lib/chunk-reload'
 import i18n from '@/i18n'
 
 export interface ErrorBoundaryProps {
@@ -38,6 +39,9 @@ export class ErrorBoundaryClass extends Component<ErrorBoundaryProps, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    if (isChunkLoadError(error) && reloadOnChunkError()) {
+      return
+    }
     reportError(error, { componentStack: errorInfo.componentStack })
   }
 
@@ -52,6 +56,12 @@ export class ErrorBoundaryClass extends Component<ErrorBoundaryProps, State> {
   render() {
     if (this.state.hasError) {
       const t = (key: string) => i18n.t(key as any)
+      const isChunkError = isChunkLoadError(this.state.error)
+      const title = isChunkError ? t('errorBoundary.chunkErrorTitle') : t('errorBoundary.title')
+      const description = isChunkError
+        ? t('errorBoundary.chunkErrorDescription')
+        : t('errorBoundary.description')
+
       return (
         <div
           role="alert"
@@ -65,10 +75,10 @@ export class ErrorBoundaryClass extends Component<ErrorBoundaryProps, State> {
 
             <div className="space-y-1.5">
               <h2 className="font-heading text-lg font-bold uppercase tracking-wider text-foreground">
-                {t('errorBoundary.title')}
+                {title}
               </h2>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {t('errorBoundary.description')}
+                {description}
               </p>
             </div>
 
