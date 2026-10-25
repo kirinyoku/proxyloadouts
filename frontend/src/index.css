@@ -425,72 +425,98 @@
 
 @keyframes zzz-marquee-left {
   from {
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(25%, 0, 0);
   }
   to {
-    transform: translate3d(-50%, 0, 0);
+    transform: translate3d(-25%, 0, 0);
   }
 }
 
 @keyframes zzz-marquee-right {
   from {
-    transform: translate3d(-50%, 0, 0);
+    transform: translate3d(-25%, 0, 0);
   }
   to {
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(25%, 0, 0);
   }
 }
 
 .zzz-bg-animated-root {
-  contain: strict;
+  contain: layout paint style;
   isolation: isolate;
   pointer-events: none;
 }
 
+.zzz-bg-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-height: 135vmax;
+  transform: translate3d(-50%, -50%, 0) rotate(-12deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .zzz-marquee-track-left {
   display: flex;
+  flex-shrink: 0;
   width: max-content;
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
   animation: zzz-marquee-left linear infinite;
 }
 
 .zzz-marquee-track-right {
   display: flex;
+  flex-shrink: 0;
   width: max-content;
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
   animation: zzz-marquee-right linear infinite;
 }
 
 /* Hollow / Stroked typography style matching ZZZ in-game graphics */
 .text-stroke-zzz {
-  color: transparent;
-  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.055);
+  color: rgba(255, 255, 255, 0.01);
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.08);
 }
 
-/* When disabled via settings attribute */
-[data-bg-animation="disabled"] .zzz-bg-animated-root,
+/* When disabled via settings attribute or reduced-motion preference:
+   keep the atmospheric ZZZ film-strip backdrop visible and freeze animations in place */
 [data-bg-animation="disabled"] .zzz-marquee-track-left,
 [data-bg-animation="disabled"] .zzz-marquee-track-right,
 [data-bg-animation="disabled"] .vhs-tracking-line,
-[data-bg-animation="disabled"] .film-playhead {
-  display: none !important;
-  animation: none !important;
+[data-bg-animation="disabled"] .film-playhead,
+.zzz-bg-animated-root[data-paused="true"] .zzz-marquee-track-left,
+.zzz-bg-animated-root[data-paused="true"] .zzz-marquee-track-right,
+.zzz-bg-animated-root[data-paused="true"] .vhs-tracking-line,
+.zzz-bg-animated-root[data-paused="true"] .film-playhead {
+  animation-play-state: paused !important;
   will-change: auto !important;
+}
+
+[data-bg-animation="disabled"] .vhs-tracking-line,
+.zzz-bg-animated-root[data-paused="true"] .vhs-tracking-line {
+  opacity: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zzz-marquee-track-left,
+  .zzz-marquee-track-right,
+  .vhs-tracking-line,
+  .film-playhead {
+    animation-play-state: paused !important;
+    will-change: auto !important;
+  }
 }
 
 /* Avoid continuous GPU/paint work and battery drain on mobile form factors:
    - Portrait mobile screens (<= 767px)
    - Mobile landscape devices (height <= 500px in landscape)
    - Coarse pointer / touch screens up to tablet breakpoint (<= 1024px)
-   - Reduced-motion or data-saver preferences */
+   - Data-saver preferences */
 @media (max-width: 767px),
        ((max-height: 500px) and (orientation: landscape)),
        ((hover: none) and (pointer: coarse) and (max-width: 1024px)),
-       (prefers-reduced-motion: reduce),
        (prefers-reduced-data: reduce) {
   .zzz-bg-animated-root,
   .zzz-marquee-track-left,

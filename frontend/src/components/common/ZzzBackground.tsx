@@ -9,8 +9,9 @@ interface DiagonalRowProps {
   tapeId: string
 }
 
-// 3 repetitions per segment ensures full coverage and smooth looping with 40% less memory
-const REPEAT_COUNT = 3
+// 2 repetitions (1 filled + 1 stroked pair) per segment guarantees even alternating parity
+// across the -50% loop boundary while keeping GPU layer dimensions within hardware texture limits.
+const REPEAT_COUNT = 2
 
 function DiagonalMarqueeRow({ direction, duration, startWithStroke = false, tapeId }: DiagonalRowProps) {
   const trackClass = direction === 'left' ? 'zzz-marquee-track-left' : 'zzz-marquee-track-right'
@@ -18,7 +19,7 @@ function DiagonalMarqueeRow({ direction, duration, startWithStroke = false, tape
   const renderSegment = (segmentKey: string) => (
     <div
       key={segmentKey}
-      className="flex shrink-0 items-center gap-16 sm:gap-24 lg:gap-32 px-8"
+      className="flex shrink-0 items-center gap-16 pr-16 sm:gap-24 sm:pr-24 lg:gap-32 lg:pr-32"
       aria-hidden={segmentKey !== 'content-1'}
     >
       {Array.from({ length: REPEAT_COUNT }).map((_, idx) => {
@@ -43,8 +44,8 @@ function DiagonalMarqueeRow({ direction, duration, startWithStroke = false, tape
               <span
                 className={
                   isStroke
-                    ? 'text-stroke-zzz font-display text-[9.5rem] sm:text-[14rem] lg:text-[18.5rem] font-black uppercase tracking-tight select-none leading-none'
-                    : 'font-display text-[9.5rem] sm:text-[14rem] lg:text-[18.5rem] font-black uppercase tracking-tight text-white/[0.038] select-none leading-none'
+                    ? 'text-stroke-zzz inline-block py-1 font-display text-[9.5rem] sm:text-[14rem] lg:text-[18.5rem] font-black uppercase tracking-tight select-none leading-none'
+                    : 'inline-block py-1 font-display text-[9.5rem] sm:text-[14rem] lg:text-[18.5rem] font-black uppercase tracking-tight text-white/[0.038] select-none leading-none'
                 }
               >
                 PROXYLOADOUTS
@@ -66,7 +67,7 @@ function DiagonalMarqueeRow({ direction, duration, startWithStroke = false, tape
   )
 
   return (
-    <div className="flex select-none overflow-hidden py-1">
+    <div className="flex shrink-0 select-none py-1">
       <div
         className={trackClass}
         style={{
@@ -95,22 +96,26 @@ export const ZzzBackground = React.memo(function ZzzBackground() {
 
   // On mobile viewports or touch devices, skip rendering completely
   // to avoid allocating 100+ DOM nodes, running marquee animations, and wasting GPU/battery resources.
-  if (!isEnabled || isMobile) {
+  if (isMobile) {
     return null
   }
 
   return (
     <div
       aria-hidden="true"
+      data-paused={!isEnabled ? 'true' : 'false'}
       className="zzz-bg-animated-root pointer-events-none fixed inset-0 z-0 select-none overflow-hidden"
     >
-      {/* 1. Geometric container rotated -12deg to cover all viewport dimensions without wasteful offscreen area */}
-      <div className="absolute -left-[25vw] -top-[35vh] flex h-[170vh] w-[150vw] -rotate-12 flex-col justify-around">
-        <DiagonalMarqueeRow direction="left" duration={210} startWithStroke={false} tapeId="RP-01" />
-        <DiagonalMarqueeRow direction="right" duration={250} startWithStroke={true} tapeId="RP-02" />
-        <DiagonalMarqueeRow direction="left" duration={195} startWithStroke={false} tapeId="RP-03" />
-        <DiagonalMarqueeRow direction="right" duration={240} startWithStroke={true} tapeId="RP-04" />
-        <DiagonalMarqueeRow direction="left" duration={220} startWithStroke={false} tapeId="RP-05" />
+      {/* 1. Geometric stage centered at (50vw, 50vh) and rotated -12deg;
+          each marquee track is centered (items-center) and oscillates from +25% to -25%
+          so ~3000px of continuous film strip always extends past both viewport edges */}
+      <div className="zzz-bg-stage">
+        <DiagonalMarqueeRow direction="left" duration={150} startWithStroke={false} tapeId="RP-01" />
+        <DiagonalMarqueeRow direction="right" duration={180} startWithStroke={true} tapeId="RP-02" />
+        <DiagonalMarqueeRow direction="left" duration={140} startWithStroke={false} tapeId="RP-03" />
+        <DiagonalMarqueeRow direction="right" duration={170} startWithStroke={true} tapeId="RP-04" />
+        <DiagonalMarqueeRow direction="left" duration={160} startWithStroke={false} tapeId="RP-05" />
+        <DiagonalMarqueeRow direction="right" duration={190} startWithStroke={true} tapeId="RP-06" />
       </div>
 
       {/* 2. CRT / VHS Scanlines Texture */}

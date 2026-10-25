@@ -19,12 +19,16 @@ describe('ZzzBackground component', () => {
     expect(html).toContain('zzz-marquee-track-right')
     expect(html).toContain('PROXYLOADOUTS')
     expect(html).toContain('text-stroke-zzz')
+    expect(html).toContain('RP-06')
+    expect(html).toContain('zzz-bg-stage')
   })
 
-  it('renders nothing when background animation is disabled', () => {
+  it('keeps background rendered in a paused state when background animation is disabled', () => {
     setBgAnimationMode('disabled')
     const html = renderToString(<ZzzBackground />)
-    expect(html).toBe('')
+    expect(html).toContain('zzz-bg-animated-root')
+    expect(html).toContain('data-paused="true"')
+    expect(html).toContain('PROXYLOADOUTS')
   })
 
   it('renders nothing on mobile viewport even when background animation is enabled in settings', () => {
