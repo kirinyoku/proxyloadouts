@@ -7,6 +7,7 @@ import {
   previewRegionFromUID,
   readLastUid,
   UID_PATTERN,
+  UID_PATTERN_LENIENT,
 } from './uid'
 
 describe('uid utilities', () => {
@@ -15,13 +16,33 @@ describe('uid utilities', () => {
   })
 
   describe('UID_PATTERN', () => {
-    it('validates 9 and 10 digit UIDs', () => {
-      expect(UID_PATTERN.test('1500000000')).toBe(true)
-      expect(UID_PATTERN.test('100000000')).toBe(true)
-      expect(UID_PATTERN.test('12345678')).toBe(false)
-      expect(UID_PATTERN.test('12345678901')).toBe(false)
-      expect(UID_PATTERN.test('150000000a')).toBe(false)
+    it('accepts only valid 10-digit UIDs with known server prefix', () => {
+      // Valid — all four server regions
+      expect(UID_PATTERN.test('1000000000')).toBe(true) // America (10)
+      expect(UID_PATTERN.test('1300000000')).toBe(true) // Asia (13)
+      expect(UID_PATTERN.test('1500000000')).toBe(true) // Europe (15)
+      expect(UID_PATTERN.test('1700000000')).toBe(true) // TW/HK/MO (17)
+      expect(UID_PATTERN.test('1504687050')).toBe(true)
+    })
+
+    it('rejects UIDs with unknown prefixes or wrong length', () => {
+      expect(UID_PATTERN.test('000000000')).toBe(false)  // all zeros
+      expect(UID_PATTERN.test('9900000001')).toBe(false) // unknown prefix
+      expect(UID_PATTERN.test('100000000')).toBe(false)  // 9 digits (no prefix match)
+      expect(UID_PATTERN.test('12345678')).toBe(false)   // too short
+      expect(UID_PATTERN.test('12345678901')).toBe(false) // too long
+      expect(UID_PATTERN.test('150000000a')).toBe(false) // non-digit
       expect(UID_PATTERN.test('')).toBe(false)
+    })
+  })
+
+  describe('UID_PATTERN_LENIENT', () => {
+    it('accepts any 9 or 10 digit string', () => {
+      expect(UID_PATTERN_LENIENT.test('1500000000')).toBe(true)
+      expect(UID_PATTERN_LENIENT.test('100000000')).toBe(true)
+      expect(UID_PATTERN_LENIENT.test('000000000')).toBe(true)
+      expect(UID_PATTERN_LENIENT.test('12345678')).toBe(false)
+      expect(UID_PATTERN_LENIENT.test('')).toBe(false)
     })
   })
 

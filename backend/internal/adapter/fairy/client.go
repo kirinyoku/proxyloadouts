@@ -192,6 +192,8 @@ func mapError(err error) error {
 	switch {
 	case err == nil:
 		return nil
+	case errors.Is(err, sdk.ErrInvalidUID):
+		return fmt.Errorf("%w: %w", domain.ErrInvalidInput, err)
 	case errors.Is(err, sdk.ErrProfileNotFound):
 		return fmt.Errorf("%w: showcase profile not found", domain.ErrNotFound)
 	case errors.Is(err, sdk.ErrRateLimit):

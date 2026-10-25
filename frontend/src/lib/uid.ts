@@ -1,6 +1,12 @@
 import type { Region } from '@/types'
 
-export const UID_PATTERN = /^\d{9,10}$/
+// Globally valid ZZZ UIDs are exactly 10 digits starting with one of the
+// four known server region prefixes: 10 (America), 13 (Asia), 15 (Europe),
+// 17 (TW/HK/MO). 9-digit UIDs (older CN-server format) keep working via the
+// lenient pattern used by the backend ValidateUID; the strict pattern guards
+// client-side input on the Showcase / Settings forms.
+export const UID_PATTERN = /^(10|13|15|17)\d{8}$/
+export const UID_PATTERN_LENIENT = /^\d{9,10}$/
 export const LAST_UID_KEY = 'pl-last-uid'
 
 /**

@@ -84,6 +84,7 @@ func TestMapError(t *testing.T) {
 		wantNil bool
 	}{
 		{"nil", nil, nil, true},
+		{"invalid uid", sdk.ErrInvalidUID, domain.ErrInvalidInput, false},
 		{"profile not found", sdk.ErrProfileNotFound, domain.ErrNotFound, false},
 		{"rate limit", sdk.ErrRateLimit, domain.ErrRateLimited, false},
 		{"maintenance", sdk.ErrMaintenance, domain.ErrSourceUnavailable, false},
