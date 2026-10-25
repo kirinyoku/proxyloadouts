@@ -13,6 +13,7 @@ import { ZzzBackground } from '@/components/common/ZzzBackground'
 import { HomePage } from '@/pages/HomePage'
 
 import {
+  loadAboutPage,
   loadAuthCallbackPage,
   loadLoginPage,
   loadNotFoundPage,
@@ -32,6 +33,7 @@ const RosterPage = lazy(loadRosterPage)
 const TeamsPage = lazy(loadTeamsPage)
 const TeamBuilderPage = lazy(loadTeamBuilderPage)
 const SettingsPage = lazy(loadSettingsPage)
+const AboutPage = lazy(loadAboutPage)
 const PrivacyPage = lazy(loadPrivacyPage)
 const NotFoundPage = lazy(loadNotFoundPage)
 
@@ -81,6 +83,8 @@ function App() {
                   <Route element={<AppLayout />}>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/showcase" element={<ShowcasePage />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/faq" element={<Navigate to="/about" replace />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
                     <Route path="/terms" element={<Navigate to="/privacy" replace />} />
                     <Route path="/settings" element={<SettingsPage />} />

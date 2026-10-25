@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { ScanLine, Search, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowRight, ScanLine, Search, X } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { preloadRoute } from '@/lib/route-preload'
 import { persistLastUid, UID_PATTERN } from '@/lib/uid'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -91,8 +92,25 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 2. 5-step process walkthrough */}
-      <HowItWorks />
+      {/* 2. 5-step process walkthrough & link to About */}
+      <div className="space-y-8 sm:space-y-10">
+        <HowItWorks />
+
+        <div className="text-center">
+          <Link
+            to="/about"
+            onMouseEnter={() => preloadRoute('/about')}
+            onFocus={() => preloadRoute('/about')}
+            className="group inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground underline decoration-white/20 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+          >
+            <span>{t('home.aboutPromptLink')}</span>
+            <ArrowRight
+              aria-hidden="true"
+              className="size-3.5 transition-transform group-hover:translate-x-0.5"
+            />
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

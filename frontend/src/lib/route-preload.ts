@@ -14,6 +14,8 @@ export const loadTeamBuilderPage = () =>
   import('@/pages/TeamBuilderPage').then((m) => ({ default: m.TeamBuilderPage }))
 export const loadSettingsPage = () =>
   import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+export const loadAboutPage = () =>
+  import('@/pages/AboutPage').then((m) => ({ default: m.AboutPage }))
 export const loadPrivacyPage = () =>
   import('@/pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage }))
 export const loadNotFoundPage = () =>
@@ -27,6 +29,7 @@ export const routePreloaders: Record<
   '/roster': loadRosterPage,
   '/teams': loadTeamsPage,
   '/settings': loadSettingsPage,
+  '/about': loadAboutPage,
   '/privacy': loadPrivacyPage,
   '/login': loadLoginPage,
 }

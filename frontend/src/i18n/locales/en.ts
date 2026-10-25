@@ -78,6 +78,7 @@ const en: TranslationSchema = {
     step3DescShort: 'Log in with Discord to save your builds',
     step4DescShort: 'Create loadouts for different squads',
     step5DescShort: 'Build conflict-free squads from saved loadouts',
+    aboutPromptLink: 'More about the project',
   },
   login: {
     title: 'ProxyLoadouts',
@@ -618,8 +619,41 @@ const en: TranslationSchema = {
     poweredBy: 'Game showcase and gear data powered by',
     enkaNetwork: 'EnkaNetwork',
     disclaimer: 'ProxyLoadouts is an independent fan-made project not affiliated with COGNOSPHERE PTE. LTD. or miHoYo. Zenless Zone Zero™, characters, names, and game assets are the property of COGNOSPHERE PTE. LTD.',
+    about: 'About',
     privacy: 'Privacy & Terms',
     createdBy: 'created by',
+  },
+  about: {
+    title: 'About',
+    pageTitle: 'About — ProxyLoadouts',
+    metaDescription: 'Why ProxyLoadouts exists for Zenless Zone Zero, and how authentication, limits, and development work.',
+    project: {
+      title: 'Why ProxyLoadouts Exists',
+      text:
+        'I originally built this project for myself: Zenless Zone Zero still doesn’t have built-in gear presets, even though agents often need different Drive Discs and W-Engines depending on the boss or squad setup. ProxyLoadouts lets you import builds from your in-game showcase by UID, save swap-ready loadouts to your roster, and build squads with automatic gear conflict checks. At the end of the day, it’s a workaround — you still have to swap gear manually in-game, but following a saved template is a lot easier than rebuilding sets from memory every time.',
+    },
+    auth: {
+      title: 'Authentication',
+      text:
+        'Anyone can scan in-game showcases by UID without logging in — auth is only needed to save your own builds and squads. Right now, sign-in is handled through Discord because it was the fastest and cleanest to integrate for the MVP. The app only asks for basic profile info (Discord ID, public username, and avatar). More login options will be added down the line.',
+    },
+    limits: {
+      title: 'Limits',
+      textLeading:
+        'The site has a few soft limits in place — up to 3 game UIDs, 10 builds per agent, and 100 squads per account. These exist purely to prevent API spam and keep the database healthy. In my experience, 10 builds and 100 squads are plenty, but if you ever run out, just email your Discord username to',
+      textTrailing: ' and I’ll gladly bump your limits for free.',
+    },
+    monetization: {
+      title: 'Monetization',
+      text:
+        'Everything is completely free with zero monetization — no paid subscriptions, no ads, and no paid limit upgrades.',
+    },
+    development: {
+      title: 'Support & Development',
+      textLeading:
+        'The project is currently in alpha with just the core MVP features, so you might run into occasional bugs. More features are definitely planned, but since this is a solo passion project built in my spare time, updates take a while. The project is open source and the code is on',
+      textTrailing: '— if you’d like to contribute, suggest an idea, or report a bug, feel free to jump in!',
+    },
   },
   privacy: {
     title: 'Privacy Policy & Terms of Service',

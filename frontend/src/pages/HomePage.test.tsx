@@ -53,4 +53,11 @@ describe('HomePage', () => {
     expect(html).toContain(ru.home.searchPlaceholder)
     expect(html).toContain(ru.home.showShowcase)
   })
+
+  it('renders a link to the about page after the how-it-works section', () => {
+    const html = renderHomeHtml()
+
+    expect(html).toContain('href="/about"')
+    expect(html).toContain(ru.home.aboutPromptLink)
+  })
 })
