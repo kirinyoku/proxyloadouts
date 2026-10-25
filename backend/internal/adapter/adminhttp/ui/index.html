@@ -1199,7 +1199,7 @@
                 <th>Linked ZZZ UIDs</th>
                 <th class="num-col sortable" data-sort-users="builds_count">Builds</th>
                 <th class="num-col sortable" data-sort-users="teams_count">Squads</th>
-                <th>Quota (Bld / Sqd)</th>
+                <th>Quota (Bld / Sqd / UID)</th>
                 <th class="num-col sortable" data-sort-users="token_version">Token</th>
                 <th class="sortable" data-sort-users="created_at">Created</th>
               </tr>
@@ -1252,12 +1252,12 @@
               <div class="inspector-box-title">
                 <span>Custom Quotas (Limits)</span>
                 <div style="display: flex; gap: 4px;">
-                  <button type="button" class="btn btn-sm" data-preset-builds="" data-preset-teams="">Default (10/100)</button>
-                  <button type="button" class="btn btn-sm" data-preset-builds="25" data-preset-teams="200">Creator (25/200)</button>
-                  <button type="button" class="btn btn-sm" data-preset-builds="50" data-preset-teams="300">VIP (50/300)</button>
+                  <button type="button" class="btn btn-sm" data-preset-builds="" data-preset-teams="" data-preset-accounts="">Default (10/100/3)</button>
+                  <button type="button" class="btn btn-sm" data-preset-builds="25" data-preset-teams="200" data-preset-accounts="5">Creator (25/200/5)</button>
+                  <button type="button" class="btn btn-sm" data-preset-builds="50" data-preset-teams="300" data-preset-accounts="10">VIP (50/300/10)</button>
                 </div>
               </div>
-              <div class="kv-grid" style="margin-bottom: 8px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 8px;">
                 <div>
                   <label style="display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" for="um-limit-builds">Max Builds / Agent (1–500)</label>
                   <input type="number" id="um-limit-builds" class="input mono" style="width: 100%;" min="1" max="500" placeholder="Default (10)" />
@@ -1265,6 +1265,10 @@
                 <div>
                   <label style="display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" for="um-limit-teams">Max Squads / UID (1–500)</label>
                   <input type="number" id="um-limit-teams" class="input mono" style="width: 100%;" min="1" max="500" placeholder="Default (100)" />
+                </div>
+                <div>
+                  <label style="display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" for="um-limit-accounts">Max Linked UIDs (1–100)</label>
+                  <input type="number" id="um-limit-accounts" class="input mono" style="width: 100%;" min="1" max="100" placeholder="Default (3)" />
                 </div>
               </div>
               <div style="display: flex; justify-content: flex-end; gap: 6px;">
@@ -2242,7 +2246,7 @@
           tr.dataset.userId = u.id;
           if (usersState.selectedId === u.id) tr.classList.add('selected');
 
-          const hasCustom = u.custom_max_builds_per_agent != null || u.custom_max_teams != null;
+          const hasCustom = u.custom_max_builds_per_agent != null || u.custom_max_teams != null || u.custom_max_accounts != null;
           const uidsHtml = (u.uids && u.uids.length)
             ? u.uids.map((uid) => `<button type="button" class="badge badge-uid mono" data-uid-builds="${escapeHtml(uid)}" title="Inspect builds for UID ${escapeHtml(uid)}">${escapeHtml(uid)}</button>`).join(' ')
             : '<span style="color: var(--text-muted); font-size: 11px;">none</span>';
@@ -2252,8 +2256,8 @@
             : '';
 
           const quotaBadge = hasCustom
-            ? `<span class="badge badge-warning mono">CUSTOM ${u.effective_max_builds_per_agent}/${u.effective_max_teams}</span>`
-            : `<span class="badge mono">${u.effective_max_builds_per_agent}/${u.effective_max_teams}</span>`;
+            ? `<span class="badge badge-warning mono">CUSTOM ${u.effective_max_builds_per_agent}/${u.effective_max_teams}/${u.effective_max_accounts}</span>`
+            : `<span class="badge mono">${u.effective_max_builds_per_agent}/${u.effective_max_teams}/${u.effective_max_accounts}</span>`;
 
           tr.innerHTML = `
             <td>
@@ -2428,9 +2432,10 @@
 
       document.getElementById('um-limit-builds').value = u.custom_max_builds_per_agent ?? '';
       document.getElementById('um-limit-teams').value = u.custom_max_teams ?? '';
+      document.getElementById('um-limit-accounts').value = u.custom_max_accounts ?? '';
 
       const accounts = detail.accounts || [];
-      document.getElementById('um-accounts-count-label').textContent = `${accounts.length} linked`;
+      document.getElementById('um-accounts-count-label').textContent = `${accounts.length} / ${u.effective_max_accounts || 3} linked`;
       const accWrap = document.getElementById('um-accounts-list');
       accWrap.innerHTML = '';
 
@@ -2476,6 +2481,7 @@
       if (presetBtn) {
         document.getElementById('um-limit-builds').value = presetBtn.dataset.presetBuilds;
         document.getElementById('um-limit-teams').value = presetBtn.dataset.presetTeams;
+        document.getElementById('um-limit-accounts').value = presetBtn.dataset.presetAccounts || '';
         return;
       }
 
@@ -2525,11 +2531,12 @@
       }
     });
 
-    async function saveUserLimits(buildsVal, teamsVal) {
+    async function saveUserLimits(buildsVal, teamsVal, accountsVal) {
       if (!usersState.detail) return;
       const body = {
         custom_max_builds_per_agent: buildsVal === '' || buildsVal === null ? null : parseInt(buildsVal, 10),
         custom_max_teams: teamsVal === '' || teamsVal === null ? null : parseInt(teamsVal, 10),
+        custom_max_accounts: accountsVal === '' || accountsVal === null ? null : parseInt(accountsVal, 10),
       };
       try {
         const res = await fetch(`/api/admin/users/${encodeURIComponent(usersState.detail.user.id)}/limits`, {
@@ -2550,12 +2557,13 @@
     document.getElementById('um-btn-save-limits').addEventListener('click', () => {
       saveUserLimits(
         document.getElementById('um-limit-builds').value.trim(),
-        document.getElementById('um-limit-teams').value.trim()
+        document.getElementById('um-limit-teams').value.trim(),
+        document.getElementById('um-limit-accounts').value.trim()
       );
     });
 
     document.getElementById('um-btn-reset-limits').addEventListener('click', () => {
-      saveUserLimits(null, null);
+      saveUserLimits(null, null, null);
     });
 
     document.getElementById('um-btn-revoke').addEventListener('click', async () => {

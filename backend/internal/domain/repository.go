@@ -13,9 +13,9 @@ type UserRepository interface {
 	GetByDiscordID(ctx context.Context, discordID string) (*User, error)
 	// Update refreshes mutable profile fields (username, avatar) after re-auth.
 	Update(ctx context.Context, user *User) error
-	// UpdateLimits updates the custom per-user limits for builds and teams.
-	// Passing nil for either limit resets it back to the domain default.
-	UpdateLimits(ctx context.Context, id uuid.UUID, maxBuilds *int, maxTeams *int) error
+	// UpdateLimits updates the custom per-user limits for builds, teams, and linked game accounts.
+	// Passing nil for any limit resets it back to the domain default.
+	UpdateLimits(ctx context.Context, id uuid.UUID, maxBuilds *int, maxTeams *int, maxAccounts *int) error
 	// SetBan sets or clears the ban status for the given user. When banned is true,
 	// token_version is also incremented to immediately revoke active sessions.
 	SetBan(ctx context.Context, id uuid.UUID, banned bool, reason *string) error

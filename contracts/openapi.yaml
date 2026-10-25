@@ -1094,6 +1094,7 @@ components:
       required:
         - max_builds_per_agent
         - max_teams_per_account
+        - max_accounts_per_user
       properties:
         max_builds_per_agent:
           type: integer
@@ -1105,6 +1106,11 @@ components:
           minimum: 1
           description: Effective maximum number of saved teams per account for this user
           example: 100
+        max_accounts_per_user:
+          type: integer
+          minimum: 1
+          description: Effective maximum number of linked game accounts (ZZZ UIDs) for this user
+          example: 3
 
     MeResponse:
       type: object

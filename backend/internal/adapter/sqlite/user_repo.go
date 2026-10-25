@@ -41,10 +41,10 @@ func (r *SQLiteUserRepo) Create(ctx context.Context, user *domain.User) error {
 	}
 
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO users (id, discord_id, username, avatar_url, token_version, custom_max_builds_per_agent, custom_max_teams, banned_at, ban_reason, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+		`INSERT INTO users (id, discord_id, username, avatar_url, token_version, custom_max_builds_per_agent, custom_max_teams, custom_max_accounts, banned_at, ban_reason, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
 		user.ID.String(), user.DiscordID, user.Username, nullableString(user.AvatarURL), user.TokenVersion,
-		user.CustomMaxBuildsPerAgent, user.CustomMaxTeams, bannedAt, nullableString(user.BanReason), formatTime(user.CreatedAt),
+		user.CustomMaxBuildsPerAgent, user.CustomMaxTeams, user.CustomMaxAccounts, bannedAt, nullableString(user.BanReason), formatTime(user.CreatedAt),
 	)
 	if err != nil {
 		if mapped := mapConstraintError(err); mapped != nil {
@@ -58,7 +58,7 @@ func (r *SQLiteUserRepo) Create(ctx context.Context, user *domain.User) error {
 // GetByID returns the user with the given ID or domain.ErrNotFound.
 func (r *SQLiteUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, discord_id, username, avatar_url, token_version, custom_max_builds_per_agent, custom_max_teams, banned_at, ban_reason, created_at FROM users WHERE id = ?;`,
+		`SELECT id, discord_id, username, avatar_url, token_version, custom_max_builds_per_agent, custom_max_teams, custom_max_accounts, banned_at, ban_reason, created_at FROM users WHERE id = ?;`,
 		id.String(),
 	)
 	return scanUser(row)
@@ -67,7 +67,7 @@ func (r *SQLiteUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Use
 // GetByDiscordID returns the user linked to the given Discord identity or domain.ErrNotFound.
 func (r *SQLiteUserRepo) GetByDiscordID(ctx context.Context, discordID string) (*domain.User, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, discord_id, username, avatar_url, token_version, custom_max_builds_per_agent, custom_max_teams, banned_at, ban_reason, created_at FROM users WHERE discord_id = ?;`,
+		`SELECT id, discord_id, username, avatar_url, token_version, custom_max_builds_per_agent, custom_max_teams, custom_max_accounts, banned_at, ban_reason, created_at FROM users WHERE discord_id = ?;`,
 		discordID,
 	)
 	return scanUser(row)
@@ -88,11 +88,11 @@ func (r *SQLiteUserRepo) Update(ctx context.Context, user *domain.User) error {
 	return nil
 }
 
-// UpdateLimits updates the custom per-user limits for builds and teams.
-func (r *SQLiteUserRepo) UpdateLimits(ctx context.Context, id uuid.UUID, maxBuilds *int, maxTeams *int) error {
+// UpdateLimits updates the custom per-user limits for builds, teams, and linked game accounts.
+func (r *SQLiteUserRepo) UpdateLimits(ctx context.Context, id uuid.UUID, maxBuilds *int, maxTeams *int, maxAccounts *int) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE users SET custom_max_builds_per_agent = ?, custom_max_teams = ? WHERE id = ?;`,
-		maxBuilds, maxTeams, id.String(),
+		`UPDATE users SET custom_max_builds_per_agent = ?, custom_max_teams = ?, custom_max_accounts = ? WHERE id = ?;`,
+		maxBuilds, maxTeams, maxAccounts, id.String(),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update user limits %s: %w", id, err)
@@ -166,11 +166,12 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 		tokenVersion            int
 		customMaxBuildsPerAgent sql.NullInt64
 		customMaxTeams          sql.NullInt64
+		customMaxAccounts       sql.NullInt64
 		bannedAt                sql.NullString
 		banReason               sql.NullString
 		createdAt               string
 	)
-	if err := row.Scan(&id, &u.DiscordID, &u.Username, &avatar, &tokenVersion, &customMaxBuildsPerAgent, &customMaxTeams, &bannedAt, &banReason, &createdAt); err != nil {
+	if err := row.Scan(&id, &u.DiscordID, &u.Username, &avatar, &tokenVersion, &customMaxBuildsPerAgent, &customMaxTeams, &customMaxAccounts, &bannedAt, &banReason, &createdAt); err != nil {
 		return nil, notFound("user", err)
 	}
 
@@ -193,6 +194,10 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 	if customMaxTeams.Valid {
 		val := int(customMaxTeams.Int64)
 		u.CustomMaxTeams = &val
+	}
+	if customMaxAccounts.Valid {
+		val := int(customMaxAccounts.Int64)
+		u.CustomMaxAccounts = &val
 	}
 	if bannedAt.Valid && bannedAt.String != "" {
 		if parsedBan, err := parseTime(bannedAt.String); err == nil {

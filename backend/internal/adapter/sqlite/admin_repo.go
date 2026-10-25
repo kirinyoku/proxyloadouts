@@ -118,7 +118,7 @@ func (r *SQLiteAdminRepo) GetStats(ctx context.Context, days int) (*AdminStats, 
 
 	if err := r.db.QueryRowContext(ctx, `
 		SELECT
-			COALESCE(SUM(CASE WHEN custom_max_builds_per_agent IS NOT NULL OR custom_max_teams IS NOT NULL THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN custom_max_builds_per_agent IS NOT NULL OR custom_max_teams IS NOT NULL OR custom_max_accounts IS NOT NULL THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN banned_at IS NOT NULL THEN 1 ELSE 0 END), 0)
 		FROM users;
 	`).Scan(&counts.CustomLimitsUsers, &counts.BannedUsers); err != nil {
@@ -313,8 +313,10 @@ type AdminUserSummary struct {
 	TokenVersion               int      `json:"token_version"`
 	CustomMaxBuildsPerAgent    *int     `json:"custom_max_builds_per_agent"`
 	CustomMaxTeams             *int     `json:"custom_max_teams"`
+	CustomMaxAccounts          *int     `json:"custom_max_accounts"`
 	EffectiveMaxBuildsPerAgent int      `json:"effective_max_builds_per_agent"`
 	EffectiveMaxTeams          int      `json:"effective_max_teams"`
+	EffectiveMaxAccounts       int      `json:"effective_max_accounts"`
 	BannedAt                   *string  `json:"banned_at"`
 	BanReason                  *string  `json:"ban_reason"`
 	CreatedAt                  string   `json:"created_at"`
@@ -385,7 +387,7 @@ func (r *SQLiteAdminRepo) ListUsers(ctx context.Context, f AdminUserFilter) (*Ad
 
 	switch strings.ToLower(strings.TrimSpace(f.Filter)) {
 	case "custom_limits":
-		conditions = append(conditions, `(u.custom_max_builds_per_agent IS NOT NULL OR u.custom_max_teams IS NOT NULL)`)
+		conditions = append(conditions, `(u.custom_max_builds_per_agent IS NOT NULL OR u.custom_max_teams IS NOT NULL OR u.custom_max_accounts IS NOT NULL)`)
 	case "banned":
 		conditions = append(conditions, `u.banned_at IS NOT NULL`)
 	}
@@ -410,6 +412,7 @@ func (r *SQLiteAdminRepo) ListUsers(ctx context.Context, f AdminUserFilter) (*Ad
 			u.token_version,
 			u.custom_max_builds_per_agent,
 			u.custom_max_teams,
+			u.custom_max_accounts,
 			u.banned_at,
 			u.ban_reason,
 			u.created_at,
@@ -459,6 +462,7 @@ func (r *SQLiteAdminRepo) GetUserDetail(ctx context.Context, userID uuid.UUID) (
 			u.token_version,
 			u.custom_max_builds_per_agent,
 			u.custom_max_teams,
+			u.custom_max_accounts,
 			u.banned_at,
 			u.ban_reason,
 			u.created_at,
@@ -550,6 +554,7 @@ func scanAdminUserSummary(row rowScanner) (AdminUserSummary, error) {
 		avatar                  sql.NullString
 		customMaxBuildsPerAgent sql.NullInt64
 		customMaxTeams          sql.NullInt64
+		customMaxAccounts       sql.NullInt64
 		bannedAt                sql.NullString
 		banReason               sql.NullString
 		createdAtRaw            string
@@ -563,6 +568,7 @@ func scanAdminUserSummary(row rowScanner) (AdminUserSummary, error) {
 		&s.TokenVersion,
 		&customMaxBuildsPerAgent,
 		&customMaxTeams,
+		&customMaxAccounts,
 		&bannedAt,
 		&banReason,
 		&createdAtRaw,
@@ -586,6 +592,12 @@ func scanAdminUserSummary(row rowScanner) (AdminUserSummary, error) {
 		v := int(customMaxTeams.Int64)
 		s.CustomMaxTeams = &v
 		s.EffectiveMaxTeams = v
+	}
+	s.EffectiveMaxAccounts = domain.MaxAccountsPerUser
+	if customMaxAccounts.Valid && customMaxAccounts.Int64 > 0 {
+		v := int(customMaxAccounts.Int64)
+		s.CustomMaxAccounts = &v
+		s.EffectiveMaxAccounts = v
 	}
 	if bannedAt.Valid && bannedAt.String != "" {
 		if t, err := parseTime(bannedAt.String); err == nil {

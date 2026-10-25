@@ -174,8 +174,8 @@ func TestUserRepo_CustomLimitsRoundtrip(t *testing.T) {
 	ctx := context.Background()
 
 	user := seedUser(t, ctx, repo, "999999999999999999")
-	if user.CustomMaxBuildsPerAgent != nil || user.CustomMaxTeams != nil {
-		t.Fatalf("expected nil custom limits by default, got builds=%v teams=%v", user.CustomMaxBuildsPerAgent, user.CustomMaxTeams)
+	if user.CustomMaxBuildsPerAgent != nil || user.CustomMaxTeams != nil || user.CustomMaxAccounts != nil {
+		t.Fatalf("expected nil custom limits by default, got builds=%v teams=%v accounts=%v", user.CustomMaxBuildsPerAgent, user.CustomMaxTeams, user.CustomMaxAccounts)
 	}
 	if user.EffectiveMaxBuildsPerAgent() != domain.MaxBuildsPerAgent {
 		t.Errorf("expected default builds limit %d, got %d", domain.MaxBuildsPerAgent, user.EffectiveMaxBuildsPerAgent())
@@ -183,11 +183,15 @@ func TestUserRepo_CustomLimitsRoundtrip(t *testing.T) {
 	if user.EffectiveMaxTeams() != domain.MaxTeamsPerAccount {
 		t.Errorf("expected default teams limit %d, got %d", domain.MaxTeamsPerAccount, user.EffectiveMaxTeams())
 	}
+	if user.EffectiveMaxAccounts() != domain.MaxAccountsPerUser {
+		t.Errorf("expected default accounts limit %d, got %d", domain.MaxAccountsPerUser, user.EffectiveMaxAccounts())
+	}
 
 	// Update limits
 	customBuilds := 25
 	customTeams := 100
-	if err := repo.UpdateLimits(ctx, user.ID, &customBuilds, &customTeams); err != nil {
+	customAccounts := 5
+	if err := repo.UpdateLimits(ctx, user.ID, &customBuilds, &customTeams, &customAccounts); err != nil {
 		t.Fatalf("failed to update limits: %v", err)
 	}
 
@@ -201,29 +205,38 @@ func TestUserRepo_CustomLimitsRoundtrip(t *testing.T) {
 	if got.CustomMaxTeams == nil || *got.CustomMaxTeams != 100 {
 		t.Errorf("expected CustomMaxTeams 100, got %v", got.CustomMaxTeams)
 	}
+	if got.CustomMaxAccounts == nil || *got.CustomMaxAccounts != 5 {
+		t.Errorf("expected CustomMaxAccounts 5, got %v", got.CustomMaxAccounts)
+	}
 	if got.EffectiveMaxBuildsPerAgent() != 25 {
 		t.Errorf("expected effective builds limit 25, got %d", got.EffectiveMaxBuildsPerAgent())
 	}
 	if got.EffectiveMaxTeams() != 100 {
 		t.Errorf("expected effective teams limit 100, got %d", got.EffectiveMaxTeams())
 	}
+	if got.EffectiveMaxAccounts() != 5 {
+		t.Errorf("expected effective accounts limit 5, got %d", got.EffectiveMaxAccounts())
+	}
 
 	// Reset limits back to NULL (defaults)
-	if err := repo.UpdateLimits(ctx, user.ID, nil, nil); err != nil {
+	if err := repo.UpdateLimits(ctx, user.ID, nil, nil, nil); err != nil {
 		t.Fatalf("failed to reset limits: %v", err)
 	}
 	resetUser, err := repo.GetByID(ctx, user.ID)
 	if err != nil {
 		t.Fatalf("failed to get user after reset: %v", err)
 	}
-	if resetUser.CustomMaxBuildsPerAgent != nil || resetUser.CustomMaxTeams != nil {
-		t.Errorf("expected nil limits after reset, got builds=%v teams=%v", resetUser.CustomMaxBuildsPerAgent, resetUser.CustomMaxTeams)
+	if resetUser.CustomMaxBuildsPerAgent != nil || resetUser.CustomMaxTeams != nil || resetUser.CustomMaxAccounts != nil {
+		t.Errorf("expected nil limits after reset, got builds=%v teams=%v accounts=%v", resetUser.CustomMaxBuildsPerAgent, resetUser.CustomMaxTeams, resetUser.CustomMaxAccounts)
 	}
 	if resetUser.EffectiveMaxBuildsPerAgent() != domain.MaxBuildsPerAgent {
 		t.Errorf("expected effective builds limit %d, got %d", domain.MaxBuildsPerAgent, resetUser.EffectiveMaxBuildsPerAgent())
 	}
 	if resetUser.EffectiveMaxTeams() != domain.MaxTeamsPerAccount {
 		t.Errorf("expected effective teams limit %d, got %d", domain.MaxTeamsPerAccount, resetUser.EffectiveMaxTeams())
+	}
+	if resetUser.EffectiveMaxAccounts() != domain.MaxAccountsPerUser {
+		t.Errorf("expected effective accounts limit %d, got %d", domain.MaxAccountsPerUser, resetUser.EffectiveMaxAccounts())
 	}
 }
 

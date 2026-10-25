@@ -149,12 +149,14 @@ func TestAdminRepo_ListAndDetailUsers(t *testing.T) {
 
 	customBuilds := 25
 	customTeams := 100
+	customAccounts := 5
 	u1 := &domain.User{
 		ID:                      uuid.New(),
 		DiscordID:               "100001",
 		Username:                "ProxyCreator",
 		CustomMaxBuildsPerAgent: &customBuilds,
 		CustomMaxTeams:          &customTeams,
+		CustomMaxAccounts:       &customAccounts,
 	}
 	u2 := &domain.User{
 		ID:        uuid.New(),
@@ -208,7 +210,7 @@ func TestAdminRepo_ListAndDetailUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListUsers custom_limits: %v", err)
 	}
-	if customOnly.Total != 1 || customOnly.Items[0].EffectiveMaxBuildsPerAgent != 25 || customOnly.Items[0].EffectiveMaxTeams != 100 {
+	if customOnly.Total != 1 || customOnly.Items[0].EffectiveMaxBuildsPerAgent != 25 || customOnly.Items[0].EffectiveMaxTeams != 100 || customOnly.Items[0].EffectiveMaxAccounts != 5 {
 		t.Errorf("unexpected custom_limits result: %+v", customOnly)
 	}
 

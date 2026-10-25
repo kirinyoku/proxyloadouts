@@ -107,7 +107,7 @@ func newFixtureWithOpts(t *testing.T, opts Options) *fixture {
 	t.Cleanup(scanCache.Close)
 	scanner := scannersvc.New(scannerFetcher, scanCache)
 
-	accountSvc := accountsvc.New(accounts)
+	accountSvc := accountsvc.New(accounts, accountsvc.WithUsers(users))
 
 	// Exercise the same memoizing localizer production wires, so the API tests
 	// cover the enrichment path as it actually runs.
@@ -345,8 +345,8 @@ func TestAuthFlow_LoginCallbackMeLogout(t *testing.T) {
 		t.Errorf("expected user kirin in /auth/me response, got %v", body)
 	}
 	limits, _ := body["limits"].(map[string]any)
-	if limits == nil || limits["max_builds_per_agent"] != float64(domain.MaxBuildsPerAgent) || limits["max_teams_per_account"] != float64(domain.MaxTeamsPerAccount) {
-		t.Errorf("expected default limits (%d, %d), got %v", domain.MaxBuildsPerAgent, domain.MaxTeamsPerAccount, limits)
+	if limits == nil || limits["max_builds_per_agent"] != float64(domain.MaxBuildsPerAgent) || limits["max_teams_per_account"] != float64(domain.MaxTeamsPerAccount) || limits["max_accounts_per_user"] != float64(domain.MaxAccountsPerUser) {
+		t.Errorf("expected default limits (%d, %d, %d), got %v", domain.MaxBuildsPerAgent, domain.MaxTeamsPerAccount, domain.MaxAccountsPerUser, limits)
 	}
 
 	logoutRec := f.do(t, http.MethodPost, "/api/v1/auth/logout", nil, session)
@@ -789,7 +789,7 @@ func TestShowcaseEndpointRateLimit(t *testing.T) {
 	scanCache := inmemory.NewProfileCache[*zzz.Profile](1000, time.Minute)
 	t.Cleanup(scanCache.Close)
 	scanner := scannersvc.New(scannerFetcher, scanCache)
-	accountSvc := accountsvc.New(accounts)
+	accountSvc := accountsvc.New(accounts, accountsvc.WithUsers(users))
 	localizer := buildenrich.New(scanner, nil, 0)
 
 	router := NewRouter(

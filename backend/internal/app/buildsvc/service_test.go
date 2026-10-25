@@ -379,7 +379,7 @@ func TestService_CreateBuildCustomLimit(t *testing.T) {
 
 	// Set lower custom limit: 2 builds
 	customLimit := 2
-	if err := env.users.UpdateLimits(ctx, env.ownerID, &customLimit, nil); err != nil {
+	if err := env.users.UpdateLimits(ctx, env.ownerID, &customLimit, nil, nil); err != nil {
 		t.Fatalf("failed to set custom limit: %v", err)
 	}
 

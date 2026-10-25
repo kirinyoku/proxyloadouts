@@ -11,6 +11,7 @@ export interface User {
 export interface UserLimits {
   max_builds_per_agent: number
   max_teams_per_account: number
+  max_accounts_per_user?: number
 }
 
 export interface MeResponse {

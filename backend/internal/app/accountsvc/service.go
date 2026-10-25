@@ -23,14 +23,34 @@ type AccountStore interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
+// UserStore retrieves users to check custom quotas.
+type UserStore interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+}
+
+// Option configures optional Service dependencies.
+type Option func(*Service)
+
+// WithUsers configures an optional UserStore to enforce custom per-user account quotas.
+func WithUsers(users UserStore) Option {
+	return func(s *Service) {
+		s.users = users
+	}
+}
+
 // Service implements game account use cases.
 type Service struct {
 	accounts AccountStore
+	users    UserStore
 }
 
 // New creates a new game account service.
-func New(accounts AccountStore) *Service {
-	return &Service{accounts: accounts}
+func New(accounts AccountStore, opts ...Option) *Service {
+	s := &Service{accounts: accounts}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // Create links a ZZZ UID to the specified user after validating format and region.
@@ -57,12 +77,19 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, uid, region stri
 		return nil, fmt.Errorf("%w: unsupported region %q", domain.ErrInvalidInput, cleanRegion)
 	}
 
+	maxAccounts := domain.MaxAccountsPerUser
+	if s.users != nil {
+		if u, err := s.users.GetByID(ctx, userID); err == nil && u != nil {
+			maxAccounts = u.EffectiveMaxAccounts()
+		}
+	}
+
 	count, err := s.accounts.CountByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	if count >= domain.MaxAccountsPerUser {
-		return nil, fmt.Errorf("%w: limit of %d linked accounts reached", domain.ErrConflict, domain.MaxAccountsPerUser)
+	if count >= maxAccounts {
+		return nil, fmt.Errorf("%w: limit of %d linked accounts reached", domain.ErrConflict, maxAccounts)
 	}
 
 	// Duplicate UID for the same user is rejected up front.

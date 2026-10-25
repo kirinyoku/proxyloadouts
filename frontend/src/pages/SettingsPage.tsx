@@ -158,7 +158,8 @@ export function SettingsPage() {
   const [uid, setUid] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  const isMaxAccounts = accounts.length >= MAX_ACCOUNTS
+  const maxAccounts = me?.limits?.max_accounts_per_user ?? MAX_ACCOUNTS
+  const isMaxAccounts = accounts.length >= maxAccounts
   const uidIsValid = UID_PATTERN.test(uid)
   const errorMessage = submitted && !uidIsValid ? t('settings.uidError') : null
 
@@ -327,7 +328,7 @@ export function SettingsPage() {
                   : 'border-white/10 bg-white/[0.04] text-muted-foreground'
               )}
             >
-              {`${accounts.length} / ${MAX_ACCOUNTS}`}
+              {`${accounts.length} / ${maxAccounts}`}
             </span>
           }
           footer={

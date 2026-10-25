@@ -142,6 +142,7 @@ func (h *AuthHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 		Limits: userLimitsResponse{
 			MaxBuildsPerAgent:  user.EffectiveMaxBuildsPerAgent(),
 			MaxTeamsPerAccount: user.EffectiveMaxTeams(),
+			MaxAccountsPerUser: user.EffectiveMaxAccounts(),
 		},
 	})
 }
@@ -238,6 +239,7 @@ type meResponse struct {
 type userLimitsResponse struct {
 	MaxBuildsPerAgent  int `json:"max_builds_per_agent"`
 	MaxTeamsPerAccount int `json:"max_teams_per_account"`
+	MaxAccountsPerUser int `json:"max_accounts_per_user"`
 }
 
 type userResponse struct {

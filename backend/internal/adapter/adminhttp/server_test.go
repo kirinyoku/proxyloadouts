@@ -167,7 +167,7 @@ func TestAdminServer_OverviewAndStats(t *testing.T) {
 	reqLimits := httptest.NewRequest(
 		http.MethodPatch,
 		"/api/admin/users/"+u.ID.String()+"/limits",
-		strings.NewReader(`{"custom_max_builds_per_agent":25,"custom_max_teams":100}`),
+		strings.NewReader(`{"custom_max_builds_per_agent":25,"custom_max_teams":100,"custom_max_accounts":5}`),
 	)
 	recLimits := httptest.NewRecorder()
 	router.ServeHTTP(recLimits, reqLimits)
@@ -178,7 +178,7 @@ func TestAdminServer_OverviewAndStats(t *testing.T) {
 	if err := json.Unmarshal(recLimits.Body.Bytes(), &detail); err != nil {
 		t.Fatalf("Unmarshal detail: %v", err)
 	}
-	if detail.User.EffectiveMaxBuildsPerAgent != 25 || detail.User.EffectiveMaxTeams != 100 {
+	if detail.User.EffectiveMaxBuildsPerAgent != 25 || detail.User.EffectiveMaxTeams != 100 || detail.User.EffectiveMaxAccounts != 5 {
 		t.Errorf("unexpected updated limits: %+v", detail.User)
 	}
 

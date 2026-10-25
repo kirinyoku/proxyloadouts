@@ -40,6 +40,8 @@ export function UserMenu() {
 
   if (!me) return null
 
+  const maxAccounts = me.limits?.max_accounts_per_user ?? MAX_ACCOUNTS
+
   function handleLogout() {
     logoutMutation.mutate(undefined, {
       onSuccess: () => navigate('/login', { replace: true }),
@@ -125,7 +127,7 @@ export function UserMenu() {
           <span>{t('userMenu.accounts')}</span>
           {accounts.length > 0 && (
             <span className="font-mono text-[10px] text-muted-foreground/60">
-              {`${accounts.length} / ${MAX_ACCOUNTS}`}
+              {`${accounts.length} / ${maxAccounts}`}
             </span>
           )}
         </DropdownMenuLabel>

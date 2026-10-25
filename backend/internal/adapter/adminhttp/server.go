@@ -181,6 +181,7 @@ func NewRouter(deps Deps) http.Handler {
 		var req struct {
 			CustomMaxBuildsPerAgent *int `json:"custom_max_builds_per_agent"`
 			CustomMaxTeams          *int `json:"custom_max_teams"`
+			CustomMaxAccounts       *int `json:"custom_max_accounts"`
 		}
 		if err := decodeAdminJSON(r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
@@ -194,7 +195,11 @@ func NewRouter(deps Deps) http.Handler {
 			writeError(w, http.StatusBadRequest, "custom_max_teams must be between 1 and 500 (or null for default)")
 			return
 		}
-		if err := deps.Users.UpdateLimits(r.Context(), userID, req.CustomMaxBuildsPerAgent, req.CustomMaxTeams); err != nil {
+		if req.CustomMaxAccounts != nil && (*req.CustomMaxAccounts < 1 || *req.CustomMaxAccounts > 100) {
+			writeError(w, http.StatusBadRequest, "custom_max_accounts must be between 1 and 100 (or null for default)")
+			return
+		}
+		if err := deps.Users.UpdateLimits(r.Context(), userID, req.CustomMaxBuildsPerAgent, req.CustomMaxTeams, req.CustomMaxAccounts); err != nil {
 			writeDomainError(w, err)
 			return
 		}

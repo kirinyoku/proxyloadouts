@@ -15,6 +15,7 @@ type User struct {
 	TokenVersion            int
 	CustomMaxBuildsPerAgent *int       // nil means default (MaxBuildsPerAgent)
 	CustomMaxTeams          *int       // nil means default (MaxTeamsPerAccount)
+	CustomMaxAccounts       *int       // nil means default (MaxAccountsPerUser)
 	BannedAt                *time.Time // non-nil when the user is banned
 	BanReason               *string
 	CreatedAt               time.Time
@@ -41,6 +42,15 @@ func (u *User) EffectiveMaxTeams() int {
 		return *u.CustomMaxTeams
 	}
 	return MaxTeamsPerAccount
+}
+
+// EffectiveMaxAccounts returns the linked accounts limit for this user.
+// Returns CustomMaxAccounts if configured, otherwise falls back to MaxAccountsPerUser.
+func (u *User) EffectiveMaxAccounts() int {
+	if u != nil && u.CustomMaxAccounts != nil && *u.CustomMaxAccounts > 0 {
+		return *u.CustomMaxAccounts
+	}
+	return MaxAccountsPerUser
 }
 
 // Session is the authenticated session stored in an encrypted cookie.

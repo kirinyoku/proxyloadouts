@@ -448,7 +448,7 @@ func TestService_CreateTeamCustomLimit(t *testing.T) {
 
 	// Set lower custom limit: 2 teams
 	customLimit := 2
-	if err := env.users.UpdateLimits(ctx, env.ownerID, nil, &customLimit); err != nil {
+	if err := env.users.UpdateLimits(ctx, env.ownerID, nil, &customLimit, nil); err != nil {
 		t.Fatalf("failed to update limits: %v", err)
 	}
 

@@ -163,7 +163,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize auth service: %w", err)
 	}
-	accountSvc := accountsvc.New(accounts)
+	accountSvc := accountsvc.New(accounts, accountsvc.WithUsers(users))
 
 	// Localizing a build is pure but expensive (the fairy SDK rebuilds the full
 	// agent from the game catalog). Both buildsvc and teamsvc need it on every

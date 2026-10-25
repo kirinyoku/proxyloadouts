@@ -1,14 +1,14 @@
-// Command userquota manages per-user quotas for builds and teams.
+// Command userquota manages per-user quotas for builds, teams, and linked game accounts.
 //
 // Usage:
 //
 //	# View current quotas for a user (by Discord ID, username, or UUID)
 //	go run ./cmd/userquota -user 123456789012345678
 //
-//	# Set custom limits (e.g. 20 builds per agent, 200 teams per account)
-//	go run ./cmd/userquota -user 123456789012345678 -builds 20 -teams 200
+//	# Set custom limits (e.g. 20 builds per agent, 200 teams per account, 5 linked accounts)
+//	go run ./cmd/userquota -user 123456789012345678 -builds 20 -teams 200 -accounts 5
 //
-//	# Reset custom limits back to defaults (10 builds, 100 teams)
+//	# Reset custom limits back to defaults (10 builds, 100 teams, 3 accounts)
 //	go run ./cmd/userquota -user 123456789012345678 -reset
 //
 //	# List all users who have custom quotas set
@@ -45,6 +45,7 @@ func run() error {
 		userQuery string
 		builds    int
 		teams     int
+		accounts  int
 		reset     bool
 		list      bool
 		dbPath    string
@@ -53,6 +54,7 @@ func run() error {
 	flag.StringVar(&userQuery, "user", "", "User identity to query or update (Discord ID, username, or UUID)")
 	flag.IntVar(&builds, "builds", 0, "Custom max builds per agent (> 0)")
 	flag.IntVar(&teams, "teams", 0, "Custom max teams per account (> 0)")
+	flag.IntVar(&accounts, "accounts", 0, "Custom max linked accounts/UIDs (> 0)")
 	flag.BoolVar(&reset, "reset", false, "Reset custom limits back to application defaults")
 	flag.BoolVar(&list, "list", false, "List all users with custom quotas configured")
 	flag.StringVar(&dbPath, "db", "", "Path to SQLite database file (defaults to DATABASE_PATH env or ./data/proxyloadouts.db)")
@@ -104,18 +106,20 @@ func run() error {
 	fmt.Printf("  Username:   %s\n", user.Username)
 
 	if reset {
-		if err := repo.UpdateLimits(ctx, user.ID, nil, nil); err != nil {
+		if err := repo.UpdateLimits(ctx, user.ID, nil, nil, nil); err != nil {
 			return fmt.Errorf("resetting quotas: %w", err)
 		}
 		fmt.Printf("\nQuotas reset back to defaults:\n")
 		fmt.Printf("  Max builds per agent:  %d (default)\n", domain.MaxBuildsPerAgent)
 		fmt.Printf("  Max teams per account: %d (default)\n", domain.MaxTeamsPerAccount)
+		fmt.Printf("  Max linked accounts:   %d (default)\n", domain.MaxAccountsPerUser)
 		return nil
 	}
 
-	if builds > 0 || teams > 0 {
+	if builds > 0 || teams > 0 || accounts > 0 {
 		newBuilds := user.CustomMaxBuildsPerAgent
 		newTeams := user.CustomMaxTeams
+		newAccounts := user.CustomMaxAccounts
 
 		if builds > 0 {
 			b := builds
@@ -125,14 +129,19 @@ func run() error {
 			t := teams
 			newTeams = &t
 		}
+		if accounts > 0 {
+			a := accounts
+			newAccounts = &a
+		}
 
-		if err := repo.UpdateLimits(ctx, user.ID, newBuilds, newTeams); err != nil {
+		if err := repo.UpdateLimits(ctx, user.ID, newBuilds, newTeams, newAccounts); err != nil {
 			return fmt.Errorf("updating quotas: %w", err)
 		}
 
 		fmt.Printf("\nUpdated quotas:\n")
 		printQuota("Max builds per agent", newBuilds, domain.MaxBuildsPerAgent)
 		printQuota("Max teams per account", newTeams, domain.MaxTeamsPerAccount)
+		printQuota("Max linked accounts", newAccounts, domain.MaxAccountsPerUser)
 		return nil
 	}
 
@@ -140,6 +149,7 @@ func run() error {
 	fmt.Printf("\nCurrent quotas:\n")
 	printQuota("Max builds per agent", user.CustomMaxBuildsPerAgent, domain.MaxBuildsPerAgent)
 	printQuota("Max teams per account", user.CustomMaxTeams, domain.MaxTeamsPerAccount)
+	printQuota("Max linked accounts", user.CustomMaxAccounts, domain.MaxAccountsPerUser)
 	return nil
 }
 
@@ -183,9 +193,9 @@ func findUser(ctx context.Context, db *sql.DB, repo *sqlite.SQLiteUserRepo, quer
 
 func listCustomQuotas(ctx context.Context, db *sql.DB) error {
 	rows, err := db.QueryContext(ctx, `
-		SELECT id, discord_id, username, custom_max_builds_per_agent, custom_max_teams
+		SELECT id, discord_id, username, custom_max_builds_per_agent, custom_max_teams, custom_max_accounts
 		FROM users
-		WHERE custom_max_builds_per_agent IS NOT NULL OR custom_max_teams IS NOT NULL
+		WHERE custom_max_builds_per_agent IS NOT NULL OR custom_max_teams IS NOT NULL OR custom_max_accounts IS NOT NULL
 		ORDER BY username ASC;
 	`)
 	if err != nil {
@@ -196,13 +206,14 @@ func listCustomQuotas(ctx context.Context, db *sql.DB) error {
 	count := 0
 	for rows.Next() {
 		var (
-			id         string
-			discordID  string
-			username   string
-			buildsNull sql.NullInt64
-			teamsNull  sql.NullInt64
+			id           string
+			discordID    string
+			username     string
+			buildsNull   sql.NullInt64
+			teamsNull    sql.NullInt64
+			accountsNull sql.NullInt64
 		)
-		if err := rows.Scan(&id, &discordID, &username, &buildsNull, &teamsNull); err != nil {
+		if err := rows.Scan(&id, &discordID, &username, &buildsNull, &teamsNull, &accountsNull); err != nil {
 			return err
 		}
 		count++
@@ -214,15 +225,20 @@ func listCustomQuotas(ctx context.Context, db *sql.DB) error {
 		if teamsNull.Valid {
 			teamsStr = fmt.Sprintf("%d [custom]", teamsNull.Int64)
 		}
+		accountsStr := fmt.Sprintf("%d (default)", domain.MaxAccountsPerUser)
+		if accountsNull.Valid {
+			accountsStr = fmt.Sprintf("%d [custom]", accountsNull.Int64)
+		}
 
 		fmt.Printf("[%d] %s (@%s, ID: %s)\n", count, username, discordID, id)
-		fmt.Printf("    Builds: %s | Teams: %s\n", buildsStr, teamsStr)
+		fmt.Printf("    Builds: %s | Teams: %s | Accounts: %s\n", buildsStr, teamsStr, accountsStr)
 	}
 
 	if count == 0 {
 		fmt.Println("No users have custom quotas configured. All users use global defaults:")
 		fmt.Printf("  Max builds per agent:  %d\n", domain.MaxBuildsPerAgent)
 		fmt.Printf("  Max teams per account: %d\n", domain.MaxTeamsPerAccount)
+		fmt.Printf("  Max linked accounts:   %d\n", domain.MaxAccountsPerUser)
 	}
 
 	return rows.Err()

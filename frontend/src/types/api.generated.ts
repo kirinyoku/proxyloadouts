@@ -559,9 +559,27 @@ export interface components {
              */
             region?: "Europe" | "America" | "Asia" | "TW/HK/MO";
         };
+        UserLimits: {
+            /**
+             * @description Effective maximum number of saved builds per agent for this user
+             * @example 10
+             */
+            max_builds_per_agent: number;
+            /**
+             * @description Effective maximum number of saved teams per account for this user
+             * @example 100
+             */
+            max_teams_per_account: number;
+            /**
+             * @description Effective maximum number of linked game accounts (ZZZ UIDs) for this user
+             * @example 3
+             */
+            max_accounts_per_user: number;
+        };
         MeResponse: {
             user: components["schemas"]["User"];
             accounts: components["schemas"]["GameAccount"][];
+            limits: components["schemas"]["UserLimits"];
             /** @description True when the user's Discord ID is in the server-side admin allowlist. UI hint only (shows the /admin entry point); the server re-checks on every admin request. Omitted by servers that predate the admin surface — treat absence as false. */
             is_admin?: boolean;
         };
@@ -633,6 +651,11 @@ export interface components {
              * @example 3
              */
             count: number;
+            /**
+             * @description Effective maximum number of teams allowed on this account for the current user
+             * @example 100
+             */
+            max: number;
         };
         CreateTeamRequest: {
             /** Format: uuid */

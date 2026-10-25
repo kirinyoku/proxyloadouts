@@ -226,3 +226,42 @@ func TestAccountService_Delete(t *testing.T) {
 		t.Errorf("expected ErrNotFound for deleted account, got %v", err)
 	}
 }
+
+type mockUserStore struct {
+	users map[uuid.UUID]*domain.User
+}
+
+func (m *mockUserStore) GetByID(_ context.Context, id uuid.UUID) (*domain.User, error) {
+	if u, ok := m.users[id]; ok {
+		return u, nil
+	}
+	return nil, domain.ErrNotFound
+}
+
+func TestAccountService_CreateCustomLimit(t *testing.T) {
+	store := newMockAccountStore()
+	customLimit := 5
+	userID := uuid.New()
+	userStore := &mockUserStore{
+		users: map[uuid.UUID]*domain.User{
+			userID: {
+				ID:                userID,
+				CustomMaxAccounts: &customLimit,
+			},
+		},
+	}
+	svc := New(store, WithUsers(userStore))
+
+	for i := range customLimit {
+		uid := fmt.Sprintf("150468705%d", i)
+		if _, err := svc.Create(context.Background(), userID, uid, "Europe"); err != nil {
+			t.Fatalf("failed to create account %d within custom limit: %v", i, err)
+		}
+	}
+
+	// 6th creation exceeds custom limit of 5
+	_, err := svc.Create(context.Background(), userID, "1504687099", "Europe")
+	if !errors.Is(err, domain.ErrConflict) {
+		t.Errorf("expected ErrConflict when custom account limit reached, got %v", err)
+	}
+}
