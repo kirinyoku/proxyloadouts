@@ -3486,6 +3486,13 @@
       }
     });
 
+    // Unregister any stale PWA Service Workers (e.g. from Dozzle on localhost)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) reg.unregister();
+      }).catch(() => {});
+    }
+
     // Bootstrap
     loadStats();
   </script>
