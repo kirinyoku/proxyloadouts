@@ -190,4 +190,31 @@ describe('ShowcasePage', () => {
     expect(parts[0]).not.toContain('Привязать UID')
     expect(parts[1]).toContain('Привязать UID')
   })
+
+  it('renders centered InterknotTerminalError layout when showcaseQuery has an error', () => {
+    mockUseMe.mockReturnValue({ data: null })
+    mockUseActiveAccount.mockReturnValue({
+      activeAccount: null,
+      accounts: [],
+      isPending: false,
+    })
+    mockUseShowcase.mockReturnValue({
+      data: null,
+      isPending: false,
+      isError: true,
+      error: new Error('Profile not found'),
+      isRefetching: false,
+      refetch: vi.fn(),
+    })
+    mockUseBuilds.mockReturnValue({
+      data: [],
+      isPending: false,
+    })
+
+    const html = renderToString(<ShowcasePage />)
+    expect(html).toContain('role="alert"')
+    expect(html).toContain('justify-center')
+    expect(html).toContain('items-center')
+    expect(html).toContain('min-h-[calc(100dvh-10rem)]')
+  })
 })

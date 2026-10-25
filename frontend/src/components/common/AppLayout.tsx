@@ -15,7 +15,7 @@ export function AppLayout() {
     <div className="flex min-h-screen flex-col">
       <div className="flex min-h-dvh flex-col">
         <AppHeader />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-2.5 sm:py-3">
+        <main className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-4 py-2.5 sm:py-3">
           <Suspense fallback={<LayoutFallback />}>
             <Outlet />
           </Suspense>

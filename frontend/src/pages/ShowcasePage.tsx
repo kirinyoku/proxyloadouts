@@ -377,22 +377,28 @@ export function ShowcasePage() {
     ? t('showcase.pageTitleWithUid', { uid: scannedUid })
     : t('showcase.pageTitle')
 
-  return (
-    <div className="space-y-3">
-      <title>{pageTitle}</title>
-      <meta name="description" content={t('showcase.metaDescription')} />
-      {showcaseQuery.isPending && scannedUid && <ShowcasePageSkeleton />}
-
-      {showcaseQuery.isError && (
+  if (showcaseQuery.isError) {
+    return (
+      <div className="flex flex-1 min-h-[calc(100dvh-10rem)] flex-col items-center justify-center py-6 sm:py-10">
+        <title>{pageTitle}</title>
+        <meta name="description" content={t('showcase.metaDescription')} />
         <InterknotTerminalError
           error={showcaseQuery.error}
           uid={scannedUid}
           onScanUid={scan}
           onRetry={() => void showcaseQuery.refetch()}
           isRetrying={showcaseQuery.isFetching}
-          className="mx-auto"
+          className="w-full mx-auto"
         />
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <title>{pageTitle}</title>
+      <meta name="description" content={t('showcase.metaDescription')} />
+      {showcaseQuery.isPending && scannedUid && <ShowcasePageSkeleton />}
 
       {showcase && (
         <div className="space-y-3">

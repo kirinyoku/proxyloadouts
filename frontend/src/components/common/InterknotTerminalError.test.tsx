@@ -30,6 +30,29 @@ describe('InterknotTerminalError component', () => {
     expect(html).toContain('HTTP 404')
     expect(html).toContain('922222222')
     expect(html).toContain('terminalError.notFound.statusTag')
+    expect(html).toContain('title="common.clear"')
+    expect(html).toContain('title="terminalError.find"')
+    expect(html).toContain('md:items-stretch')
+    expect(html).toContain('h-full flex flex-col justify-between')
+  })
+
+  it('renders 400 bad request with UID search form and clear button', () => {
+    const html = renderToString(
+      <InterknotTerminalError
+        status={400}
+        uid="12345678"
+        onScanUid={() => {}}
+        onRetry={() => {}}
+      />
+    )
+
+    expect(html).toContain('role="alert"')
+    expect(html).toContain('HTTP 400')
+    expect(html).toContain('12345678')
+    expect(html).toContain('title="common.clear"')
+    expect(html).toContain('title="terminalError.find"')
+    expect(html).toContain('md:items-stretch')
+    expect(html).toContain('h-full flex flex-col justify-between')
   })
 
   it('renders 429 rate limit variant with throttle status and cooldown note', () => {
