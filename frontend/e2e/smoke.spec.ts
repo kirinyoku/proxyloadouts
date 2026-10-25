@@ -36,15 +36,15 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     const uidInput = page.getByLabel('Игровой UID')
     const scanButton = page.getByRole('button', { name: 'Сканировать' })
 
-    // Typing less than 9 digits leaves button disabled
+    // Typing less than 10 digits leaves button disabled
     await uidInput.fill('1504')
     await expect(scanButton).toBeDisabled()
-    await expect(page.getByText('UID должен содержать 9–10 цифр')).toBeVisible()
+    await expect(page.getByText('UID должен быть 10 цифр и начинаться с 10, 13, 15 или 17')).toBeVisible()
 
     // Typing 10 digits enables the scan button and submits to /showcase
     await uidInput.fill('1504687050')
     await expect(scanButton).toBeEnabled()
-    await expect(page.getByText('UID должен содержать 9–10 цифр')).not.toBeVisible()
+    await expect(page.getByText('UID должен быть 10 цифр и начинаться с 10, 13, 15 или 17')).not.toBeVisible()
 
     await scanButton.click()
     await expect(page).toHaveURL(/\/showcase\?uid=1504687050/)
