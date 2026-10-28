@@ -31,3 +31,14 @@ export interface CreateAccountRequest {
   uid: string
   region?: Region
 }
+
+export interface UpdateAccountRequest {
+  is_public_showcase?: boolean
+  show_discord?: boolean
+}
+
+export interface VerificationChallengeResponse {
+  code: string
+  expires_at: string
+  cooldown_seconds: number
+}

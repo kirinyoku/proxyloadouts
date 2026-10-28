@@ -180,4 +180,66 @@ describe('public build and team query keys', () => {
     expect(queryKeys.publicTeam('t1', 'en')).toEqual(['public', 'team', 't1', 'en'])
     expect(queryKeys.publicTeam('t1')).toEqual(['public', 'team', 't1'])
   })
+
+  it('generates correct showcaseRoster keys', () => {
+    expect(queryKeys.showcaseRoster('1504687050', 'ru')).toEqual(['showcase', 'roster', '1504687050', 'ru'])
+    expect(queryKeys.showcaseRoster('1504687050')).toEqual(['showcase', 'roster', '1504687050'])
+  })
+})
+
+describe('account verification and showcase roster api methods', () => {
+  it('startAccountVerification posts to challenge endpoint', async () => {
+    const seen: { url: string; method: string }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        seen.push({ url: String(input), method: init?.method ?? 'GET' })
+        return new Response(JSON.stringify({ code: 'PXL-ABCD', expires_at: '2026-01-01T00:00:00Z', cooldown_seconds: 30 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }),
+    )
+
+    const res = await api.startAccountVerification('acc-1')
+    expect(seen[0]?.method).toBe('POST')
+    expect(seen[0]?.url).toBe('/api/v1/accounts/acc-1/verify/challenge')
+    expect(res.code).toBe('PXL-ABCD')
+  })
+
+  it('confirmAccountVerification posts to confirm endpoint', async () => {
+    const seen: { url: string; method: string }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        seen.push({ url: String(input), method: init?.method ?? 'GET' })
+        return new Response(JSON.stringify({ id: 'acc-1', uid: '1504687050', verified_at: '2026-01-01T00:00:00Z' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }),
+    )
+
+    const res = await api.confirmAccountVerification('acc-1')
+    expect(seen[0]?.method).toBe('POST')
+    expect(seen[0]?.url).toBe('/api/v1/accounts/acc-1/verify/confirm')
+    expect(res.verified_at).toBe('2026-01-01T00:00:00Z')
+  })
+
+  it('fetchShowcaseRoster calls get /showcase/{uid}/roster', async () => {
+    const seen: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        seen.push(String(input))
+        return new Response(JSON.stringify({ owner: { uid: '1504687050' }, is_public_showcase: true, builds: [], teams: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }),
+    )
+
+    await api.fetchShowcaseRoster('1504687050', 'ru')
+    expect(seen[0]).toBe('/api/v1/showcase/1504687050/roster?lang=ru')
+  })
 })

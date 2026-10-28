@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, RefreshCw } from 'lucide-react'
+import { BadgeCheck, Check, Copy, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { DiscordIcon } from '@/components/common/DiscordIcon'
 import { formatNumber } from '@/lib/format'
 import { getRegionShortCode } from '@/lib/uid'
 import { cn } from '@/lib/utils'
 import { Spinner } from '@/components/ui/spinner'
 import { UidSearchForm } from '@/components/common/UidSearchForm'
+import type { PublicOwnerInfo } from '@/types/account'
 import type { ShowcaseResponse } from '@/types/showcase'
 
 interface RegionConfig {
@@ -267,6 +269,7 @@ function CacheStatusPill({
 
 interface ShowcaseProfileHeaderProps {
   showcase: ShowcaseResponse
+  verifiedOwner?: PublicOwnerInfo | null
   uidInput: string
   isUidValid: boolean
   isRefetching: boolean
@@ -284,6 +287,7 @@ interface ShowcaseProfileHeaderProps {
  */
 export function ShowcaseProfileHeader({
   showcase,
+  verifiedOwner,
   uidInput,
   isUidValid,
   isRefetching,
@@ -291,6 +295,9 @@ export function ShowcaseProfileHeader({
   onUidInputChange,
   onRefresh,
 }: ShowcaseProfileHeaderProps) {
+  const { t } = useTranslation()
+  const owner = verifiedOwner ?? showcase.verified_owner
+
   return (
     <div className="relative rounded-2xl border border-white/[0.08] bg-card/96 p-3 sm:px-4 sm:py-2 shadow-lg backdrop-blur-sm">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -319,14 +326,42 @@ export function ShowcaseProfileHeader({
           </div>
 
           <div className="flex min-w-0 flex-col gap-0.5">
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               <span className="truncate font-heading text-[15px] leading-tight font-bold tracking-wide text-foreground uppercase">
                 {showcase.nickname}
               </span>
               <RegionBadge region={showcase.region} />
+              {owner?.is_verified && (
+                <span
+                  title={t('sharing.verifiedOwner')}
+                  className="inline-flex items-center gap-1 rounded-[3px_3px_0_3px] border border-emerald-500/50 bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold tracking-wider text-emerald-400 select-none shadow-[0_1px_2px_rgba(0,0,0,0.35)] shrink-0"
+                >
+                  <BadgeCheck className="size-3 text-emerald-400 shrink-0" />
+                  <span>{t('sharing.verifiedOwner')}</span>
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] leading-none text-muted-foreground">
               <UidCopyChip uid={showcase.uid} />
+              {owner?.discord_username && (
+                <div
+                  className="inline-flex h-6 min-h-[24px] items-center gap-1.5 rounded-md border border-[#5865F2]/40 bg-[#5865F2]/10 px-2 py-0.5 text-[#8891f2] select-none"
+                  title={`Discord: ${owner.discord_username}`}
+                >
+                  {owner.discord_avatar_url ? (
+                    <img
+                      src={owner.discord_avatar_url}
+                      alt=""
+                      className="size-3.5 rounded-full object-cover"
+                    />
+                  ) : (
+                    <DiscordIcon className="size-3" />
+                  )}
+                  <span className="font-sans font-medium text-xs text-foreground/90">
+                    {owner.discord_username}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

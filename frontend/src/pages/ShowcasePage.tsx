@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Plus, RefreshCw, Users } from 'lucide-react'
+import { AlertCircle, Check, Layers, Plus, RefreshCw, Sparkles, Users } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useBuilds, useMe, useShowcase } from '@/api/hooks'
+import { useBuilds, useMe, useShowcase, useShowcaseRoster } from '@/api/hooks'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
 import { findMatchingSavedBuild, getAgentEquipmentFingerprint } from '@/lib/builds'
 import { persistLastUid, readLastUid, UID_PATTERN } from '@/lib/uid'
@@ -9,8 +9,11 @@ import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
 import { ShowcaseProfileHeader } from '@/components/showcase/ShowcaseProfileHeader'
 import { ShowcaseGuestBanner } from '@/components/showcase/ShowcaseGuestBanner'
+import { ShowcaseSavedPresets } from '@/components/showcase/ShowcaseSavedPresets'
+import { ShowcaseSquads } from '@/components/showcase/ShowcaseSquads'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
+import { SegmentedControl, type SegmentedOption } from '@/components/settings/SegmentedControl'
 import { cn } from '@/lib/utils'
 import { AgentAvatarListSkeleton } from '@/components/showcase/AgentAvatarListSkeleton'
 import { AgentBuildInspectorSkeleton } from '@/components/showcase/AgentBuildInspectorSkeleton'
@@ -21,7 +24,7 @@ import { Button } from '@/components/ui/button'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { getAttributeLabel, getSpecialtyLabel } from '@/lib/design-tokens'
 import { useTranslation } from 'react-i18next'
-import type { Agent } from '@/types'
+import type { Agent, ShowcaseResponse } from '@/types'
 
 const SaveBuildDialog = lazy(() =>
   import('@/components/showcase/SaveBuildDialog').then((module) => ({
@@ -300,7 +303,42 @@ export function ShowcasePage() {
 
   const buildsQuery = useBuilds(isAuthed && matchingAccount ? matchingAccount.id : undefined)
   const showcaseQuery = useShowcase(scannedUid)
-  const showcase = showcaseQuery.data
+  const rosterQuery = useShowcaseRoster(scannedUid)
+
+  type ShowcaseMode = 'live' | 'presets' | 'squads'
+  const [mode, setMode] = useState<ShowcaseMode>('live')
+
+  const isEnkaDownWithRosterFallback =
+    showcaseQuery.isError && Boolean(rosterQuery.data)
+
+  const fallbackShowcase: ShowcaseResponse | null = useMemo(() => {
+    if (!isEnkaDownWithRosterFallback || !rosterQuery.data) return null
+    return {
+      uid: scannedUid,
+      nickname: rosterQuery.data.owner.nickname || `UID ${scannedUid}`,
+      region: rosterQuery.data.owner.region,
+      interknot_level: 60,
+      avatar_url: rosterQuery.data.owner.avatar_url ?? undefined,
+      source: 'cached',
+      ttl_seconds: 0,
+      fetched_at: '',
+      agent_count: 0,
+      agents: [],
+      verified_owner: rosterQuery.data.owner,
+      has_public_roster: rosterQuery.data.is_public_showcase,
+    }
+  }, [isEnkaDownWithRosterFallback, rosterQuery.data, scannedUid])
+
+  const showcase = showcaseQuery.data ?? fallbackShowcase
+
+  const hasPublicRoster = Boolean(
+    rosterQuery.data?.is_public_showcase &&
+      (rosterQuery.data.builds.length > 0 || rosterQuery.data.teams.length > 0),
+  )
+  const showModeSwitcher = hasPublicRoster || isEnkaDownWithRosterFallback
+
+  const effectiveMode: ShowcaseMode =
+    isEnkaDownWithRosterFallback && mode === 'live' ? 'presets' : mode
 
   useEffect(() => {
     if (scannedUid) {
@@ -316,6 +354,7 @@ export function ShowcasePage() {
     persistLastUid(uid)
     if (uid === scannedUid) {
       void showcaseQuery.refetch()
+      void rosterQuery.refetch()
     } else {
       setSearchParams((previous) => {
         const next = new URLSearchParams(previous)
@@ -377,7 +416,7 @@ export function ShowcasePage() {
     ? t('showcase.pageTitleWithUid', { uid: scannedUid })
     : t('showcase.pageTitle')
 
-  if (showcaseQuery.isError) {
+  if (showcaseQuery.isError && !isEnkaDownWithRosterFallback) {
     return (
       <div className="flex flex-1 min-h-[calc(100dvh-10rem)] flex-col items-center justify-center py-6 sm:py-10">
         <title>{pageTitle}</title>
@@ -386,7 +425,10 @@ export function ShowcasePage() {
           error={showcaseQuery.error}
           uid={scannedUid}
           onScanUid={scan}
-          onRetry={() => void showcaseQuery.refetch()}
+          onRetry={() => {
+            void showcaseQuery.refetch()
+            void rosterQuery.refetch()
+          }}
           isRetrying={showcaseQuery.isFetching}
           className="w-full mx-auto"
         />
@@ -394,85 +436,144 @@ export function ShowcasePage() {
     )
   }
 
+  const modeOptions: readonly SegmentedOption<ShowcaseMode>[] = [
+    ...(!showcaseQuery.isError
+      ? [
+          {
+            value: 'live' as const,
+            label: `${t('showcase.liveShowcase')} (${showcase?.agents.length ?? 0})`,
+            glyph: <Sparkles className="size-3.5" />,
+          },
+        ]
+      : []),
+    {
+      value: 'presets' as const,
+      label: `${t('showcase.savedPresets')} (${rosterQuery.data?.builds.length ?? 0})`,
+      glyph: <Layers className="size-3.5" />,
+    },
+    {
+      value: 'squads' as const,
+      label: `${t('showcase.squads')} (${rosterQuery.data?.teams.length ?? 0})`,
+      glyph: <Users className="size-3.5" />,
+    },
+  ]
+
   return (
     <div className="space-y-3">
       <title>{pageTitle}</title>
       <meta name="description" content={t('showcase.metaDescription')} />
-      {showcaseQuery.isPending && scannedUid && <ShowcasePageSkeleton />}
+      {showcaseQuery.isPending && !showcase && scannedUid && <ShowcasePageSkeleton />}
 
       {showcase && (
         <div className="space-y-3">
           <ShowcaseProfileHeader
             showcase={showcase}
+            verifiedOwner={rosterQuery.data?.owner ?? showcase.verified_owner}
             uidInput={uidInput}
             isUidValid={isInputValid}
             isRefetching={showcaseQuery.isRefetching}
             onScan={scan}
             onUidInputChange={setUidInput}
-            onRefresh={() => void showcaseQuery.refetch()}
+            onRefresh={() => {
+              void showcaseQuery.refetch()
+              void rosterQuery.refetch()
+            }}
           />
 
-          {!isAuthed && <ShowcaseGuestBanner />}
-
-          {/* Empty State when showcase has 0 agents */}
-          {showcase.agents.length === 0 && (
-            <EmptyState
-              icon={Users}
-              title={t('showcase.emptyTitle')}
-              description={t('showcase.emptyDesc')}
-              action={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void showcaseQuery.refetch()}
-                  loading={showcaseQuery.isRefetching}
-                  className="gap-1.5"
-                >
-                  {!showcaseQuery.isRefetching && <RefreshCw className="size-3.5" />}
-                  {t('showcase.refreshShowcase')}
-                </Button>
-              }
-            />
+          {isEnkaDownWithRosterFallback && (
+            <div
+              role="alert"
+              className="flex items-center gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200 shadow-sm"
+            >
+              <AlertCircle className="size-4 shrink-0 text-amber-400" />
+              <span>{t('showcase.enkaUnavailableNotice')}</span>
+            </div>
           )}
 
-          {/* Main 2-Section Body: Vertical Circle Avatars Sidebar on the left + Agent Showcase on the right */}
-          {selectedAgent && (
-            <div ref={detailRef} className="scroll-mt-16 flex flex-col md:flex-row md:items-stretch gap-3">
-              {/* Dynamic vertical circular agent avatars sidebar capped at card height */}
-              {showcase.agents.length > 0 && (
-                <div className="w-full md:w-[70px] md:self-stretch md:shrink-0 relative">
-                  <div
-                    ref={agentRailRef}
-                    role="tablist"
-                    aria-label={t('showcase.agentsRailAria')}
-                    className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-card/96 p-2 shadow-xl backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
-                  >
-                    {showcase.agents.map((agent) => (
-                      <AgentAvatarTab
-                        key={agent.id}
-                        agent={agent}
-                        selected={agent.id === selectedAgent?.id}
-                        className="snap-start"
-                        onSelect={() => setSelectedAgentId(agent.id)}
-                      />
-                    ))}
+          {showModeSwitcher && (
+            <div className="flex justify-start pt-1">
+              <SegmentedControl
+                options={modeOptions}
+                value={effectiveMode}
+                onValueChange={setMode}
+                ariaLabel={t('showcase.liveShowcase')}
+              />
+            </div>
+          )}
+
+          {effectiveMode === 'live' && (
+            <>
+              {!isAuthed && <ShowcaseGuestBanner />}
+
+              {/* Empty State when showcase has 0 agents */}
+              {showcase.agents.length === 0 && (
+                <EmptyState
+                  icon={Users}
+                  title={t('showcase.emptyTitle')}
+                  description={t('showcase.emptyDesc')}
+                  action={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void showcaseQuery.refetch()}
+                      loading={showcaseQuery.isRefetching}
+                      className="gap-1.5"
+                    >
+                      {!showcaseQuery.isRefetching && <RefreshCw className="size-3.5" />}
+                      {t('showcase.refreshShowcase')}
+                    </Button>
+                  }
+                />
+              )}
+
+              {/* Main 2-Section Body: Vertical Circle Avatars Sidebar on the left + Agent Showcase on the right */}
+              {selectedAgent && (
+                <div ref={detailRef} className="scroll-mt-16 flex flex-col md:flex-row md:items-stretch gap-3">
+                  {/* Dynamic vertical circular agent avatars sidebar capped at card height */}
+                  {showcase.agents.length > 0 && (
+                    <div className="w-full md:w-[70px] md:self-stretch md:shrink-0 relative">
+                      <div
+                        ref={agentRailRef}
+                        role="tablist"
+                        aria-label={t('showcase.agentsRailAria')}
+                        className="flex w-full shrink-0 snap-x snap-mandatory items-center gap-2 overflow-x-auto rounded-3xl border border-white/[0.08] bg-card/96 p-2 shadow-xl backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-2.5 md:absolute md:inset-x-0 md:top-0 md:w-full md:max-h-full md:flex-col md:overflow-y-auto md:overflow-x-hidden md:snap-none"
+                      >
+                        {showcase.agents.map((agent) => (
+                          <AgentAvatarTab
+                            key={agent.id}
+                            agent={agent}
+                            selected={agent.id === selectedAgent?.id}
+                            className="snap-start"
+                            onSelect={() => setSelectedAgentId(agent.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Selected Agent Preset Content */}
+                  <div className="min-w-0 flex-1 w-full">
+                    <AgentShowcaseSection
+                      agent={selectedAgent}
+                      isSaved={isCurrentBuildSaved}
+                      matchingBuildName={matchingSavedBuild?.name}
+                      canSave={isAuthed && isOwnedUid}
+                      isAuthed={isAuthed}
+                      isOwnedUid={isOwnedUid}
+                      onSaveClick={() => setSavingAgent(selectedAgent)}
+                    />
                   </div>
                 </div>
               )}
+            </>
+          )}
 
-              {/* Selected Agent Preset Content */}
-              <div className="min-w-0 flex-1 w-full">
-                <AgentShowcaseSection
-                  agent={selectedAgent}
-                  isSaved={isCurrentBuildSaved}
-                  matchingBuildName={matchingSavedBuild?.name}
-                  canSave={isAuthed && isOwnedUid}
-                  isAuthed={isAuthed}
-                  isOwnedUid={isOwnedUid}
-                  onSaveClick={() => setSavingAgent(selectedAgent)}
-                />
-              </div>
-            </div>
+          {effectiveMode === 'presets' && (
+            <ShowcaseSavedPresets builds={rosterQuery.data?.builds ?? []} />
+          )}
+
+          {effectiveMode === 'squads' && (
+            <ShowcaseSquads teams={rosterQuery.data?.teams ?? []} />
           )}
         </div>
       )}

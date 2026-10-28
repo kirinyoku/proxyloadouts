@@ -7,14 +7,17 @@ import type {
   GameAccount,
   MeResponse,
   PublicBuildResponse,
+  PublicShowcaseRosterResponse,
   PublicTeamResponse,
   ShowcaseResponse,
   Team,
   TeamCountResponse,
   TeamDetail,
   TeamSummary,
+  UpdateAccountRequest,
   UpdateBuildRequest,
   UpdateTeamRequest,
+  VerificationChallengeResponse,
 } from '@/types'
 
 import { getCurrentLanguage } from '@/i18n'
@@ -144,8 +147,27 @@ export function createAccount(body: CreateAccountRequest): Promise<GameAccount> 
   return request<GameAccount>('/accounts', { method: 'POST', body })
 }
 
+export function updateAccount(id: string, body: UpdateAccountRequest): Promise<GameAccount> {
+  return request<GameAccount>(`/accounts/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body,
+  })
+}
+
 export function deleteAccount(id: string): Promise<void> {
   return request<void>(`/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+export function startAccountVerification(id: string): Promise<VerificationChallengeResponse> {
+  return request<VerificationChallengeResponse>(`/accounts/${encodeURIComponent(id)}/verify/challenge`, {
+    method: 'POST',
+  })
+}
+
+export function confirmAccountVerification(id: string): Promise<GameAccount> {
+  return request<GameAccount>(`/accounts/${encodeURIComponent(id)}/verify/confirm`, {
+    method: 'POST',
+  })
 }
 
 export function fetchShowcase(
@@ -156,6 +178,19 @@ export function fetchShowcase(
   const activeLang = lang || getCurrentLanguage()
   const query = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
   return request<ShowcaseResponse>(`/showcase/${encodeURIComponent(uid)}${query}`, { signal })
+}
+
+export function fetchShowcaseRoster(
+  uid: string,
+  lang?: string,
+  signal?: AbortSignal,
+): Promise<PublicShowcaseRosterResponse> {
+  const activeLang = lang || getCurrentLanguage()
+  const query = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
+  return request<PublicShowcaseRosterResponse>(`/showcase/${encodeURIComponent(uid)}/roster${query}`, {
+    signal,
+    skipAuthRedirect: true,
+  })
 }
 
 export function fetchBuilds(

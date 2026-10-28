@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Copy, Trash2 } from 'lucide-react'
+import { BadgeCheck, Check, Copy, ShieldCheck, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
@@ -14,12 +14,14 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useDeleteAccount } from '@/api/hooks'
+import { Switch } from '@/components/ui/switch'
+import { useDeleteAccount, useUpdateAccount } from '@/api/hooks'
 import { formatDate } from '@/lib/format'
 import { getRegionShortCode } from '@/lib/uid'
 import { cn } from '@/lib/utils'
 import { useAccountStore } from '@/store/useAccountStore'
 import type { GameAccount } from '@/types'
+import { VerifyUidDialog } from './VerifyUidDialog'
 
 interface ProxyAccountRowProps {
   account: GameAccount
@@ -27,17 +29,23 @@ interface ProxyAccountRowProps {
 }
 
 /**
- * Compact account row: status dot + mono UID + region chip on the left,
- * copy / set-active / delete on the right. Destructive action is icon-only so
- * it stops competing with the primary "set as active" action for attention.
+ * Account row:
+ * - Upper bar: status dot + mono UID + region + active/verified badges + copy / active / delete actions
+ * - Secondary section:
+ *   - If verified: public showcase & discord visibility toggles
+ *   - If unverified: verify UID button opening verification modal
  */
 export function ProxyAccountRow({ account, isActive }: ProxyAccountRowProps) {
   const { t } = useTranslation()
   const setActiveAccount = useAccountStore((state) => state.setActiveAccount)
   const deleteMutation = useDeleteAccount()
+  const updateAccountMutation = useUpdateAccount()
+
   const [copied, setCopied] = useState(false)
+  const [verifyOpen, setVerifyOpen] = useState(false)
 
   const regionCode = getRegionShortCode(account.region)
+  const isVerified = Boolean(account.verified_at)
 
   function handleCopyUid() {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -52,23 +60,24 @@ export function ProxyAccountRow({ account, isActive }: ProxyAccountRowProps) {
       data-slot="proxy-account-row"
       data-active={isActive}
       className={cn(
-        'group grid grid-cols-[1fr_auto_auto] items-center gap-x-1.5 gap-y-2 px-4 py-3 transition-colors sm:flex sm:gap-2 sm:px-5 sm:py-2.5',
-        isActive ? 'bg-primary/[0.04]' : 'hover:bg-white/[0.02]'
+        'group flex flex-col gap-2.5 px-4 py-3 transition-colors sm:px-5 sm:py-3',
+        isActive ? 'bg-primary/[0.04]' : 'hover:bg-white/[0.02]',
       )}
     >
-      {/* 1. Identity: status dot + UID + region + active badge */}
-      <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2 sm:shrink-0 sm:gap-2.5">
-        <span
-          aria-hidden="true"
-          className={cn(
-            'size-2 shrink-0 rounded-full transition-colors',
-            isActive
-              ? 'bg-primary shadow-[0_0_8px_color-mix(in_oklch,var(--primary)_70%,transparent)]'
-              : 'bg-white/20'
-          )}
-        />
+      {/* Upper bar: identity on the left, actions on the right */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* Left: status dot, UID, region, badges */}
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <span
+            aria-hidden="true"
+            className={cn(
+              'size-2 shrink-0 rounded-full transition-colors',
+              isActive
+                ? 'bg-primary shadow-[0_0_8px_color-mix(in_oklch,var(--primary)_70%,transparent)]'
+                : 'bg-white/20',
+            )}
+          />
 
-        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
           <span className="font-mono text-sm font-semibold tracking-wide text-foreground tabular-nums">
             {account.uid}
           </span>
@@ -87,82 +96,147 @@ export function ProxyAccountRow({ account, isActive }: ProxyAccountRowProps) {
               {t('settings.activeBadge')}
             </Badge>
           )}
+
+          {isVerified && (
+            <Badge
+              variant="outline"
+              className="h-5 gap-1 border-emerald-500/40 bg-emerald-500/15 px-2 text-[10px] font-semibold text-emerald-400 uppercase shadow-xs"
+            >
+              <BadgeCheck className="size-3 text-emerald-400 shrink-0" />
+              <span>{t('settings.verifiedBadge')}</span>
+            </Badge>
+          )}
+        </div>
+
+        {/* Right: copy, make active, delete */}
+        <div className="flex items-center gap-1.5 ml-auto shrink-0">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleCopyUid}
+            title={copied ? t('settings.copied') : t('settings.copyUid')}
+            aria-label={t('settings.copyUid')}
+            className="size-8 rounded-lg text-muted-foreground hover:bg-white/[0.08] hover:text-foreground active:scale-95 transition-all"
+          >
+            {copied ? (
+              <Check className="size-3.5 stroke-[2.5] text-primary" />
+            ) : (
+              <Copy className="size-3.5" />
+            )}
+          </Button>
+
+          {!isActive && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveAccount(account.id)}
+              className="h-8 gap-1.5 rounded-lg border-white/10 text-xs font-medium text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-[0.98] transition-all px-2.5"
+            >
+              <Check className="size-3.5 stroke-[2.5]" />
+              {t('settings.makeActive')}
+            </Button>
+          )}
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={deleteMutation.isPending}
+                aria-label={t('settings.delete')}
+                title={t('settings.delete')}
+                className="size-8 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 active:scale-95 transition-all"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="w-[calc(100vw-32px)] max-w-md">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t('settings.deleteDialogTitle', { uid: account.uid })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('settings.deleteDialogDesc')}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-2">
+                <AlertDialogCancel className="w-full sm:w-auto">
+                  {t('settings.deleteCancel')}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  className="w-full sm:w-auto"
+                  onClick={() => deleteMutation.mutate(account.id)}
+                >
+                  {t('settings.deleteConfirm')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
-      {/* 2. Added date: full width on mobile (no truncation), inline on desktop */}
-      <p className="col-span-full row-start-2 pl-4 text-[11px] text-muted-foreground/70 sm:pl-0 sm:ml-2 sm:mr-auto sm:truncate">
-        {t('settings.addedAt', { date: formatDate(account.created_at) })}
-      </p>
+      {/* Added date & Verification / Privacy options section */}
+      <div className="flex flex-col gap-2 pt-1 border-t border-white/[0.04] sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[11px] text-muted-foreground/70">
+          {t('settings.addedAt', { date: formatDate(account.created_at) })}
+        </p>
 
-      {/* 3. Copy button: top right on mobile, inline on desktop */}
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        onClick={handleCopyUid}
-        title={copied ? t('settings.copied') : t('settings.copyUid')}
-        aria-label={t('settings.copyUid')}
-        className="col-start-2 row-start-1 size-8.5 rounded-lg text-muted-foreground hover:bg-white/[0.08] hover:text-foreground active:scale-95 transition-all sm:shrink-0"
-      >
-        {copied ? (
-          <Check className="size-3.5 stroke-[2.5] text-primary" />
+        {isVerified ? (
+          <div className="flex flex-wrap items-center gap-4 text-xs">
+            {/* Toggle 1: Public showcase */}
+            <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground select-none">
+              <Switch
+                checked={Boolean(account.is_public_showcase)}
+                disabled={updateAccountMutation.isPending}
+                onCheckedChange={(checked) =>
+                  updateAccountMutation.mutate({
+                    id: account.id,
+                    is_public_showcase: checked,
+                  })
+                }
+                aria-label={t('settings.publicShowcase')}
+              />
+              <span className="text-[11.5px] font-medium">{t('settings.publicShowcase')}</span>
+            </label>
+
+            {/* Toggle 2: Show Discord */}
+            <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground select-none">
+              <Switch
+                checked={Boolean(account.show_discord)}
+                disabled={updateAccountMutation.isPending}
+                onCheckedChange={(checked) =>
+                  updateAccountMutation.mutate({
+                    id: account.id,
+                    show_discord: checked,
+                  })
+                }
+                aria-label={t('settings.showDiscord')}
+              />
+              <span className="text-[11.5px] font-medium">{t('settings.showDiscord')}</span>
+            </label>
+          </div>
         ) : (
-          <Copy className="size-3.5" />
-        )}
-      </Button>
-
-      {/* 4. Make Active button: full-width on mobile row 3, inline on desktop */}
-      {!isActive && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setActiveAccount(account.id)}
-          className="col-span-full row-start-3 h-8.5 w-full gap-1.5 rounded-lg border-white/10 text-xs font-medium text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-[0.98] transition-all sm:w-auto sm:px-2.5 sm:shrink-0"
-        >
-          <Check className="size-3.5 stroke-[2.5]" />
-          {t('settings.makeActive')}
-        </Button>
-      )}
-
-      {/* 5. Delete dialog: top right on mobile, inline on desktop */}
-      <div className="col-start-3 row-start-1 sm:shrink-0">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
+          <div className="flex items-center">
             <Button
-              variant="ghost"
-              size="icon-sm"
-              disabled={deleteMutation.isPending}
-              aria-label={t('settings.delete')}
-              title={t('settings.delete')}
-              className="size-8.5 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 active:scale-95 transition-all"
+              variant="outline"
+              size="sm"
+              onClick={() => setVerifyOpen(true)}
+              className="h-7.5 gap-1.5 rounded-lg border-primary/40 bg-primary/5 text-xs font-semibold text-primary hover:bg-primary/15 hover:border-primary/60 transition-all"
             >
-              <Trash2 className="size-3.5" />
+              <ShieldCheck className="size-3.5 text-primary" />
+              <span>{t('settings.verifyUidButton')}</span>
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent className="w-[calc(100vw-32px)] max-w-md">
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t('settings.deleteDialogTitle', { uid: account.uid })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t('settings.deleteDialogDesc')}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-2">
-              <AlertDialogCancel className="w-full sm:w-auto">
-                {t('settings.deleteCancel')}
-              </AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                className="w-full sm:w-auto"
-                onClick={() => deleteMutation.mutate(account.id)}
-              >
-                {t('settings.deleteConfirm')}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          </div>
+        )}
       </div>
+
+      {/* Verification Dialog modal */}
+      <VerifyUidDialog
+        account={account}
+        open={verifyOpen}
+        onOpenChange={setVerifyOpen}
+      />
     </div>
   )
 }

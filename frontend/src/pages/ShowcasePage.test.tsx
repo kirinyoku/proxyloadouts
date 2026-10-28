@@ -19,6 +19,11 @@ vi.mock('react-i18next', async (importOriginal) => {
           'showcase.refreshShowcase': 'Обновить витрину',
           'showcase.linkUid': 'Привязать UID',
           'showcase.linkUidTooltip': 'Привязать этот UID',
+          'showcase.liveShowcase': 'Витрина в игре',
+          'showcase.savedPresets': 'Архив сборок',
+          'showcase.squads': 'Отряды',
+          'showcase.enkaUnavailableNotice': 'Сервера EnkaNetwork временно недоступны — показаны сохраненные сборки и отряды игрока',
+          'sharing.verifiedOwner': 'VERIFIED OWNER',
         }
         return translations[key] ?? key
       },
@@ -44,6 +49,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 // Mock hooks
 const mockUseActiveAccount = vi.fn()
 const mockUseShowcase = vi.fn()
+const mockUseShowcaseRoster = vi.fn().mockReturnValue({ data: null, isPending: false, isError: false })
 const mockUseBuilds = vi.fn()
 const mockUseMe = vi.fn()
 
@@ -57,6 +63,7 @@ vi.mock('@/api/hooks', async (importOriginal) => {
     ...actual,
     useMe: () => mockUseMe(),
     useShowcase: () => mockUseShowcase(),
+    useShowcaseRoster: () => mockUseShowcaseRoster(),
     useBuilds: () => mockUseBuilds(),
   }
 })
@@ -216,5 +223,85 @@ describe('ShowcasePage', () => {
     expect(html).toContain('justify-center')
     expect(html).toContain('items-center')
     expect(html).toContain('min-h-[calc(100dvh-10rem)]')
+  })
+
+  it('recovers with saved presets when Enka is down and roster data is available', () => {
+    mockUseMe.mockReturnValue({ data: null })
+    mockUseActiveAccount.mockReturnValue({
+      activeAccount: null,
+      accounts: [],
+      isPending: false,
+    })
+    mockUseShowcase.mockReturnValue({
+      data: null,
+      isPending: false,
+      isError: true,
+      error: new Error('502 Bad Gateway'),
+      isRefetching: false,
+      refetch: vi.fn(),
+    })
+    mockUseShowcaseRoster.mockReturnValue({
+      data: {
+        owner: {
+          uid: '1504687050',
+          region: 'Europe',
+          nickname: 'ProxyMaster',
+          avatar_url: null,
+          is_verified: true,
+        },
+        is_public_showcase: true,
+        builds: [],
+        teams: [],
+      },
+      isPending: false,
+      isError: false,
+    })
+    mockUseBuilds.mockReturnValue({
+      data: [],
+      isPending: false,
+    })
+
+    const html = renderToString(<ShowcasePage />)
+    expect(html).toContain('Сервера EnkaNetwork временно недоступны')
+    expect(html).not.toContain('min-h-[calc(100dvh-10rem)]')
+  })
+
+  it('renders verified owner badge and discord chip when present', () => {
+    mockUseMe.mockReturnValue({ data: null })
+    mockUseActiveAccount.mockReturnValue({
+      activeAccount: null,
+      accounts: [],
+      isPending: false,
+    })
+    mockUseShowcase.mockReturnValue({
+      data: {
+        ...mockShowcase,
+        verified_owner: {
+          uid: '1504687050',
+          region: 'Europe',
+          nickname: 'ProxyMaster',
+          avatar_url: null,
+          is_verified: true,
+          discord_username: 'kirin#0001',
+        },
+      },
+      isPending: false,
+      isError: false,
+      isRefetching: false,
+      refetch: vi.fn(),
+    })
+    mockUseShowcaseRoster.mockReturnValue({
+      data: null,
+      isPending: false,
+      isError: false,
+    })
+    mockUseBuilds.mockReturnValue({
+      data: [],
+      isPending: false,
+    })
+
+    const html = renderToString(<ShowcasePage />)
+    expect(html).toContain('VERIFIED OWNER')
+    expect(html).toContain('kirin#0001')
   })
 })

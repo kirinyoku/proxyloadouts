@@ -1,4 +1,7 @@
+import type { PublicOwnerInfo } from './account'
 import type { Agent } from './agent'
+import type { Build } from './build'
+import type { TeamSummary } from './team'
 
 export type ShowcaseSource = 'fresh' | 'cached'
 
@@ -13,4 +16,13 @@ export interface ShowcaseResponse {
   fetched_at: string
   agent_count: number
   agents: Agent[]
+  verified_owner?: PublicOwnerInfo | null
+  has_public_roster?: boolean
+}
+
+export interface PublicShowcaseRosterResponse {
+  owner: PublicOwnerInfo
+  is_public_showcase: boolean
+  builds: Build[]
+  teams: TeamSummary[]
 }

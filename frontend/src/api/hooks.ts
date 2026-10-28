@@ -11,6 +11,7 @@ import type {
   CreateTeamRequest,
   GameAccount,
   MeResponse,
+  UpdateAccountRequest,
   UpdateTeamRequest,
 } from '@/types'
 import * as api from './client'
@@ -46,6 +47,8 @@ export const queryKeys = {
   me: ['auth', 'me'] as const,
   showcase: (uid: string, lang?: string) =>
     lang ? (['showcase', uid, lang] as const) : (['showcase', uid] as const),
+  showcaseRoster: (uid: string, lang?: string) =>
+    lang ? (['showcase', 'roster', uid, lang] as const) : (['showcase', 'roster', uid] as const),
   builds: (gameAccountId: string, lang?: string) =>
     lang ? (['builds', gameAccountId, lang] as const) : (['builds', gameAccountId] as const),
   teams: (gameAccountId: string, lang?: string) =>
@@ -122,6 +125,18 @@ export function useShowcase(uid: string) {
     queryKey: queryKeys.showcase(uid, langKey),
     queryFn: ({ signal }) => api.fetchShowcase(uid, langKey, signal),
     enabled: uid.trim().length > 0,
+    staleTime: SHOWCASE_STALE_TIME,
+  })
+}
+
+export function useShowcaseRoster(uid: string, options?: QueryOptions) {
+  const { i18n: i18nInstance } = useTranslation()
+  const langKey = i18nInstance.language?.slice(0, 2) === 'en' ? 'en' : 'ru'
+
+  return useQuery({
+    queryKey: queryKeys.showcaseRoster(uid, langKey),
+    queryFn: ({ signal }) => api.fetchShowcaseRoster(uid, langKey, signal),
+    enabled: uid.trim().length > 0 && (options?.enabled ?? true),
     staleTime: SHOWCASE_STALE_TIME,
   })
 }
@@ -281,6 +296,72 @@ export function useDeleteAccount() {
       toast.success(i18n.t('toasts.accountDeleted'))
     },
     onError: (error) => notifyMutationError(error, i18n.t('toasts.accountDeleteError')),
+  })
+}
+
+export function useUpdateAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+    } & UpdateAccountRequest) => api.updateAccount(id, body),
+    onSuccess: (updatedAccount) => {
+      queryClient.setQueryData<MeResponse>(queryKeys.me, (current) =>
+        current
+          ? {
+              ...current,
+              accounts: current.accounts.map((acc) =>
+                acc.id === updatedAccount.id ? updatedAccount : acc,
+              ),
+            }
+          : current,
+      )
+      void queryClient.invalidateQueries({
+        queryKey: ['showcase', 'roster', updatedAccount.uid],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ['showcase', updatedAccount.uid],
+      })
+      toast.success(i18n.t('toasts.accountSettingsUpdated'))
+    },
+    onError: (error) => notifyMutationError(error, i18n.t('toasts.accountSettingsUpdateError')),
+  })
+}
+
+export function useStartVerification() {
+  return useMutation({
+    mutationFn: (accountId: string) => api.startAccountVerification(accountId),
+    onError: (error) => notifyMutationError(error, i18n.t('settings.verifyError')),
+  })
+}
+
+export function useConfirmVerification() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (accountId: string) => api.confirmAccountVerification(accountId),
+    onSuccess: (updatedAccount) => {
+      queryClient.setQueryData<MeResponse>(queryKeys.me, (current) =>
+        current
+          ? {
+              ...current,
+              accounts: current.accounts.map((acc) =>
+                acc.id === updatedAccount.id ? updatedAccount : acc,
+              ),
+            }
+          : current,
+      )
+      void queryClient.invalidateQueries({
+        queryKey: ['showcase', 'roster', updatedAccount.uid],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ['showcase', updatedAccount.uid],
+      })
+      toast.success(i18n.t('settings.verifySuccess'))
+    },
+    onError: (error) => notifyMutationError(error, i18n.t('settings.verifyError')),
   })
 }
 
