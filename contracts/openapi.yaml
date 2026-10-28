@@ -424,6 +424,43 @@ paths:
         '409':
           $ref: '#/components/responses/ConflictError'
 
+  /public/builds/{buildID}:
+    get:
+      summary: Get public agent build
+      description: Retrieves a single publicly shared agent build with owner metadata. Returns 404 if build is private or owner is banned.
+      operationId: getPublicBuild
+      tags:
+        - Builds
+      security: []
+      parameters:
+        - name: buildID
+          in: path
+          required: true
+          description: Unique build ID
+          schema:
+            type: string
+            format: uuid
+        - name: lang
+          in: query
+          required: false
+          description: Target language for dynamic localization (e.g. ru, en)
+          schema:
+            type: string
+            example: ru
+      responses:
+        '200':
+          description: Public agent build details with owner information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBuildResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+
   /teams:
     get:
       summary: List teams for an account
@@ -666,6 +703,43 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+
+  /public/teams/{teamID}:
+    get:
+      summary: Get public team details
+      description: Retrieves a single publicly shared team squad preset with member details and owner metadata. Returns 404 if team is private or owner is banned.
+      operationId: getPublicTeam
+      tags:
+        - Teams
+      security: []
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          description: Unique team ID
+          schema:
+            type: string
+            format: uuid
+        - name: lang
+          in: query
+          required: false
+          description: Target language for dynamic localization (e.g. ru, en)
+          schema:
+            type: string
+            example: ru
+      responses:
+        '200':
+          description: Public squad composition with member builds and owner information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicTeamResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   # -----------------------------------------------------------------------
   # Admin surface (docs/product/PRD-admin-dashboard.md)
@@ -1071,6 +1145,26 @@ components:
           type: string
           enum: [Europe, America, Asia, TW/HK/MO]
           example: "Europe"
+        nickname:
+          type:
+            - string
+            - "null"
+          example: "ProxyLeader"
+        avatar_url:
+          type:
+            - string
+            - "null"
+        verified_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        is_public_showcase:
+          type: boolean
+          default: false
+        show_discord:
+          type: boolean
+          default: false
         created_at:
           type: string
           format: date-time
@@ -1144,6 +1238,7 @@ components:
         - name
         - disc_uids
         - build_data
+        - is_public
         - created_at
         - updated_at
       properties:
@@ -1181,6 +1276,9 @@ components:
         build_data:
           type: object
           description: Full enriched agent payload from Enka / Fairy
+        is_public:
+          type: boolean
+          example: false
         created_at:
           type: string
           format: date-time
@@ -1219,6 +1317,8 @@ components:
           type:
             - string
             - "null"
+        is_public:
+          type: boolean
 
     Team:
       type: object
@@ -1226,6 +1326,7 @@ components:
         - id
         - game_account_id
         - name
+        - is_public
         - created_at
         - updated_at
       properties:
@@ -1242,6 +1343,9 @@ components:
           type:
             - string
             - "null"
+        is_public:
+          type: boolean
+          example: false
         created_at:
           type: string
           format: date-time
@@ -1324,6 +1428,8 @@ components:
           type:
             - string
             - "null"
+        is_public:
+          type: boolean
         build_ids:
           type: array
           minItems: 1
@@ -1348,6 +1454,8 @@ components:
           type:
             - string
             - "null"
+        is_public:
+          type: boolean
         build_ids:
           type: array
           minItems: 1
@@ -1400,6 +1508,76 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ConflictError'
+
+    PublicOwnerInfo:
+      type: object
+      required:
+        - uid
+        - region
+        - nickname
+        - avatar_url
+        - is_verified
+      properties:
+        uid:
+          type: string
+          example: "1500000000"
+        region:
+          type: string
+          enum: [Europe, America, Asia, TW/HK/MO]
+          example: "Europe"
+        nickname:
+          type:
+            - string
+            - "null"
+          example: "ProxyLeader"
+        avatar_url:
+          type:
+            - string
+            - "null"
+        is_verified:
+          type: boolean
+          example: true
+        discord_username:
+          type:
+            - string
+            - "null"
+          description: Owner's Discord username (only populated if show_discord is true)
+          example: "ProxyLeader"
+        discord_avatar_url:
+          type:
+            - string
+            - "null"
+          description: Owner's Discord avatar URL (only populated if show_discord is true)
+
+    PublicBuildResponse:
+      type: object
+      required:
+        - build
+        - owner
+      properties:
+        build:
+          $ref: '#/components/schemas/Build'
+        owner:
+          $ref: '#/components/schemas/PublicOwnerInfo'
+
+    PublicTeamResponse:
+      type: object
+      required:
+        - team
+        - report
+        - members
+        - owner
+      properties:
+        team:
+          $ref: '#/components/schemas/Team'
+        report:
+          $ref: '#/components/schemas/ConflictReport'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMember'
+        owner:
+          $ref: '#/components/schemas/PublicOwnerInfo'
 
     ShowcaseResponse:
       type: object

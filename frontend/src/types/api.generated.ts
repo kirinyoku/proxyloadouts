@@ -244,6 +244,26 @@ export interface paths {
         patch: operations["updateBuildDetails"];
         trace?: never;
     };
+    "/public/builds/{buildID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get public agent build
+         * @description Retrieves a single publicly shared agent build with owner metadata. Returns 404 if build is private or owner is banned.
+         */
+        get: operations["getPublicBuild"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/teams": {
         parameters: {
             query?: never;
@@ -331,6 +351,26 @@ export interface paths {
          * @description Removes an owned team; members cascade deleted.
          */
         delete: operations["deleteTeam"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/teams/{teamID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get public team details
+         * @description Retrieves a single publicly shared team squad preset with member details and owner metadata. Returns 404 if team is private or owner is banned.
+         */
+        get: operations["getPublicTeam"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -547,6 +587,15 @@ export interface components {
              * @enum {string}
              */
             region: "Europe" | "America" | "Asia" | "TW/HK/MO";
+            /** @example ProxyLeader */
+            nickname?: string | null;
+            avatar_url?: string | null;
+            /** Format: date-time */
+            verified_at?: string | null;
+            /** @default false */
+            is_public_showcase: boolean;
+            /** @default false */
+            show_discord: boolean;
             /** Format: date-time */
             created_at: string;
         };
@@ -600,6 +649,8 @@ export interface components {
             disc_uids: string[];
             /** @description Full enriched agent payload from Enka / Fairy */
             build_data: Record<string, never>;
+            /** @example false */
+            is_public: boolean;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -618,6 +669,7 @@ export interface components {
         PatchBuildRequest: {
             name?: string;
             description?: string | null;
+            is_public?: boolean;
         };
         Team: {
             /** Format: uuid */
@@ -627,6 +679,8 @@ export interface components {
             /** @example Ice Anomaly Trio */
             name: string;
             description?: string | null;
+            /** @example false */
+            is_public: boolean;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -663,6 +717,7 @@ export interface components {
             /** @description Squad preset name. If omitted or empty, auto-generated from member agent names (e.g. "Aria/Nangong Yu/Sanna"). */
             name?: string;
             description?: string | null;
+            is_public?: boolean;
             build_ids: string[];
         };
         UpdateTeamRequest: {
@@ -671,6 +726,7 @@ export interface components {
             /** @description Squad preset name. If omitted or empty, auto-generated from member agent names (e.g. "Aria/Nangong Yu/Sanna"). */
             name?: string;
             description?: string | null;
+            is_public?: boolean;
             build_ids: string[];
         };
         /** @enum {string} */
@@ -688,6 +744,37 @@ export interface components {
         ConflictReport: {
             is_valid: boolean;
             errors: components["schemas"]["ConflictError"][];
+        };
+        PublicOwnerInfo: {
+            /** @example 1500000000 */
+            uid: string;
+            /**
+             * @example Europe
+             * @enum {string}
+             */
+            region: "Europe" | "America" | "Asia" | "TW/HK/MO";
+            /** @example ProxyLeader */
+            nickname: string | null;
+            avatar_url: string | null;
+            /** @example true */
+            is_verified: boolean;
+            /**
+             * @description Owner's Discord username (only populated if show_discord is true)
+             * @example ProxyLeader
+             */
+            discord_username?: string | null;
+            /** @description Owner's Discord avatar URL (only populated if show_discord is true) */
+            discord_avatar_url?: string | null;
+        };
+        PublicBuildResponse: {
+            build: components["schemas"]["Build"];
+            owner: components["schemas"]["PublicOwnerInfo"];
+        };
+        PublicTeamResponse: {
+            team: components["schemas"]["Team"];
+            report: components["schemas"]["ConflictReport"];
+            members: components["schemas"]["TeamMember"][];
+            owner: components["schemas"]["PublicOwnerInfo"];
         };
         ShowcaseResponse: {
             uid: string;
@@ -1327,6 +1414,35 @@ export interface operations {
             404: components["responses"]["NotFoundError"];
         };
     };
+    getPublicBuild: {
+        parameters: {
+            query?: {
+                /** @description Target language for dynamic localization (e.g. ru, en) */
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique build ID */
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public agent build details with owner information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBuildResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            429: components["responses"]["RateLimitedError"];
+        };
+    };
     listTeams: {
         parameters: {
             query: {
@@ -1516,6 +1632,35 @@ export interface operations {
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
+        };
+    };
+    getPublicTeam: {
+        parameters: {
+            query?: {
+                /** @description Target language for dynamic localization (e.g. ru, en) */
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique team ID */
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public squad composition with member builds and owner information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicTeamResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            429: components["responses"]["RateLimitedError"];
         };
     };
     adminGetStats: {
