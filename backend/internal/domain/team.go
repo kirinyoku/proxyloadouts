@@ -24,6 +24,7 @@ type Team struct {
 	GameAccountID uuid.UUID
 	Name          string
 	Description   *string // nil when the team has no description
+	IsPublic      bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }

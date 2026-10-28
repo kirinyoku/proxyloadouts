@@ -230,3 +230,23 @@ func TestNewValidReport(t *testing.T) {
 		t.Errorf("expected non-nil empty errors slice, got %v", report.Errors)
 	}
 }
+
+func TestGameAccount_IsVerified(t *testing.T) {
+	var nilAccount *GameAccount
+	if nilAccount.IsVerified() {
+		t.Error("expected nil account to not be verified")
+	}
+
+	account := &GameAccount{
+		UID: "1504687050",
+	}
+	if account.IsVerified() {
+		t.Error("expected account with nil VerifiedAt to not be verified")
+	}
+
+	now := time.Now()
+	account.VerifiedAt = &now
+	if !account.IsVerified() {
+		t.Error("expected account with non-nil VerifiedAt to be verified")
+	}
+}

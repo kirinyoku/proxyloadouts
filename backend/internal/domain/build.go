@@ -42,6 +42,8 @@ type AgentBuild struct {
 	// for client responses (not persisted in the database).
 	BuildData json.RawMessage
 
+	IsPublic bool
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
