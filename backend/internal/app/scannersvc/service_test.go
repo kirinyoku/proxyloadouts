@@ -17,10 +17,11 @@ import (
 
 // fakeFetcher is a controllable Fetcher for tests.
 type fakeFetcher struct {
-	calls   atomic.Int64
-	profile *fairy.Profile
-	ttl     time.Duration
-	err     error
+	calls      atomic.Int64
+	profile    *fairy.Profile
+	rawProfile *zzz.Profile
+	ttl        time.Duration
+	err        error
 
 	// When non-nil, FetchRawProfile blocks until the channel is closed.
 	gate chan struct{}
@@ -34,12 +35,22 @@ func (f *fakeFetcher) FetchRawProfile(_ context.Context, uid string) (*zzz.Profi
 	if f.err != nil {
 		return nil, 0, f.err
 	}
+	if f.rawProfile != nil {
+		return f.rawProfile, f.ttl, nil
+	}
 	return &zzz.Profile{UID: uid}, f.ttl, nil
 }
 
 func (f *fakeFetcher) EnrichProfile(raw *zzz.Profile, lang fairy.Language) (*fairy.Profile, error) {
+	if raw == nil {
+		return nil, errors.New("raw profile is nil")
+	}
 	if f.profile == nil {
-		return &fairy.Profile{UID: raw.UID}, nil
+		p := &fairy.Profile{UID: raw.UID}
+		if raw.PlayerInfo.SocialDetail != nil && raw.PlayerInfo.SocialDetail.ProfileDetail != nil {
+			p.Nickname = raw.PlayerInfo.SocialDetail.ProfileDetail.Nickname
+		}
+		return p, nil
 	}
 	p := *f.profile
 	if len(p.Agents) > 0 {
@@ -468,5 +479,155 @@ func TestNormalizeLanguage(t *testing.T) {
 				t.Errorf("NormalizeLanguage(%q) = %q, want %q", tt.raw, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestFetchFreshRawProfile_BypassesAndOverwritesCache(t *testing.T) {
+	const testUID = "1301806568"
+	cacheKey := scanCacheKey(testUID)
+
+	// Old profile initially placed into cache
+	oldProfile := &zzz.Profile{
+		UID: testUID,
+		PlayerInfo: zzz.PlayerInfo{
+			SocialDetail: &zzz.SocialDetail{
+				Desc: "OLD_SIGNATURE",
+				ProfileDetail: &zzz.ProfileDetail{
+					Nickname: "OldNick",
+				},
+			},
+		},
+	}
+
+	fetcher := &fakeFetcher{
+		ttl: 5 * time.Minute,
+	}
+	svc, cache := newTestService(fetcher, time.Minute)
+	defer cache.Close()
+
+	// Seed cache directly with old profile
+	cache.Set(cacheKey, oldProfile, 5*time.Minute)
+
+	// Verify old profile is in cache via GetOrFetch (bypasses upstream network call)
+	cachedRaw, fromCache, _, err := cache.GetOrFetch(context.Background(), cacheKey, time.Minute, nil)
+	if err != nil || !fromCache || cachedRaw.PlayerInfo.SocialDetail.Desc != "OLD_SIGNATURE" {
+		t.Fatalf("failed to seed cache with old profile: fromCache=%v, err=%v", fromCache, err)
+	}
+
+	// Update fetcher to return new profile with new signature
+	newProfile := &zzz.Profile{
+		UID: testUID,
+		PlayerInfo: zzz.PlayerInfo{
+			SocialDetail: &zzz.SocialDetail{
+				Desc: "PXL-7890",
+				ProfileDetail: &zzz.ProfileDetail{
+					Nickname: "VerifiedPlayer",
+				},
+			},
+		},
+	}
+	fetcher.rawProfile = newProfile
+	fetcher.profile = &fairy.Profile{
+		UID:      testUID,
+		Nickname: "VerifiedPlayer",
+		Avatar:   &fairy.Avatar{URL: "https://avatar.png"},
+	}
+
+	// Fetch fresh profile bypassing cache
+	fresh, err := svc.FetchFreshRawProfile(context.Background(), testUID)
+	if err != nil {
+		t.Fatalf("FetchFreshRawProfile failed: %v", err)
+	}
+
+	// Verify fresh profile fields
+	if fresh.UID != testUID {
+		t.Errorf("expected UID %s, got %s", testUID, fresh.UID)
+	}
+	if fresh.Signature != "PXL-7890" {
+		t.Errorf("expected signature PXL-7890, got %s", fresh.Signature)
+	}
+	if fresh.Nickname != "VerifiedPlayer" {
+		t.Errorf("expected nickname VerifiedPlayer, got %s", fresh.Nickname)
+	}
+	if fresh.AvatarURL != "https://avatar.png" {
+		t.Errorf("expected avatar URL https://avatar.png, got %s", fresh.AvatarURL)
+	}
+	if fresh.Raw != newProfile {
+		t.Errorf("expected raw profile to match upstream response")
+	}
+	if fetcher.callCount() != 1 {
+		t.Errorf("expected 1 fetcher call, got %d", fetcher.callCount())
+	}
+
+	// Verify that cache was overwritten with the new profile
+	overwrittenRaw, fromCache, _, err := cache.GetOrFetch(context.Background(), cacheKey, time.Minute, nil)
+	if err != nil || !fromCache {
+		t.Fatalf("expected cache hit after fresh fetch: %v", err)
+	}
+	if overwrittenRaw.PlayerInfo.SocialDetail.Desc != "PXL-7890" {
+		t.Errorf("expected cache to have new signature PXL-7890, got %s", overwrittenRaw.PlayerInfo.SocialDetail.Desc)
+	}
+}
+
+func TestFetchFreshRawProfile_EvictsNegativeCache(t *testing.T) {
+	const testUID = "1301806568"
+	cacheKey := scanCacheKey(testUID)
+
+	negCache := inmemory.NewNegativeCache(100, time.Minute)
+	defer negCache.Close()
+	negCache.Set(cacheKey, time.Minute)
+	if !negCache.Has(cacheKey) {
+		t.Fatal("negative cache should contain key initially")
+	}
+
+	fetcher := &fakeFetcher{
+		rawProfile: &zzz.Profile{
+			UID: testUID,
+			PlayerInfo: zzz.PlayerInfo{
+				SocialDetail: &zzz.SocialDetail{
+					Desc: "PXL-1234",
+				},
+			},
+		},
+	}
+	cache := inmemory.NewProfileCache[*zzz.Profile](100, time.Minute)
+	defer cache.Close()
+
+	svc := New(fetcher, cache, Options{
+		NegativeCache: negCache,
+		NegativeTTL:   time.Minute,
+	})
+
+	fresh, err := svc.FetchFreshRawProfile(context.Background(), testUID)
+	if err != nil {
+		t.Fatalf("FetchFreshRawProfile failed: %v", err)
+	}
+	if fresh.Signature != "PXL-1234" {
+		t.Errorf("expected signature PXL-1234, got %s", fresh.Signature)
+	}
+	if negCache.Has(cacheKey) {
+		t.Errorf("expected negative cache key to be evicted")
+	}
+}
+
+func TestFetchFreshRawProfile_InvalidUID(t *testing.T) {
+	svc, cache := newTestService(&fakeFetcher{}, time.Minute)
+	defer cache.Close()
+
+	_, err := svc.FetchFreshRawProfile(context.Background(), "invalid-uid")
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput, got: %v", err)
+	}
+}
+
+func TestFetchFreshRawProfile_FetcherError(t *testing.T) {
+	fetchErr := errors.New("upstream enka down")
+	fetcher := &fakeFetcher{err: fetchErr}
+	svc, cache := newTestService(fetcher, time.Minute)
+	defer cache.Close()
+
+	_, err := svc.FetchFreshRawProfile(context.Background(), "1301806568")
+	if !errors.Is(err, fetchErr) {
+		t.Fatalf("expected fetcher error, got: %v", err)
 	}
 }

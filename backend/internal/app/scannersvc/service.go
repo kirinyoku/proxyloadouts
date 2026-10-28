@@ -52,12 +52,19 @@ type Cache interface {
 		ttl time.Duration,
 		fetchFn func(ctx context.Context) (*zzz.Profile, time.Duration, error),
 	) (raw *zzz.Profile, fromCache bool, remainingTTL time.Duration, err error)
+	Set(key string, value *zzz.Profile, ttl time.Duration)
+}
+
+// CacheUpdater abstracts the ability to forcibly write a raw profile to the cache.
+type CacheUpdater interface {
+	Set(key string, value *zzz.Profile, ttl time.Duration)
 }
 
 // NegativeCache abstracts short-term caching of missing entries (negative caching).
 type NegativeCache interface {
 	Set(key string, ttl time.Duration)
 	Has(key string) bool
+	Delete(key string)
 }
 
 type memoryNegativeCache struct {
@@ -107,6 +114,12 @@ func (m *memoryNegativeCache) Has(key string) bool {
 		return false
 	}
 	return true
+}
+
+func (m *memoryNegativeCache) Delete(key string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.items, key)
 }
 
 // Options holds optional scanner settings.
@@ -251,6 +264,16 @@ type ShowcaseResponse struct {
 	Agents         []fairy.Agent `json:"agents"`
 }
 
+// FreshVerificationProfile holds canonical player metadata and social signature
+// fetched freshly from upstream to verify account ownership.
+type FreshVerificationProfile struct {
+	UID       string       `json:"uid"`
+	Nickname  string       `json:"nickname"`
+	AvatarURL string       `json:"avatar_url,omitempty"`
+	Signature string       `json:"signature"`
+	Raw       *zzz.Profile `json:"-"`
+}
+
 // ScanByUID returns the current showcase for the given UID localized in the
 // requested language. The raw profile is cached in-memory and coalesced via
 // singleflight, so subsequent requests in different languages are enriched
@@ -296,6 +319,69 @@ func (s *Service) ScanByUID(ctx context.Context, uid string, lang ...string) (*S
 		status = SourceCached
 	}
 	return buildShowcaseResponse(profile, status, remTTL), nil
+}
+
+// FetchFreshRawProfile bypasses local caches (both TTL cache and negative cache)
+// to fetch the latest upstream profile directly from the provider.
+// On success, it enriches the profile in fairy.LangRU to obtain canonical Nickname
+// and AvatarURL, extracts the player's bio/signature from SocialDetail.Desc,
+// overwrites the local TTL cache with the fresh raw payload, and removes any
+// stale negative cache entry for the UID.
+func (s *Service) FetchFreshRawProfile(ctx context.Context, uid string) (*FreshVerificationProfile, error) {
+	if err := domain.ValidateUID(uid); err != nil {
+		return nil, fmt.Errorf("%w: %w", domain.ErrInvalidInput, err)
+	}
+
+	raw, ttl, err := s.fetcher.FetchRawProfile(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, fmt.Errorf("%w: received empty profile from upstream", domain.ErrNotFound)
+	}
+
+	enriched, err := s.fetcher.EnrichProfile(raw, fairy.LangRU)
+	if err != nil {
+		return nil, fmt.Errorf("failed to enrich profile: %w", err)
+	}
+
+	var nickname string
+	var avatarURL string
+	if enriched != nil {
+		nickname = enriched.Nickname
+		if enriched.Avatar != nil {
+			avatarURL = enriched.Avatar.URL
+		}
+	}
+	if nickname == "" && raw.PlayerInfo.SocialDetail != nil && raw.PlayerInfo.SocialDetail.ProfileDetail != nil {
+		nickname = raw.PlayerInfo.SocialDetail.ProfileDetail.Nickname
+	}
+
+	var signature string
+	if raw.PlayerInfo.SocialDetail != nil {
+		signature = raw.PlayerInfo.SocialDetail.Desc
+	}
+
+	cacheKey := scanCacheKey(uid)
+	effectiveTTL := s.fallbackTTL
+	if ttl > 0 {
+		effectiveTTL = ttl
+	}
+
+	if effectiveTTL > 0 && s.cache != nil {
+		s.cache.Set(cacheKey, raw, effectiveTTL)
+	}
+	if s.negCache != nil {
+		s.negCache.Delete(cacheKey)
+	}
+
+	return &FreshVerificationProfile{
+		UID:       uid,
+		Nickname:  nickname,
+		AvatarURL: avatarURL,
+		Signature: signature,
+		Raw:       raw,
+	}, nil
 }
 
 // GetRawAvatar retrieves the raw avatar data for a specific agent from the
