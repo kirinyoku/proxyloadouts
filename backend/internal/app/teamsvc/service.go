@@ -64,6 +64,7 @@ type CreateInput struct {
 	Name          string
 	Description   *string
 	BuildIDs      []uuid.UUID // order defines slot numbers (1..len)
+	IsPublic      *bool
 }
 
 // UpdateInput describes changes to an existing team.
@@ -74,6 +75,7 @@ type UpdateInput struct {
 	Name          string
 	Description   *string
 	BuildIDs      []uuid.UUID // order defines slot numbers (1..len)
+	IsPublic      *bool
 }
 
 // ValidationError reports a team rejected by the Conflict Engine. The report
@@ -162,11 +164,17 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.Team, 
 		return nil, &ValidationError{Report: report}
 	}
 
+	var isPublic bool
+	if input.IsPublic != nil {
+		isPublic = *input.IsPublic
+	}
+
 	team := &domain.Team{
 		UserID:        input.UserID,
 		GameAccountID: input.GameAccountID,
 		Name:          name,
 		Description:   input.Description,
+		IsPublic:      isPublic,
 	}
 	members := make([]domain.TeamMember, 0, len(buildsList))
 	for i, build := range buildsList {
@@ -235,6 +243,9 @@ func (s *Service) Update(ctx context.Context, input UpdateInput) (*domain.Team, 
 	team.Name = name
 	team.Description = input.Description
 	team.GameAccountID = targetAccountID
+	if input.IsPublic != nil {
+		team.IsPublic = *input.IsPublic
+	}
 
 	members := make([]domain.TeamMember, 0, len(buildsList))
 	for i, build := range buildsList {
@@ -396,6 +407,75 @@ func (s *Service) Delete(ctx context.Context, userID, teamID uuid.UUID) error {
 		return err
 	}
 	return s.teams.Delete(ctx, teamID)
+}
+
+// SetVisibility updates the public visibility flag of an owned team without modifying its roster.
+func (s *Service) SetVisibility(ctx context.Context, userID, teamID uuid.UUID, isPublic bool) error {
+	team, err := s.ownedTeam(ctx, userID, teamID)
+	if err != nil {
+		return err
+	}
+	team.IsPublic = isPublic
+	members, err := s.teams.GetMembers(ctx, teamID)
+	if err != nil {
+		return err
+	}
+	return s.teams.Update(ctx, team, members)
+}
+
+// PublicTeamDetail pairs a publicly accessible team with its conflict report, member builds, and owner info.
+type PublicTeamDetail struct {
+	Team    *domain.Team
+	Report  domain.ConflictReport
+	Members []MemberDetail
+	Owner   *domain.PublicOwnerInfo
+}
+
+// GetPublic returns a publicly shared team with its roster and conflict report.
+// Returns domain.ErrNotFound if the team does not exist, is private (is_public = false),
+// or its owner is banned.
+// Implements Implicit Member Read: referenced builds are loaded regardless of their
+// individual build.IsPublic flags.
+func (s *Service) GetPublic(ctx context.Context, teamID uuid.UUID, lang ...string) (*PublicTeamDetail, error) {
+	team, owner, err := s.teams.GetPublicByID(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := s.teams.GetMembers(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+
+	requestedLang := ""
+	if len(lang) > 0 {
+		requestedLang = lang[0]
+	}
+
+	buildsList := make([]*domain.AgentBuild, 0, len(members))
+	detailMembers := make([]MemberDetail, 0, len(members))
+	for _, member := range members {
+		// Implicit Member Read: load build directly by ID regardless of build.IsPublic
+		build, err := s.builds.GetByID(ctx, member.BuildID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load build %s of public team %s: %w", member.BuildID, teamID, err)
+		}
+		s.enrichBuildWithLang(ctx, build, requestedLang)
+		buildsList = append(buildsList, build)
+		detailMembers = append(detailMembers, MemberDetail{
+			Member: member,
+			Build:  build,
+		})
+	}
+
+	report := conflicts.Validate(buildsList)
+
+	return &PublicTeamDetail{
+		Team:    team,
+		Report:  report,
+		Members: detailMembers,
+		Owner:   owner,
+	}, nil
 }
 
 func (s *Service) ownedTeam(ctx context.Context, userID, teamID uuid.UUID) (*domain.Team, error) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/kirinyoku/proxyloadouts/backend/internal/app/scannersvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
 
@@ -62,6 +63,16 @@ func (m *mockAccountStore) CountByUser(_ context.Context, userID uuid.UUID) (int
 		}
 	}
 	return count, nil
+}
+
+func (m *mockAccountStore) UpdateProfileMetadata(_ context.Context, id uuid.UUID, nickname, avatarURL *string) error {
+	acc, ok := m.accounts[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	acc.Nickname = nickname
+	acc.AvatarURL = avatarURL
+	return nil
 }
 
 func (m *mockAccountStore) Delete(_ context.Context, id uuid.UUID) error {
@@ -263,5 +274,66 @@ func TestAccountService_CreateCustomLimit(t *testing.T) {
 	_, err := svc.Create(context.Background(), userID, "1504687099", "Europe")
 	if !errors.Is(err, domain.ErrConflict) {
 		t.Errorf("expected ErrConflict when custom account limit reached, got %v", err)
+	}
+}
+
+type mockScanner struct {
+	resp *scannersvc.ShowcaseResponse
+	err  error
+}
+
+func (m *mockScanner) ScanByUID(_ context.Context, _ string, _ ...string) (*scannersvc.ShowcaseResponse, error) {
+	return m.resp, m.err
+}
+
+func TestAccountService_CreateWithScannerPopulatesMetadata(t *testing.T) {
+	store := newMockAccountStore()
+	scanner := &mockScanner{
+		resp: &scannersvc.ShowcaseResponse{
+			UID:       "1504687050",
+			Nickname:  "ProxyKirin",
+			AvatarURL: "https://example.com/avatar.png",
+		},
+	}
+	svc := New(store, WithScanner(scanner))
+
+	userID := uuid.New()
+	account, err := svc.Create(context.Background(), userID, "1504687050", "Europe")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if account.Nickname == nil || *account.Nickname != "ProxyKirin" {
+		t.Errorf("expected Nickname ProxyKirin, got %v", account.Nickname)
+	}
+	if account.AvatarURL == nil || *account.AvatarURL != "https://example.com/avatar.png" {
+		t.Errorf("expected AvatarURL https://example.com/avatar.png, got %v", account.AvatarURL)
+	}
+}
+
+func TestAccountService_UpdateProfileMetadata(t *testing.T) {
+	store := newMockAccountStore()
+	svc := New(store)
+
+	userID := uuid.New()
+	account, err := svc.Create(context.Background(), userID, "1504687050", "Europe")
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	newNick := "UpdatedNick"
+	newAvatar := "https://example.com/new.png"
+	if err := svc.UpdateProfileMetadata(context.Background(), account.ID, &newNick, &newAvatar); err != nil {
+		t.Fatalf("UpdateProfileMetadata failed: %v", err)
+	}
+
+	updated, err := store.GetByID(context.Background(), account.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if updated.Nickname == nil || *updated.Nickname != newNick {
+		t.Errorf("expected Nickname %q, got %v", newNick, updated.Nickname)
+	}
+	if updated.AvatarURL == nil || *updated.AvatarURL != newAvatar {
+		t.Errorf("expected AvatarURL %q, got %v", newAvatar, updated.AvatarURL)
 	}
 }

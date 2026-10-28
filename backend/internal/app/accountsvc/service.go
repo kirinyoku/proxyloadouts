@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/kirinyoku/proxyloadouts/backend/internal/app/scannersvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
 
@@ -20,12 +21,18 @@ type AccountStore interface {
 	GetByUserAndUID(ctx context.Context, userID uuid.UUID, uid string) (*domain.GameAccount, error)
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]*domain.GameAccount, error)
 	CountByUser(ctx context.Context, userID uuid.UUID) (int, error)
+	UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 // UserStore retrieves users to check custom quotas.
 type UserStore interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+}
+
+// ProfileScanner validates and scans ZZZ showcases by UID.
+type ProfileScanner interface {
+	ScanByUID(ctx context.Context, uid string, lang ...string) (*scannersvc.ShowcaseResponse, error)
 }
 
 // Option configures optional Service dependencies.
@@ -38,10 +45,18 @@ func WithUsers(users UserStore) Option {
 	}
 }
 
+// WithScanner configures an optional ProfileScanner to fetch player metadata upon linking.
+func WithScanner(scanner ProfileScanner) Option {
+	return func(s *Service) {
+		s.scanner = scanner
+	}
+}
+
 // Service implements game account use cases.
 type Service struct {
 	accounts AccountStore
 	users    UserStore
+	scanner  ProfileScanner
 }
 
 // New creates a new game account service.
@@ -97,15 +112,35 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, uid, region stri
 		return nil, fmt.Errorf("%w: this uid is already linked to your account", domain.ErrConflict)
 	}
 
+	var nickname *string
+	var avatarURL *string
+	if s.scanner != nil {
+		if showcase, err := s.scanner.ScanByUID(ctx, cleanUID); err == nil && showcase != nil {
+			if showcase.Nickname != "" {
+				nickname = &showcase.Nickname
+			}
+			if showcase.AvatarURL != "" {
+				avatarURL = &showcase.AvatarURL
+			}
+		}
+	}
+
 	account := &domain.GameAccount{
-		UserID: userID,
-		UID:    cleanUID,
-		Region: cleanRegion,
+		UserID:    userID,
+		UID:       cleanUID,
+		Region:    cleanRegion,
+		Nickname:  nickname,
+		AvatarURL: avatarURL,
 	}
 	if err := s.accounts.Create(ctx, account); err != nil {
 		return nil, err
 	}
 	return account, nil
+}
+
+// UpdateProfileMetadata updates the display nickname and avatar URL of a game account.
+func (s *Service) UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error {
+	return s.accounts.UpdateProfileMetadata(ctx, id, nickname, avatarURL)
 }
 
 // List returns all linked game accounts for the given user.

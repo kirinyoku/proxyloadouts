@@ -85,6 +85,7 @@ type CreateInput struct {
 	GameAccountID   uuid.UUID
 	Name            string
 	Description     *string
+	IsPublic        *bool
 	RawAgentPayload json.RawMessage // full enriched fairy Agent JSON
 	RawData         json.RawMessage // optional raw zzz.AvatarData JSON
 }
@@ -119,6 +120,34 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 		if err != nil {
 			return nil, fmt.Errorf("failed to verify showcase for UID %s: %w", account.UID, err)
 		}
+
+		// Background sync of player nickname and avatar if empty or changed
+		var avatarPtr *string
+		if showcase.AvatarURL != "" {
+			avatarPtr = &showcase.AvatarURL
+		}
+		var nickPtr *string
+		if showcase.Nickname != "" {
+			nickPtr = &showcase.Nickname
+		}
+
+		nickChangedOrEmpty := nickPtr != nil && (account.Nickname == nil || *account.Nickname != *nickPtr)
+		avatarChangedOrEmpty := (avatarPtr != nil && (account.AvatarURL == nil || *account.AvatarURL != *avatarPtr)) ||
+			(avatarPtr == nil && account.AvatarURL != nil)
+
+		if nickChangedOrEmpty || avatarChangedOrEmpty {
+			if nickPtr == nil {
+				nickPtr = account.Nickname
+			}
+			if avatarPtr == nil {
+				avatarPtr = account.AvatarURL
+			}
+			if err := s.accounts.UpdateProfileMetadata(ctx, account.ID, nickPtr, avatarPtr); err == nil {
+				account.Nickname = nickPtr
+				account.AvatarURL = avatarPtr
+			}
+		}
+
 		var found bool
 		for _, agent := range showcase.Agents {
 			if agent.ID == extracted.agentID {
@@ -208,6 +237,11 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 		return nil, fmt.Errorf("%w: raw avatar data is required to save a build", domain.ErrInvalidInput)
 	}
 
+	var isPublic bool
+	if input.IsPublic != nil {
+		isPublic = *input.IsPublic
+	}
+
 	build := &domain.AgentBuild{
 		UserID:        input.UserID,
 		GameAccountID: input.GameAccountID,
@@ -215,6 +249,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 		AgentName:     extracted.agentName,
 		Name:          name,
 		Description:   desc,
+		IsPublic:      isPublic,
 		WeaponUID:     extracted.weaponUID,
 		WeaponID:      extracted.weaponID,
 		DiscUIDs:      extracted.discUIDs,
@@ -341,6 +376,107 @@ func (s *Service) Delete(ctx context.Context, userID, buildID uuid.UUID) error {
 		return err
 	}
 	return s.builds.Delete(ctx, buildID)
+}
+
+// PatchInput describes partial updates to an owned build.
+type PatchInput struct {
+	UserID      uuid.UUID
+	BuildID     uuid.UUID
+	Name        *string
+	Description *string
+	IsPublic    *bool
+}
+
+// Patch updates name, description, and/or visibility of an owned build.
+func (s *Service) Patch(ctx context.Context, input PatchInput) (*domain.AgentBuild, error) {
+	build, err := s.Get(ctx, input.UserID, input.BuildID)
+	if err != nil {
+		return nil, err
+	}
+
+	nameToSet := build.Name
+	if input.Name != nil {
+		trimmed := strings.TrimSpace(*input.Name)
+		if trimmed == "" {
+			return nil, fmt.Errorf("%w: build name must not be empty", domain.ErrInvalidInput)
+		}
+		if utf8.RuneCountInString(trimmed) > domain.MaxBuildNameLength {
+			return nil, fmt.Errorf("%w: build name must not exceed %d characters", domain.ErrInvalidInput, domain.MaxBuildNameLength)
+		}
+		nameToSet = trimmed
+	}
+
+	descToSet := build.Description
+	if input.Description != nil {
+		trimmed := strings.TrimSpace(*input.Description)
+		if trimmed != "" {
+			if utf8.RuneCountInString(trimmed) > domain.MaxBuildDescriptionLength {
+				return nil, fmt.Errorf("%w: build description must not exceed %d characters", domain.ErrInvalidInput, domain.MaxBuildDescriptionLength)
+			}
+			descToSet = &trimmed
+		} else {
+			descToSet = nil
+		}
+	}
+
+	if input.Name != nil || input.Description != nil {
+		if err := s.builds.UpdateDetails(ctx, input.BuildID, nameToSet, descToSet); err != nil {
+			return nil, err
+		}
+		build.Name = nameToSet
+		build.Description = descToSet
+	}
+
+	if input.IsPublic != nil {
+		if err := s.builds.UpdateVisibility(ctx, input.BuildID, *input.IsPublic); err != nil {
+			return nil, err
+		}
+		build.IsPublic = *input.IsPublic
+	}
+
+	return build, nil
+}
+
+// SetVisibility updates the public visibility flag of an owned build.
+func (s *Service) SetVisibility(ctx context.Context, userID, buildID uuid.UUID, isPublic bool) error {
+	_, err := s.Patch(ctx, PatchInput{
+		UserID:   userID,
+		BuildID:  buildID,
+		IsPublic: &isPublic,
+	})
+	return err
+}
+
+// UpdateVisibility updates the public visibility flag of an owned build.
+func (s *Service) UpdateVisibility(ctx context.Context, userID, buildID uuid.UUID, isPublic bool) error {
+	return s.SetVisibility(ctx, userID, buildID, isPublic)
+}
+
+// PublicBuildDetail pairs a publicly accessible build with its owner's public info.
+type PublicBuildDetail struct {
+	Build *domain.AgentBuild
+	Owner *domain.PublicOwnerInfo
+}
+
+// GetPublic loads a publicly shared build by its ID. Returns domain.ErrNotFound
+// if the build does not exist, is private (is_public = false), or its owner is banned.
+// Dynamically localizes the build when lang is supplied.
+func (s *Service) GetPublic(ctx context.Context, buildID uuid.UUID, lang ...string) (*PublicBuildDetail, error) {
+	build, owner, err := s.builds.GetPublicByID(ctx, buildID)
+	if err != nil {
+		return nil, err
+	}
+
+	requestedLang := ""
+	if len(lang) > 0 {
+		requestedLang = lang[0]
+	}
+	s.enrichBuildWithLang(ctx, build, requestedLang)
+
+	return &PublicBuildDetail{
+		Build: build,
+		Owner: owner,
+	}, nil
 }
 
 func (s *Service) ensureAccountOwnership(ctx context.Context, userID, accountID uuid.UUID) error {

@@ -11,8 +11,11 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/kirinyoku/enkanetwork-go/client/zzz"
+	fairy "github.com/kirinyoku/fairy"
 
 	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/sqlite"
+	"github.com/kirinyoku/proxyloadouts/backend/internal/app/buildenrich"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
 
@@ -596,5 +599,186 @@ func TestCreate_UnicodeNameAndSafeTruncation(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Errorf("expected ErrInvalidInput for 101-character Cyrillic name, got %v", err)
+	}
+}
+
+func TestService_GetPublic_PrivateTeamReturnsNotFound(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+	ids := env.buildIDs(t)
+
+	team, err := env.svc.Create(ctx, CreateInput{
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Private Team",
+		BuildIDs:      ids[:1],
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	_, err = env.svc.GetPublic(ctx, team.ID)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound reading private team via GetPublic, got %v", err)
+	}
+}
+
+type mockEnricher struct{}
+
+func (m *mockEnricher) EnrichAgent(raw *zzz.AvatarData, _ fairy.Language) (*fairy.Agent, error) {
+	return &fairy.Agent{
+		ID:   raw.ID,
+		Name: "Enriched Agent",
+	}, nil
+}
+
+func TestService_GetPublic_ImplicitMemberRead(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+	ids := env.buildIDs(t)
+
+	enricher := buildenrich.New(&mockEnricher{}, nil, 0)
+	svc := New(env.teams, env.builds, env.accounts, WithEnricher(enricher), WithUsers(env.users))
+
+	// Ensure all 3 builds are private (IsPublic = false)
+	for _, id := range ids {
+		b, err := env.builds.GetByID(ctx, id)
+		if err != nil {
+			t.Fatalf("GetByID failed: %v", err)
+		}
+		if b.IsPublic {
+			t.Fatalf("expected seeded build %s to be private", id)
+		}
+	}
+
+	nick := "SquadLeader"
+	avatar := "https://example.com/squad.png"
+	if err := env.accounts.UpdateProfileMetadata(ctx, env.accountID, &nick, &avatar); err != nil {
+		t.Fatalf("UpdateProfileMetadata failed: %v", err)
+	}
+
+	// Create public team with the 3 private builds
+	isPublic := true
+	team, err := svc.Create(ctx, CreateInput{
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Public Team with Private Builds",
+		BuildIDs:      ids,
+		IsPublic:      &isPublic,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	detail, err := svc.GetPublic(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("GetPublic failed: %v", err)
+	}
+	if detail.Team == nil || detail.Team.ID != team.ID {
+		t.Fatalf("expected team %s, got %v", team.ID, detail.Team)
+	}
+	if !detail.Team.IsPublic {
+		t.Errorf("expected team.IsPublic = true, got %v", detail.Team.IsPublic)
+	}
+	if len(detail.Members) != 3 {
+		t.Fatalf("expected 3 members loaded by Implicit Member Read, got %d", len(detail.Members))
+	}
+
+	for i, m := range detail.Members {
+		if m.Build == nil {
+			t.Fatalf("slot %d: expected non-nil build", i+1)
+		}
+		if m.Build.AgentName == "" {
+			t.Errorf("slot %d: expected non-empty AgentName", i+1)
+		}
+		if len(m.Build.DiscUIDs) == 0 {
+			t.Errorf("slot %d: expected non-empty DiscUIDs", i+1)
+		}
+		if len(m.Build.BuildData) == 0 {
+			t.Errorf("slot %d: expected non-empty BuildData", i+1)
+		}
+		if m.Build.IsPublic {
+			t.Errorf("slot %d: expected build to remain private (is_public=false)", i+1)
+		}
+	}
+
+	if !detail.Report.IsValid {
+		t.Errorf("expected valid conflict report, got %+v", detail.Report.Errors)
+	}
+
+	if detail.Owner == nil {
+		t.Fatal("expected non-nil Owner")
+	}
+	if detail.Owner.Nickname == nil || *detail.Owner.Nickname != nick {
+		t.Errorf("expected owner nickname %q, got %v", nick, detail.Owner.Nickname)
+	}
+	if detail.Owner.AvatarURL == nil || *detail.Owner.AvatarURL != avatar {
+		t.Errorf("expected owner avatar %q, got %v", avatar, detail.Owner.AvatarURL)
+	}
+}
+
+func TestService_SetVisibility_AndUpdateIsPublic(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+	ids := env.buildIDs(t)
+
+	// Create private team initially
+	team, err := env.svc.Create(ctx, CreateInput{
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Initial Private Team",
+		BuildIDs:      ids[:1],
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if team.IsPublic {
+		t.Errorf("expected team.IsPublic = false initially")
+	}
+
+	// 1. Update with IsPublic: true
+	makePublic := true
+	updated, err := env.svc.Update(ctx, UpdateInput{
+		TeamID:        team.ID,
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Updated Public Team",
+		BuildIDs:      ids[:1],
+		IsPublic:      &makePublic,
+	})
+	if err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+	if !updated.IsPublic {
+		t.Errorf("expected team.IsPublic = true after update")
+	}
+
+	// 2. Update with IsPublic: nil preserves existing IsPublic (true)
+	updated2, err := env.svc.Update(ctx, UpdateInput{
+		TeamID:        team.ID,
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Updated Public Team Retained",
+		BuildIDs:      ids[:1],
+		IsPublic:      nil,
+	})
+	if err != nil {
+		t.Fatalf("update with nil is_public failed: %v", err)
+	}
+	if !updated2.IsPublic {
+		t.Errorf("expected team.IsPublic to be retained as true")
+	}
+
+	// 3. SetVisibility back to false
+	if err := env.svc.SetVisibility(ctx, env.ownerID, team.ID, false); err != nil {
+		t.Fatalf("SetVisibility(false) failed: %v", err)
+	}
+	if _, err := env.svc.GetPublic(ctx, team.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for private team, got %v", err)
+	}
+
+	// 4. Foreign user cannot SetVisibility
+	if err := env.svc.SetVisibility(ctx, env.foreignID, team.ID, true); !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("expected ErrForbidden for foreign user, got %v", err)
 	}
 }
