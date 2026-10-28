@@ -169,3 +169,15 @@ describe('team validation is a cacheable GET', () => {
     expect(seen[0]).toBe('/api/v1/teams/validate?build_ids=a%20b,c%26d')
   })
 })
+
+describe('public build and team query keys', () => {
+  it('generates correct publicBuild keys', () => {
+    expect(queryKeys.publicBuild('b1', 'ru')).toEqual(['public', 'build', 'b1', 'ru'])
+    expect(queryKeys.publicBuild('b1')).toEqual(['public', 'build', 'b1'])
+  })
+
+  it('generates correct publicTeam keys', () => {
+    expect(queryKeys.publicTeam('t1', 'en')).toEqual(['public', 'team', 't1', 'en'])
+    expect(queryKeys.publicTeam('t1')).toEqual(['public', 'team', 't1'])
+  })
+})

@@ -54,6 +54,10 @@ export const queryKeys = {
     lang ? (['teams', 'detail', id, lang] as const) : (['teams', 'detail', id] as const),
   teamCount: (gameAccountId: string) => ['teams', 'count', gameAccountId] as const,
   teamValidation: (buildIdsKey: string) => ['team-validation', buildIdsKey] as const,
+  publicBuild: (id: string, lang?: string) =>
+    lang ? (['public', 'build', id, lang] as const) : (['public', 'build', id] as const),
+  publicTeam: (id: string, lang?: string) =>
+    lang ? (['public', 'team', id, lang] as const) : (['public', 'team', id] as const),
 }
 
 /**
@@ -187,6 +191,36 @@ export function useTeamCount(gameAccountId: string | undefined, options?: QueryO
   })
 }
 
+export function usePublicBuild(id: string | undefined) {
+  const { i18n: i18nInstance } = useTranslation()
+  const langKey = i18nInstance.language?.slice(0, 2) === 'en' ? 'en' : 'ru'
+
+  return useQuery({
+    queryKey: queryKeys.publicBuild(id ?? '', langKey),
+    queryFn: ({ signal }) =>
+      id
+        ? api.fetchPublicBuild(id, langKey, signal)
+        : Promise.reject(new Error('build id is required')),
+    enabled: Boolean(id),
+    staleTime: COLLECTION_STALE_TIME,
+  })
+}
+
+export function usePublicTeam(id: string | undefined) {
+  const { i18n: i18nInstance } = useTranslation()
+  const langKey = i18nInstance.language?.slice(0, 2) === 'en' ? 'en' : 'ru'
+
+  return useQuery({
+    queryKey: queryKeys.publicTeam(id ?? '', langKey),
+    queryFn: ({ signal }) =>
+      id
+        ? api.fetchPublicTeam(id, langKey, signal)
+        : Promise.reject(new Error('team id is required')),
+    enabled: Boolean(id),
+    staleTime: COLLECTION_STALE_TIME,
+  })
+}
+
 export function useLogout() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -293,6 +327,46 @@ export function useRenameBuild() {
       toast.success(i18n.t('toasts.buildUpdated', { name: variables.name }))
     },
     onError: (error) => notifyMutationError(error, i18n.t('toasts.buildUpdateError')),
+  })
+}
+
+export function useToggleBuildVisibility() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      isPublic,
+    }: {
+      id: string
+      gameAccountId: string
+      isPublic: boolean
+    }) => api.updateBuild(id, { is_public: isPublic }),
+    onMutate: async ({ id, gameAccountId, isPublic }) => {
+      const langKey = currentLangKey()
+      const queryKey = queryKeys.builds(gameAccountId, langKey)
+      await queryClient.cancelQueries({ queryKey, exact: true })
+      const previousBuilds = queryClient.getQueryData<Build[]>(queryKey)
+
+      if (previousBuilds) {
+        queryClient.setQueryData<Build[]>(
+          queryKey,
+          previousBuilds.map((b) => (b.id === id ? { ...b, is_public: isPublic } : b)),
+        )
+      }
+      return { previousBuilds, queryKey }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousBuilds) {
+        queryClient.setQueryData(context.queryKey, context.previousBuilds)
+      }
+      toast.error(i18n.t('toasts.visibilityUpdateError'))
+    },
+    onSettled: (_data, _error, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.builds(variables.gameAccountId, currentLangKey()),
+        exact: true,
+      })
+    },
   })
 }
 

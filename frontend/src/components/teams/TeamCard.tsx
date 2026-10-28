@@ -1,5 +1,5 @@
 import { lazy, memo, Suspense, useMemo, useState } from 'react'
-import { AlertCircle, Pencil, Trash2 } from 'lucide-react'
+import { AlertCircle, Globe, Lock, Pencil, Share2, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -124,6 +124,55 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
     })
   }
 
+  async function handleShareTeam() {
+    const url = `${window.location.origin}/t/${team.id}`
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      // ignore
+    }
+
+    if (!team.is_public) {
+      updateMutation.mutate(
+        {
+          id: team.id,
+          game_account_id: team.game_account_id,
+          name: team.name,
+          description: team.description,
+          build_ids: sortedMembers.map((m) => m.build.id),
+          is_public: true,
+        },
+        {
+          onSuccess: () => {
+            toast.success(t('sharing.linkCopiedPublishedTeam'))
+          },
+        },
+      )
+    } else {
+      toast.success(t('sharing.linkCopied'))
+    }
+  }
+
+  function handleToggleTeamVisibility(newPublic: boolean) {
+    updateMutation.mutate(
+      {
+        id: team.id,
+        game_account_id: team.game_account_id,
+        name: team.name,
+        description: team.description,
+        build_ids: sortedMembers.map((m) => m.build.id),
+        is_public: newPublic,
+      },
+      {
+        onSuccess: () => {
+          toast.success(
+            newPublic ? t('sharing.teamPublished') : t('sharing.teamMadePrivate'),
+          )
+        },
+      },
+    )
+  }
+
   return (
     <article
       aria-label={t('teams.teamAria', { name: team.name })}
@@ -172,7 +221,48 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Visibility toggle / indicator */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => handleToggleTeamVisibility(!team.is_public)}
+                disabled={updateMutation.isPending}
+                aria-label={team.is_public ? t('sharing.teamPublicTooltip') : t('sharing.teamPrivateTooltip')}
+                className={cn(
+                  'flex size-8 shrink-0 items-center justify-center rounded-(--radius-input) border-2 border-black transition-all cursor-pointer select-none',
+                  team.is_public
+                    ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                    : 'bg-elevated text-muted-foreground hover:bg-accent hover:text-foreground',
+                )}
+              >
+                {team.is_public ? (
+                  <Globe className="size-3.5" />
+                ) : (
+                  <Lock className="size-3.5" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {team.is_public ? t('sharing.teamPublicTooltip') : t('sharing.teamPrivateTooltip')}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Share button */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleShareTeam}
+            disabled={updateMutation.isPending}
+            className="size-8 p-0 sm:w-auto sm:px-3 gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated text-xs text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-accent hover:text-primary active:translate-y-px"
+            title={t('sharing.share')}
+            aria-label={t('sharing.share')}
+          >
+            <Share2 className="size-3.5" />
+            <span className="hidden sm:inline">{t('sharing.share')}</span>
+          </Button>
+
           <Button
             variant="secondary"
             size="sm"

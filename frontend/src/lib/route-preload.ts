@@ -31,6 +31,12 @@ export const loadPrivacyPage = lazyWithChunkRetry(() =>
 export const loadNotFoundPage = lazyWithChunkRetry(() =>
   import('@/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 )
+export const loadPublicBuildPage = lazyWithChunkRetry(() =>
+  import('@/pages/PublicBuildPage').then((m) => ({ default: m.PublicBuildPage })),
+)
+export const loadPublicTeamPage = lazyWithChunkRetry(() =>
+  import('@/pages/PublicTeamPage').then((m) => ({ default: m.PublicTeamPage })),
+)
 
 export const routePreloaders: Record<
   string,

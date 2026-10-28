@@ -1,3 +1,4 @@
+import type { PublicOwnerInfo } from './account'
 import type { Agent } from './agent'
 
 export interface Build {
@@ -11,6 +12,7 @@ export interface Build {
   weapon_id: number | null
   disc_uids: string[]
   build_data: Agent
+  is_public: boolean
   created_at: string
   updated_at: string
 }
@@ -21,4 +23,16 @@ export interface CreateBuildRequest {
   raw_data?: unknown
   name?: string
   description?: string | null
+  is_public?: boolean
+}
+
+export interface UpdateBuildRequest {
+  name?: string
+  description?: string | null
+  is_public?: boolean
+}
+
+export interface PublicBuildResponse {
+  build: Build
+  owner: PublicOwnerInfo
 }

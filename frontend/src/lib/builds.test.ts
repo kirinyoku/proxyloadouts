@@ -113,6 +113,7 @@ describe('builds utilities', () => {
           weapon_id: null,
           disc_uids: [],
           build_data: {} as any,
+          is_public: false,
           created_at: '2026-09-01T10:00:00Z',
           updated_at: '2026-09-01T10:00:00Z',
         },
@@ -127,6 +128,7 @@ describe('builds utilities', () => {
           weapon_id: null,
           disc_uids: [],
           build_data: {} as any,
+          is_public: false,
           created_at: '2026-09-02T10:00:00Z',
           updated_at: '2026-09-02T10:00:00Z',
         },
@@ -141,6 +143,7 @@ describe('builds utilities', () => {
           weapon_id: null,
           disc_uids: [],
           build_data: {} as any,
+          is_public: false,
           created_at: '2026-09-01T12:00:00Z',
           updated_at: '2026-09-01T12:00:00Z',
         },
@@ -251,6 +254,7 @@ describe('builds utilities', () => {
         weapon_id: 11001,
         disc_uids: [],
         build_data: { ...agent },
+        is_public: false,
         created_at: '2026-09-01T00:00:00Z',
         updated_at: '2026-09-01T00:00:00Z',
       }
@@ -265,6 +269,7 @@ describe('builds utilities', () => {
         weapon_uid: 'w-1',
         weapon_id: 11001,
         disc_uids: [],
+        is_public: false,
         build_data: {
           ...agent,
           level: 50, // Different level -> different fingerprint

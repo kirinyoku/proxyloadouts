@@ -6,11 +6,14 @@ import type {
   CreateTeamRequest,
   GameAccount,
   MeResponse,
+  PublicBuildResponse,
+  PublicTeamResponse,
   ShowcaseResponse,
   Team,
   TeamCountResponse,
   TeamDetail,
   TeamSummary,
+  UpdateBuildRequest,
   UpdateTeamRequest,
 } from '@/types'
 
@@ -171,10 +174,40 @@ export function createBuild(body: CreateBuildRequest): Promise<Build> {
   return request<Build>('/builds', { method: 'POST', body })
 }
 
-export function renameBuild(id: string, name: string, description?: string | null): Promise<void> {
+export function updateBuild(id: string, body: UpdateBuildRequest): Promise<void> {
   return request<void>(`/builds/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    body: { name, description },
+    body,
+  })
+}
+
+export function renameBuild(id: string, name: string, description?: string | null): Promise<void> {
+  return updateBuild(id, { name, description })
+}
+
+export function fetchPublicBuild(
+  id: string,
+  lang?: string,
+  signal?: AbortSignal,
+): Promise<PublicBuildResponse> {
+  const activeLang = lang || getCurrentLanguage()
+  const langQuery = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
+  return request<PublicBuildResponse>(`/public/builds/${encodeURIComponent(id)}${langQuery}`, {
+    signal,
+    skipAuthRedirect: true,
+  })
+}
+
+export function fetchPublicTeam(
+  id: string,
+  lang?: string,
+  signal?: AbortSignal,
+): Promise<PublicTeamResponse> {
+  const activeLang = lang || getCurrentLanguage()
+  const langQuery = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
+  return request<PublicTeamResponse>(`/public/teams/${encodeURIComponent(id)}${langQuery}`, {
+    signal,
+    skipAuthRedirect: true,
   })
 }
 

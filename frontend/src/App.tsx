@@ -18,6 +18,8 @@ import {
   loadLoginPage,
   loadNotFoundPage,
   loadPrivacyPage,
+  loadPublicBuildPage,
+  loadPublicTeamPage,
   loadRosterPage,
   loadSettingsPage,
   loadShowcasePage,
@@ -36,6 +38,8 @@ const SettingsPage = lazy(loadSettingsPage)
 const AboutPage = lazy(loadAboutPage)
 const PrivacyPage = lazy(loadPrivacyPage)
 const NotFoundPage = lazy(loadNotFoundPage)
+const PublicBuildPage = lazy(loadPublicBuildPage)
+const PublicTeamPage = lazy(loadPublicTeamPage)
 
 function BuildRouteRedirect() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -88,6 +92,8 @@ function App() {
                     <Route path="/privacy" element={<PrivacyPage />} />
                     <Route path="/terms" element={<Navigate to="/privacy" replace />} />
                     <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/b/:buildId" element={<PublicBuildPage />} />
+                    <Route path="/t/:teamId" element={<PublicTeamPage />} />
                     <Route element={<ProtectedRoute />}>
                       <Route path="/roster" element={<RosterPage />} />
                       <Route path="/builds/:buildId" element={<BuildRouteRedirect />} />

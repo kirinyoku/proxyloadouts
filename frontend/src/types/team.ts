@@ -1,3 +1,4 @@
+import type { PublicOwnerInfo } from './account'
 import type { Build } from './build'
 import type { ConflictReport } from './conflict'
 
@@ -6,6 +7,7 @@ export interface Team {
   game_account_id: string
   name: string
   description: string | null
+  is_public: boolean
   created_at: string
   updated_at: string
 }
@@ -35,6 +37,7 @@ export interface CreateTeamRequest {
   game_account_id: string
   name?: string
   description?: string | null
+  is_public?: boolean
   build_ids: string[]
 }
 
@@ -43,5 +46,13 @@ export interface UpdateTeamRequest {
   game_account_id: string
   name?: string
   description?: string | null
+  is_public?: boolean
   build_ids: string[]
+}
+
+export interface PublicTeamResponse {
+  team: Team
+  report: ConflictReport
+  members: TeamMember[]
+  owner: PublicOwnerInfo
 }
