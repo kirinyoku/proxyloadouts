@@ -132,6 +132,7 @@ func strPtr(s string) *string { return &s }
 
 type fakeFetcher struct {
 	profile *fairy.Profile
+	agent   *fairy.Agent
 	ttl     time.Duration
 }
 
@@ -150,6 +151,14 @@ func (f *fakeFetcher) EnrichProfile(raw *zzz.Profile, lang fairy.Language) (*fai
 }
 
 func (f *fakeFetcher) EnrichAgent(raw *zzz.AvatarData, lang fairy.Language) (*fairy.Agent, error) {
+	if f.agent != nil {
+		copyAgent := *f.agent
+		copyAgent.ID = raw.ID
+		if lang == fairy.LangEN {
+			copyAgent.Name = "Agent EN"
+		}
+		return &copyAgent, nil
+	}
 	name := "Агент RU"
 	if lang == fairy.LangEN {
 		name = "Agent EN"

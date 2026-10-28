@@ -22,18 +22,33 @@ func NewAccountHandler(accounts *accountsvc.Service) *AccountHandler {
 }
 
 type accountResponse struct {
-	ID        string `json:"id"`
-	UID       string `json:"uid"`
-	Region    string `json:"region"`
-	CreatedAt string `json:"created_at"`
+	ID               string  `json:"id"`
+	UID              string  `json:"uid"`
+	Region           string  `json:"region"`
+	Nickname         *string `json:"nickname"`
+	AvatarURL        *string `json:"avatar_url"`
+	VerifiedAt       *string `json:"verified_at"`
+	IsPublicShowcase bool    `json:"is_public_showcase"`
+	ShowDiscord      bool    `json:"show_discord"`
+	CreatedAt        string  `json:"created_at"`
 }
 
 func newAccountResponse(a *domain.GameAccount) accountResponse {
+	var verifiedAt *string
+	if a.VerifiedAt != nil {
+		v := a.VerifiedAt.UTC().Format(time.RFC3339)
+		verifiedAt = &v
+	}
 	return accountResponse{
-		ID:        a.ID.String(),
-		UID:       a.UID,
-		Region:    a.Region,
-		CreatedAt: a.CreatedAt.UTC().Format(time.RFC3339),
+		ID:               a.ID.String(),
+		UID:              a.UID,
+		Region:           a.Region,
+		Nickname:         a.Nickname,
+		AvatarURL:        a.AvatarURL,
+		VerifiedAt:       verifiedAt,
+		IsPublicShowcase: a.IsPublicShowcase,
+		ShowDiscord:      a.ShowDiscord,
+		CreatedAt:        a.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

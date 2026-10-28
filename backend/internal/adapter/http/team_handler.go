@@ -28,6 +28,7 @@ type teamResponse struct {
 	GameAccountID string  `json:"game_account_id"`
 	Name          string  `json:"name"`
 	Description   *string `json:"description"`
+	IsPublic      bool    `json:"is_public"`
 	CreatedAt     string  `json:"created_at"`
 	UpdatedAt     string  `json:"updated_at"`
 }
@@ -38,6 +39,7 @@ func newTeamResponse(t *domain.Team) teamResponse {
 		GameAccountID: t.GameAccountID.String(),
 		Name:          t.Name,
 		Description:   t.Description,
+		IsPublic:      t.IsPublic,
 		CreatedAt:     t.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     t.UpdatedAt.UTC().Format(time.RFC3339),
 	}
@@ -117,6 +119,7 @@ type createTeamRequest struct {
 	GameAccountID uuid.UUID   `json:"game_account_id"`
 	Name          string      `json:"name"`
 	Description   *string     `json:"description"`
+	IsPublic      *bool       `json:"is_public,omitempty"`
 	BuildIDs      []uuid.UUID `json:"build_ids"`
 }
 
@@ -135,6 +138,7 @@ func (h *TeamHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		GameAccountID: req.GameAccountID,
 		Name:          req.Name,
 		Description:   req.Description,
+		IsPublic:      req.IsPublic,
 		BuildIDs:      req.BuildIDs,
 	})
 	if err != nil {
@@ -148,6 +152,7 @@ type updateTeamRequest struct {
 	GameAccountID uuid.UUID   `json:"game_account_id"`
 	Name          string      `json:"name"`
 	Description   *string     `json:"description"`
+	IsPublic      *bool       `json:"is_public,omitempty"`
 	BuildIDs      []uuid.UUID `json:"build_ids"`
 }
 
@@ -173,6 +178,7 @@ func (h *TeamHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		GameAccountID: req.GameAccountID,
 		Name:          req.Name,
 		Description:   req.Description,
+		IsPublic:      req.IsPublic,
 		BuildIDs:      req.BuildIDs,
 	})
 	if err != nil {

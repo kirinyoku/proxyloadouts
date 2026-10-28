@@ -199,13 +199,17 @@ func run() error {
 	telemetryLimiter := httpadapter.NewIPRateLimiter(rate.Limit(6.0/60.0), 3, 10*time.Minute)
 	defer telemetryLimiter.Close()
 
+	publicLimiter := httpadapter.NewIPRateLimiter(rate.Limit(1.0), 15, 10*time.Minute)
+	defer publicLimiter.Close()
+
 	router := httpadapter.NewRouter(
 		httpadapter.Options{
-			FrontendURL:          cfg.FrontendURL,
-			SecureCookies:        cfg.Env == "production",
-			ShowcaseRateLimiter:  showcaseLimiter,
-			AuthRateLimiter:      authLimiter,
-			TelemetryRateLimiter: telemetryLimiter,
+			FrontendURL:           cfg.FrontendURL,
+			SecureCookies:         cfg.Env == "production",
+			ShowcaseRateLimiter:   showcaseLimiter,
+			AuthRateLimiter:       authLimiter,
+			TelemetryRateLimiter:  telemetryLimiter,
+			PublicReadRateLimiter: publicLimiter,
 		},
 		httpadapter.Deps{
 			DB:       db,

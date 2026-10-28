@@ -32,8 +32,11 @@ type Options struct {
 	// If nil, a default limiter of 20 req/min with burst 10 is created.
 	AuthRateLimiter *IPRateLimiter
 	// TelemetryRateLimiter optionally provides the rate limiter for client error reports.
-	// If nil, a default limiter of 6 req/min with burst 3 is created.
+	// If nil, a default limiter of 60 req/min with burst 3 is created.
 	TelemetryRateLimiter *IPRateLimiter
+	// PublicReadRateLimiter optionally provides the rate limiter for public build/team endpoints.
+	// If nil, a default limiter of 60 req/min with burst 15 is created.
+	PublicReadRateLimiter *IPRateLimiter
 }
 
 // Pinger verifies database connectivity for health probes.
@@ -111,6 +114,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 	accountHandler := NewAccountHandler(deps.Accounts)
 	buildHandler := NewBuildHandler(deps.Builds)
 	teamHandler := NewTeamHandler(deps.Teams)
+	publicHandler := NewPublicHandler(deps.Builds, deps.Teams)
 	telemetryHandler := NewTelemetryHandler(deps.Alerts)
 
 	showcaseLimiter := opts.ShowcaseRateLimiter
@@ -128,6 +132,11 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		telemetryLimiter = NewIPRateLimiter(rate.Limit(6.0/60.0), 3, 10*time.Minute)
 	}
 
+	publicLimiter := opts.PublicReadRateLimiter
+	if publicLimiter == nil {
+		publicLimiter = NewIPRateLimiter(rate.Limit(1.0), 15, 10*time.Minute)
+	}
+
 	requireAuth := requireAuth(deps.Auth, deps.Users, opts)
 	checkOrigin := verifyOrigin(opts)
 
@@ -135,11 +144,14 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		api.Get("/health", health)
 		api.With(checkOrigin, telemetryLimiter.Handler).Post("/telemetry/client-error", telemetryHandler.handleClientError)
 
-		// Public endpoints: guests may scan showcases (SOW §4).
+		// Public endpoints: guests may scan showcases (SOW §4), view shared builds and teams.
 		api.With(authLimiter.Handler).Get("/auth/discord/login", authHandler.handleLogin)
 		api.With(authLimiter.Handler).Get("/auth/discord/callback", authHandler.handleCallback)
 		api.With(checkOrigin, authLimiter.Handler).Post("/auth/logout", authHandler.handleLogout)
 		api.With(showcaseLimiter.Handler).Get("/showcase/{uid}", showcaseHandler.handle)
+
+		api.With(publicLimiter.Handler).Get("/public/builds/{buildID}", publicHandler.handleGetBuild)
+		api.With(publicLimiter.Handler).Get("/public/teams/{teamID}", publicHandler.handleGetTeam)
 
 		api.With(requireAuth).Get("/auth/me", authHandler.handleMe)
 
@@ -172,8 +184,12 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		})
 	})
 
-	// Embedded SPA with history-API fallback.
-	r.Handle("/*", spaHandler())
+	// Embedded SPA with history-API fallback and dynamic OpenGraph injection.
+	var metaProv PublicMetaProvider
+	if deps.Builds != nil || deps.Teams != nil {
+		metaProv = &metaProvider{builds: deps.Builds, teams: deps.Teams}
+	}
+	r.Handle("/*", spaHandler(metaProv))
 
 	return r
 }
