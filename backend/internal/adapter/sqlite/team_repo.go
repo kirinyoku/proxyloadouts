@@ -314,6 +314,31 @@ func (r *SQLiteTeamRepo) ListByAccount(ctx context.Context, accountID uuid.UUID)
 	return teams, nil
 }
 
+// ListPublicByAccount returns all public teams of the game account, oldest first.
+func (r *SQLiteTeamRepo) ListPublicByAccount(ctx context.Context, accountID uuid.UUID) ([]*domain.Team, error) {
+	rows, err := r.db.QueryContext(ctx,
+		teamSelect+` WHERE game_account_id = ? AND is_public = 1 ORDER BY created_at, id;`,
+		accountID.String(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list public teams: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var teams []*domain.Team
+	for rows.Next() {
+		team, err := scanTeamRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		teams = append(teams, team)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate public teams: %w", err)
+	}
+	return teams, nil
+}
+
 // CountByAccount returns the number of teams created for a game account.
 func (r *SQLiteTeamRepo) CountByAccount(ctx context.Context, accountID uuid.UUID) (int, error) {
 	var count int

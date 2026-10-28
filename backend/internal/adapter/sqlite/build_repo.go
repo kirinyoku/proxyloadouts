@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -106,6 +107,70 @@ func (r *SQLiteBuildRepo) ListByAccount(ctx context.Context, accountID uuid.UUID
 		return nil, fmt.Errorf("failed to iterate agent builds: %w", err)
 	}
 	return builds, nil
+}
+
+// ListPublicByAccount returns all public builds of the game account, oldest first.
+func (r *SQLiteBuildRepo) ListPublicByAccount(ctx context.Context, accountID uuid.UUID) ([]*domain.AgentBuild, error) {
+	rows, err := r.db.QueryContext(ctx,
+		buildSelect+` WHERE game_account_id = ? AND is_public = 1 ORDER BY created_at, id;`,
+		accountID.String(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list public agent builds: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var builds []*domain.AgentBuild
+	for rows.Next() {
+		build, err := scanBuildRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		builds = append(builds, build)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate public agent builds: %w", err)
+	}
+	return builds, nil
+}
+
+// GetByIDs returns a map of builds keyed by their UUIDs for batch fetching.
+func (r *SQLiteBuildRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*domain.AgentBuild, error) {
+	if len(ids) == 0 {
+		return make(map[uuid.UUID]*domain.AgentBuild), nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id.String()
+	}
+
+	query := fmt.Sprintf(
+		`%s WHERE id IN (%s);`,
+		buildSelect,
+		strings.Join(placeholders, ", "),
+	)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query agent builds by IDs: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[uuid.UUID]*domain.AgentBuild, len(ids))
+	for rows.Next() {
+		build, err := scanBuildRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		result[build.ID] = build
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate agent builds by IDs: %w", err)
+	}
+	return result, nil
 }
 
 // CountByAccountAndAgent returns the number of builds saved for a specific agent on an account.

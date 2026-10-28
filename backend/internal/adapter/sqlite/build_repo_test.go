@@ -357,3 +357,93 @@ func TestBuildRepo_GetPublicByID(t *testing.T) {
 		t.Errorf("expected ErrNotFound for non-existent build, got %v", err)
 	}
 }
+
+func TestBuildRepo_ListPublicByAccount(t *testing.T) {
+	db := newMigratedTestDB(t)
+	ctx := context.Background()
+
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	builds := NewBuildRepo(db)
+
+	user := seedUser(t, ctx, users, "888888888888888888")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687088")
+
+	b1 := makeDomainBuild(user.ID, account.ID, "Public Build 1", 1511)
+	b1.IsPublic = true
+	if err := builds.Create(ctx, b1); err != nil {
+		t.Fatalf("failed to create build 1: %v", err)
+	}
+
+	b2 := makeDomainBuild(user.ID, account.ID, "Private Build", 1511)
+	b2.IsPublic = false
+	if err := builds.Create(ctx, b2); err != nil {
+		t.Fatalf("failed to create build 2: %v", err)
+	}
+
+	b3 := makeDomainBuild(user.ID, account.ID, "Public Build 2", 1512)
+	b3.IsPublic = true
+	if err := builds.Create(ctx, b3); err != nil {
+		t.Fatalf("failed to create build 3: %v", err)
+	}
+
+	publicBuilds, err := builds.ListPublicByAccount(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("failed to list public builds: %v", err)
+	}
+	if len(publicBuilds) != 2 {
+		t.Fatalf("expected 2 public builds, got %d", len(publicBuilds))
+	}
+	if publicBuilds[0].ID != b1.ID || publicBuilds[1].ID != b3.ID {
+		t.Errorf("expected public builds [%s, %s], got [%s, %s]", b1.ID, b3.ID, publicBuilds[0].ID, publicBuilds[1].ID)
+	}
+}
+
+func TestBuildRepo_GetByIDs(t *testing.T) {
+	db := newMigratedTestDB(t)
+	ctx := context.Background()
+
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	builds := NewBuildRepo(db)
+
+	// 1. Empty slice returns empty map
+	emptyMap, err := builds.GetByIDs(ctx, nil)
+	if err != nil {
+		t.Fatalf("failed with nil IDs: %v", err)
+	}
+	if len(emptyMap) != 0 {
+		t.Errorf("expected empty map for nil IDs, got %v", emptyMap)
+	}
+
+	user := seedUser(t, ctx, users, "898989898989898989")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687089")
+
+	b1 := makeDomainBuild(user.ID, account.ID, "Batch Build 1", 1511)
+	if err := builds.Create(ctx, b1); err != nil {
+		t.Fatalf("failed to create build 1: %v", err)
+	}
+	b2 := makeDomainBuild(user.ID, account.ID, "Batch Build 2", 1512)
+	if err := builds.Create(ctx, b2); err != nil {
+		t.Fatalf("failed to create build 2: %v", err)
+	}
+
+	// 2. Fetch existing and non-existing IDs
+	missingID := uuid.New()
+	gotMap, err := builds.GetByIDs(ctx, []uuid.UUID{b1.ID, b2.ID, missingID})
+	if err != nil {
+		t.Fatalf("failed to get builds by IDs: %v", err)
+	}
+	if len(gotMap) != 2 {
+		t.Fatalf("expected map length 2, got %d", len(gotMap))
+	}
+	if gotMap[b1.ID] == nil || gotMap[b1.ID].Name != "Batch Build 1" {
+		t.Errorf("expected build 1 in map, got %+v", gotMap[b1.ID])
+	}
+	if gotMap[b2.ID] == nil || gotMap[b2.ID].Name != "Batch Build 2" {
+		t.Errorf("expected build 2 in map, got %+v", gotMap[b2.ID])
+	}
+	if gotMap[missingID] != nil {
+		t.Errorf("expected missing ID not in map, got %+v", gotMap[missingID])
+	}
+}

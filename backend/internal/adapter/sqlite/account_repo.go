@@ -122,6 +122,132 @@ func (r *SQLiteAccountRepo) UpdateProfileMetadata(ctx context.Context, id uuid.U
 	return nil
 }
 
+// UpdateSettings updates the public showcase visibility and discord visibility for a game account.
+func (r *SQLiteAccountRepo) UpdateSettings(ctx context.Context, id uuid.UUID, isPublicShowcase, showDiscord bool) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE game_accounts SET is_public_showcase = ?, show_discord = ? WHERE id = ?;`,
+		boolToInt(isPublicShowcase), boolToInt(showDiscord), id.String(),
+	)
+	if err != nil {
+		if mapped := mapConstraintError(err); mapped != nil {
+			return mapped
+		}
+		return fmt.Errorf("failed to update settings for account %s: %w", id, err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("%w: game account %s", domain.ErrNotFound, id)
+	}
+	return nil
+}
+
+// VerifyOwnership atomically claims or re-claims verification for accountID and uid,
+// resetting any previous verified owner and enabling public showcase for this account.
+func (r *SQLiteAccountRepo) VerifyOwnership(ctx context.Context, accountID uuid.UUID, uid string, verifiedAt time.Time, nickname, avatarURL *string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin verification transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// 1. Reset previous verified owner of this UID (Re-claim).
+	_, err = tx.ExecContext(ctx,
+		`UPDATE game_accounts
+		 SET verified_at = NULL, is_public_showcase = 0
+		 WHERE uid = ? AND verified_at IS NOT NULL AND id != ?;`,
+		uid, accountID.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reset previous owner for uid %s: %w", uid, err)
+	}
+
+	// 2. Set verification and enable public showcase for the new owner.
+	res, err := tx.ExecContext(ctx,
+		`UPDATE game_accounts
+		 SET verified_at = ?, is_public_showcase = 1, nickname = COALESCE(?, nickname), avatar_url = COALESCE(?, avatar_url)
+		 WHERE id = ?;`,
+		formatTime(verifiedAt), nullableString(nickname), nullableString(avatarURL), accountID.String(),
+	)
+	if err != nil {
+		if mapped := mapConstraintError(err); mapped != nil {
+			return mapped
+		}
+		return fmt.Errorf("failed to verify ownership for account %s: %w", accountID, err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("%w: game account %s", domain.ErrNotFound, accountID)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit verification transaction: %w", err)
+	}
+	return nil
+}
+
+// GetVerifiedByUID returns the verified game account and public owner metadata for the given UID,
+// or domain.ErrNotFound if not verified or if the owner is banned.
+func (r *SQLiteAccountRepo) GetVerifiedByUID(ctx context.Context, uid string) (*domain.GameAccount, *domain.PublicOwnerInfo, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT ga.id, ga.user_id, ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.verified_at,
+		        ga.is_public_showcase, ga.show_discord, ga.created_at,
+		        u.username, u.avatar_url
+		 FROM game_accounts ga
+		 JOIN users u ON u.id = ga.user_id
+		 WHERE ga.uid = ? AND ga.verified_at IS NOT NULL AND u.banned_at IS NULL;`,
+		uid,
+	)
+
+	var (
+		a                domain.GameAccount
+		id               string
+		userID           string
+		nickname         sql.NullString
+		avatarURL        sql.NullString
+		verifiedAt       sql.NullString
+		isPublicShowcase int
+		showDiscord      int
+		createdAt        string
+		discordUsername  string
+		discordAvatarURL sql.NullString
+	)
+
+	if err := row.Scan(
+		&id, &userID, &a.UID, &a.Region, &nickname, &avatarURL, &verifiedAt,
+		&isPublicShowcase, &showDiscord, &createdAt,
+		&discordUsername, &discordAvatarURL,
+	); err != nil {
+		return nil, nil, notFound("verified game account", err)
+	}
+
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse game account id %q: %w", id, err)
+	}
+	parsedUserID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse user id %q: %w", userID, err)
+	}
+	createdAtParsed, err := parseTime(createdAt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse game account created_at: %w", err)
+	}
+	parsedVerifiedAt, err := parseNullableTime(verifiedAt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse game account verified_at: %w", err)
+	}
+
+	a.ID = parsedID
+	a.UserID = parsedUserID
+	a.Nickname = nullStringPointer(nickname)
+	a.AvatarURL = nullStringPointer(avatarURL)
+	a.VerifiedAt = parsedVerifiedAt
+	a.IsPublicShowcase = isPublicShowcase != 0
+	a.ShowDiscord = showDiscord != 0
+	a.CreatedAt = createdAtParsed
+
+	owner := scanPublicOwnerInfo(a.UID, a.Region, nickname, avatarURL, verifiedAt, showDiscord, discordUsername, discordAvatarURL)
+	return &a, owner, nil
+}
+
 // GetPublicOwnerInfoByAccountID returns public owner metadata for the account or domain.ErrNotFound
 // if the account does not exist or the owner is banned.
 func (r *SQLiteAccountRepo) GetPublicOwnerInfoByAccountID(ctx context.Context, accountID uuid.UUID) (*domain.PublicOwnerInfo, error) {

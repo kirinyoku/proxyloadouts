@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -33,6 +34,9 @@ type AccountRepository interface {
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]*GameAccount, error)
 	CountByUser(ctx context.Context, userID uuid.UUID) (int, error)
 	UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error
+	UpdateSettings(ctx context.Context, id uuid.UUID, isPublicShowcase, showDiscord bool) error
+	VerifyOwnership(ctx context.Context, accountID uuid.UUID, uid string, verifiedAt time.Time, nickname, avatarURL *string) error
+	GetVerifiedByUID(ctx context.Context, uid string) (*GameAccount, *PublicOwnerInfo, error)
 	GetPublicOwnerInfoByAccountID(ctx context.Context, accountID uuid.UUID) (*PublicOwnerInfo, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -47,6 +51,8 @@ type BuildRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*AgentBuild, error)
 	GetPublicByID(ctx context.Context, id uuid.UUID) (*AgentBuild, *PublicOwnerInfo, error)
 	ListByAccount(ctx context.Context, accountID uuid.UUID) ([]*AgentBuild, error)
+	ListPublicByAccount(ctx context.Context, accountID uuid.UUID) ([]*AgentBuild, error)
+	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*AgentBuild, error)
 	CountByAccountAndAgent(ctx context.Context, accountID uuid.UUID, agentID int) (int, error)
 	UpdateDetails(ctx context.Context, id uuid.UUID, name string, description *string) error
 	UpdateName(ctx context.Context, id uuid.UUID, name string) error
@@ -66,6 +72,7 @@ type TeamRepository interface {
 	GetMembers(ctx context.Context, teamID uuid.UUID) ([]TeamMember, error)
 	GetMembersByTeams(ctx context.Context, teamIDs []uuid.UUID) (map[uuid.UUID][]TeamMember, error)
 	ListByAccount(ctx context.Context, accountID uuid.UUID) ([]*Team, error)
+	ListPublicByAccount(ctx context.Context, accountID uuid.UUID) ([]*Team, error)
 	CountByAccount(ctx context.Context, accountID uuid.UUID) (int, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }

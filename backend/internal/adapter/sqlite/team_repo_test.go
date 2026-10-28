@@ -491,3 +491,49 @@ func TestTeamRepo_GetPublicByID(t *testing.T) {
 		t.Errorf("expected ErrNotFound for non-existent team, got %v", err)
 	}
 }
+
+func TestTeamRepo_ListPublicByAccount(t *testing.T) {
+	ctx := context.Background()
+	user, account, buildsList, repo := seedTeamFixtures(t, ctx)
+
+	t1 := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Public Team 1",
+		IsPublic:      true,
+	}
+	if err := repo.Create(ctx, t1, []domain.TeamMember{{SlotNumber: 1, BuildID: buildsList[0].ID}}); err != nil {
+		t.Fatalf("failed to create team 1: %v", err)
+	}
+
+	t2 := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Private Team",
+		IsPublic:      false,
+	}
+	if err := repo.Create(ctx, t2, []domain.TeamMember{{SlotNumber: 1, BuildID: buildsList[0].ID}}); err != nil {
+		t.Fatalf("failed to create team 2: %v", err)
+	}
+
+	t3 := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Public Team 2",
+		IsPublic:      true,
+	}
+	if err := repo.Create(ctx, t3, []domain.TeamMember{{SlotNumber: 1, BuildID: buildsList[0].ID}}); err != nil {
+		t.Fatalf("failed to create team 3: %v", err)
+	}
+
+	publicTeams, err := repo.ListPublicByAccount(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("failed to list public teams: %v", err)
+	}
+	if len(publicTeams) != 2 {
+		t.Fatalf("expected 2 public teams, got %d", len(publicTeams))
+	}
+	if publicTeams[0].ID != t1.ID || publicTeams[1].ID != t3.ID {
+		t.Errorf("expected public teams [%s, %s], got [%s, %s]", t1.ID, t3.ID, publicTeams[0].ID, publicTeams[1].ID)
+	}
+}
