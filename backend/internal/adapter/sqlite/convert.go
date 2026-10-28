@@ -3,8 +3,11 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
 
 // rowScanner is satisfied by both *sql.Row and *sql.Rows.
@@ -66,4 +69,55 @@ func parseUUID3(entity, col1, v1, col2, v2, col3, v3 string) ([3]uuid.UUID, erro
 		out[i] = id
 	}
 	return out, nil
+}
+
+// boolToInt converts a boolean to an integer (1 or 0) for SQLite storage.
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// nullableTime converts a *time.Time domain field into a formatted string or nil for SQLite storage.
+func nullableTime(t *time.Time) any {
+	if t == nil {
+		return nil
+	}
+	return formatTime(*t)
+}
+
+// parseNullableTime parses a stored timestamp in any supported format into *time.Time.
+func parseNullableTime(n sql.NullString) (*time.Time, error) {
+	if !n.Valid || n.String == "" {
+		return nil, nil
+	}
+	t, err := parseTime(n.String)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// scanPublicOwnerInfo maps public owner query columns into a *domain.PublicOwnerInfo,
+// masking Discord fields if showDiscord is 0.
+func scanPublicOwnerInfo(
+	uid, region string,
+	nickname, avatarURL, verifiedAt sql.NullString,
+	showDiscord int,
+	discordUsername string,
+	discordAvatarURL sql.NullString,
+) *domain.PublicOwnerInfo {
+	owner := &domain.PublicOwnerInfo{
+		UID:        uid,
+		Region:     region,
+		Nickname:   nullStringPointer(nickname),
+		AvatarURL:  nullStringPointer(avatarURL),
+		IsVerified: verifiedAt.Valid && verifiedAt.String != "",
+	}
+	if showDiscord != 0 {
+		owner.DiscordUsername = &discordUsername
+		owner.DiscordAvatarURL = nullStringPointer(discordAvatarURL)
+	}
+	return owner
 }

@@ -204,3 +204,156 @@ func TestBuildRepo_DeleteProtectedByTeamUsage(t *testing.T) {
 		t.Errorf("expected deleted build to be gone, got %v", err)
 	}
 }
+
+func TestBuildRepo_UpdateVisibility(t *testing.T) {
+	db := newMigratedTestDB(t)
+	ctx := context.Background()
+
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	repo := NewBuildRepo(db)
+
+	user := seedUser(t, ctx, users, "656565656565656565")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687066")
+
+	build := makeDomainBuild(user.ID, account.ID, "Private Preset", 1511)
+	build.IsPublic = false
+	if err := repo.Create(ctx, build); err != nil {
+		t.Fatalf("failed to create build: %v", err)
+	}
+
+	time.Sleep(10 * time.Millisecond)
+	if err := repo.UpdateVisibility(ctx, build.ID, true); err != nil {
+		t.Fatalf("failed to update visibility to true: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("failed to get build: %v", err)
+	}
+	if !got.IsPublic {
+		t.Error("expected build.IsPublic == true after update")
+	}
+	if !got.UpdatedAt.After(build.UpdatedAt) {
+		t.Errorf("expected updated_at to advance, before=%v, after=%v", build.UpdatedAt, got.UpdatedAt)
+	}
+
+	if err := repo.UpdateVisibility(ctx, build.ID, false); err != nil {
+		t.Fatalf("failed to update visibility to false: %v", err)
+	}
+	got2, _ := repo.GetByID(ctx, build.ID)
+	if got2.IsPublic {
+		t.Error("expected build.IsPublic == false after second update")
+	}
+
+	if err := repo.UpdateVisibility(ctx, uuid.New(), true); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound updating visibility of missing build, got %v", err)
+	}
+}
+
+func TestBuildRepo_GetPublicByID(t *testing.T) {
+	db := newMigratedTestDB(t)
+	ctx := context.Background()
+
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	builds := NewBuildRepo(db)
+
+	discordAvatar := "https://cdn.discordapp.com/avatars/phaethon.png"
+	user := &domain.User{
+		DiscordID: "666666666666666666",
+		Username:  "PhaethonProxy",
+		AvatarURL: &discordAvatar,
+	}
+	if err := users.Create(ctx, user); err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	now := time.Now()
+	nick := "ProxyMaster"
+	account := &domain.GameAccount{
+		UserID:           user.ID,
+		UID:              "1504687067",
+		Region:           domain.RegionEurope,
+		Nickname:         &nick,
+		VerifiedAt:       &now,
+		IsPublicShowcase: true,
+		ShowDiscord:      true,
+	}
+	if err := accounts.Create(ctx, account); err != nil {
+		t.Fatalf("failed to create account: %v", err)
+	}
+
+	build := makeDomainBuild(user.ID, account.ID, "Public Ice Preset", 1511)
+	build.IsPublic = true
+	if err := builds.Create(ctx, build); err != nil {
+		t.Fatalf("failed to create public build: %v", err)
+	}
+
+	// 1. Success with ShowDiscord = true
+	gotBuild, owner, err := builds.GetPublicByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("failed to get public build: %v", err)
+	}
+	if gotBuild.ID != build.ID || gotBuild.Name != "Public Ice Preset" || !gotBuild.IsPublic {
+		t.Errorf("build data mismatch: %+v", gotBuild)
+	}
+	if owner.UID != "1504687067" || owner.Region != domain.RegionEurope || !owner.IsVerified {
+		t.Errorf("owner mismatch: %+v", owner)
+	}
+	if owner.DiscordUsername == nil || *owner.DiscordUsername != "PhaethonProxy" {
+		t.Errorf("expected DiscordUsername %q, got %v", "PhaethonProxy", owner.DiscordUsername)
+	}
+	if owner.DiscordAvatarURL == nil || *owner.DiscordAvatarURL != discordAvatar {
+		t.Errorf("expected DiscordAvatarURL %q, got %v", discordAvatar, owner.DiscordAvatarURL)
+	}
+
+	// 2. Account with ShowDiscord = false hides Discord identity
+	accountNoDiscord := &domain.GameAccount{
+		UserID:      user.ID,
+		UID:         "1504687068",
+		Region:      domain.RegionEurope,
+		ShowDiscord: false,
+	}
+	if err := accounts.Create(ctx, accountNoDiscord); err != nil {
+		t.Fatalf("failed to create second account: %v", err)
+	}
+	buildNoDiscord := makeDomainBuild(user.ID, accountNoDiscord.ID, "No Discord Preset", 1511)
+	buildNoDiscord.IsPublic = true
+	if err := builds.Create(ctx, buildNoDiscord); err != nil {
+		t.Fatalf("failed to create build: %v", err)
+	}
+
+	_, ownerNoDiscord, err := builds.GetPublicByID(ctx, buildNoDiscord.ID)
+	if err != nil {
+		t.Fatalf("failed to get public build for account without discord: %v", err)
+	}
+	if ownerNoDiscord.DiscordUsername != nil || ownerNoDiscord.DiscordAvatarURL != nil {
+		t.Errorf("expected masked discord fields, got username=%v, avatar=%v", ownerNoDiscord.DiscordUsername, ownerNoDiscord.DiscordAvatarURL)
+	}
+
+	// 3. is_public = 0 -> domain.ErrNotFound
+	if err := builds.UpdateVisibility(ctx, build.ID, false); err != nil {
+		t.Fatalf("failed to make build private: %v", err)
+	}
+	if _, _, err := builds.GetPublicByID(ctx, build.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for private build, got %v", err)
+	}
+
+	// 4. Banned owner -> domain.ErrNotFound
+	if err := builds.UpdateVisibility(ctx, build.ID, true); err != nil {
+		t.Fatalf("failed to make build public again: %v", err)
+	}
+	reason := "Abuse"
+	if err := users.SetBan(ctx, user.ID, true, &reason); err != nil {
+		t.Fatalf("failed to ban user: %v", err)
+	}
+	if _, _, err := builds.GetPublicByID(ctx, build.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for banned user's public build, got %v", err)
+	}
+
+	// 5. Unknown build ID -> domain.ErrNotFound
+	if _, _, err := builds.GetPublicByID(ctx, uuid.New()); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for non-existent build, got %v", err)
+	}
+}

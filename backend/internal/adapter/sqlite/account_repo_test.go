@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -153,5 +154,130 @@ func TestAccountRepo_DeleteCascadesBuilds(t *testing.T) {
 	}
 	if err := accounts.Delete(ctx, account.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound deleting missing account, got %v", err)
+	}
+}
+
+func TestAccountRepo_UpdateProfileMetadata(t *testing.T) {
+	db := newMigratedTestDB(t)
+	users := NewUserRepo(db)
+	repo := NewAccountRepo(db)
+	ctx := context.Background()
+
+	user := seedUser(t, ctx, users, "555555555555555555")
+	account := seedAccount(t, ctx, repo, user.ID, "1504687055")
+
+	nick := "Belle"
+	avatar := "https://example.com/belle.png"
+	if err := repo.UpdateProfileMetadata(ctx, account.ID, &nick, &avatar); err != nil {
+		t.Fatalf("failed to update profile metadata: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("failed to get account: %v", err)
+	}
+	if got.Nickname == nil || *got.Nickname != nick {
+		t.Errorf("expected nickname %q, got %v", nick, got.Nickname)
+	}
+	if got.AvatarURL == nil || *got.AvatarURL != avatar {
+		t.Errorf("expected avatar_url %q, got %v", avatar, got.AvatarURL)
+	}
+
+	missingID := uuid.New()
+	if err := repo.UpdateProfileMetadata(ctx, missingID, &nick, &avatar); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound updating missing account, got %v", err)
+	}
+}
+
+func TestAccountRepo_GetPublicOwnerInfoByAccountID(t *testing.T) {
+	db := newMigratedTestDB(t)
+	users := NewUserRepo(db)
+	repo := NewAccountRepo(db)
+	ctx := context.Background()
+
+	discordAvatar := "https://cdn.discordapp.com/avatars/user.png"
+	user := &domain.User{
+		DiscordID: "565656565656565656",
+		Username:  "Phaethon",
+		AvatarURL: &discordAvatar,
+	}
+	if err := users.Create(ctx, user); err != nil {
+		t.Fatalf("failed to seed user: %v", err)
+	}
+
+	now := time.Now()
+	nick := "Wise"
+	avatar := "https://example.com/wise.png"
+	account := &domain.GameAccount{
+		UserID:           user.ID,
+		UID:              "1504687056",
+		Region:           domain.RegionEurope,
+		Nickname:         &nick,
+		AvatarURL:        &avatar,
+		VerifiedAt:       &now,
+		IsPublicShowcase: true,
+		ShowDiscord:      true,
+	}
+	if err := repo.Create(ctx, account); err != nil {
+		t.Fatalf("failed to create account: %v", err)
+	}
+
+	// 1. Full public owner info when ShowDiscord == true
+	owner, err := repo.GetPublicOwnerInfoByAccountID(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("failed to get public owner info: %v", err)
+	}
+	if owner.UID != "1504687056" || owner.Region != domain.RegionEurope {
+		t.Errorf("owner UID/region mismatch: %+v", owner)
+	}
+	if owner.Nickname == nil || *owner.Nickname != nick {
+		t.Errorf("expected nickname %q, got %v", nick, owner.Nickname)
+	}
+	if owner.AvatarURL == nil || *owner.AvatarURL != avatar {
+		t.Errorf("expected avatar URL %q, got %v", avatar, owner.AvatarURL)
+	}
+	if !owner.IsVerified {
+		t.Error("expected owner.IsVerified == true")
+	}
+	if owner.DiscordUsername == nil || *owner.DiscordUsername != "Phaethon" {
+		t.Errorf("expected DiscordUsername %q, got %v", "Phaethon", owner.DiscordUsername)
+	}
+	if owner.DiscordAvatarURL == nil || *owner.DiscordAvatarURL != discordAvatar {
+		t.Errorf("expected DiscordAvatarURL %q, got %v", discordAvatar, owner.DiscordAvatarURL)
+	}
+
+	// 2. Masking Discord fields when ShowDiscord == false
+	accountNoDiscord := &domain.GameAccount{
+		UserID:      user.ID,
+		UID:         "1504687057",
+		Region:      domain.RegionEurope,
+		ShowDiscord: false,
+	}
+	if err := repo.Create(ctx, accountNoDiscord); err != nil {
+		t.Fatalf("failed to create account: %v", err)
+	}
+	ownerNoDiscord, err := repo.GetPublicOwnerInfoByAccountID(ctx, accountNoDiscord.ID)
+	if err != nil {
+		t.Fatalf("failed to get public owner info for account without discord: %v", err)
+	}
+	if ownerNoDiscord.DiscordUsername != nil || ownerNoDiscord.DiscordAvatarURL != nil {
+		t.Errorf("expected masked discord fields, got username=%v, avatar=%v", ownerNoDiscord.DiscordUsername, ownerNoDiscord.DiscordAvatarURL)
+	}
+	if ownerNoDiscord.IsVerified {
+		t.Error("expected unverified account to have IsVerified == false")
+	}
+
+	// 3. User banned -> GetPublicOwnerInfoByAccountID returns domain.ErrNotFound
+	reason := "TOS violation"
+	if err := users.SetBan(ctx, user.ID, true, &reason); err != nil {
+		t.Fatalf("failed to ban user: %v", err)
+	}
+	if _, err := repo.GetPublicOwnerInfoByAccountID(ctx, account.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for banned user, got %v", err)
+	}
+
+	// 4. Missing account returns domain.ErrNotFound
+	if _, err := repo.GetPublicOwnerInfoByAccountID(ctx, uuid.New()); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for non-existent account, got %v", err)
 	}
 }

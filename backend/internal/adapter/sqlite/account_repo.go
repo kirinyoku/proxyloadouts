@@ -36,9 +36,12 @@ func (r *SQLiteAccountRepo) Create(ctx context.Context, account *domain.GameAcco
 	}
 
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO game_accounts (id, user_id, uid, region, created_at)
-		 VALUES (?, ?, ?, ?, ?);`,
-		account.ID.String(), account.UserID.String(), account.UID, account.Region, formatTime(account.CreatedAt),
+		`INSERT INTO game_accounts (id, user_id, uid, region, nickname, avatar_url, verified_at, is_public_showcase, show_discord, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+		account.ID.String(), account.UserID.String(), account.UID, account.Region,
+		nullableString(account.Nickname), nullableString(account.AvatarURL),
+		nullableTime(account.VerifiedAt), boolToInt(account.IsPublicShowcase),
+		boolToInt(account.ShowDiscord), formatTime(account.CreatedAt),
 	)
 	if err != nil {
 		if mapped := mapConstraintError(err); mapped != nil {
@@ -49,10 +52,12 @@ func (r *SQLiteAccountRepo) Create(ctx context.Context, account *domain.GameAcco
 	return nil
 }
 
+const accountSelect = `SELECT id, user_id, uid, region, nickname, avatar_url, verified_at, is_public_showcase, show_discord, created_at FROM game_accounts`
+
 // GetByID returns the game account with the given ID or domain.ErrNotFound.
 func (r *SQLiteAccountRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.GameAccount, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, uid, region, created_at FROM game_accounts WHERE id = ?;`,
+		accountSelect+` WHERE id = ?;`,
 		id.String(),
 	)
 	return scanAccountRow(row)
@@ -61,7 +66,7 @@ func (r *SQLiteAccountRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.
 // GetByUserAndUID returns the account of the user with the given UID or domain.ErrNotFound.
 func (r *SQLiteAccountRepo) GetByUserAndUID(ctx context.Context, userID uuid.UUID, uid string) (*domain.GameAccount, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, uid, region, created_at FROM game_accounts WHERE user_id = ? AND uid = ?;`,
+		accountSelect+` WHERE user_id = ? AND uid = ?;`,
 		userID.String(), uid,
 	)
 	return scanAccountRow(row)
@@ -70,7 +75,7 @@ func (r *SQLiteAccountRepo) GetByUserAndUID(ctx context.Context, userID uuid.UUI
 // ListByUser returns all accounts linked to the user, oldest first.
 func (r *SQLiteAccountRepo) ListByUser(ctx context.Context, userID uuid.UUID) ([]*domain.GameAccount, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, user_id, uid, region, created_at FROM game_accounts WHERE user_id = ? ORDER BY created_at, uid;`,
+		accountSelect+` WHERE user_id = ? ORDER BY created_at, uid;`,
 		userID.String(),
 	)
 	if err != nil {
@@ -102,6 +107,50 @@ func (r *SQLiteAccountRepo) CountByUser(ctx context.Context, userID uuid.UUID) (
 	return count, nil
 }
 
+// UpdateProfileMetadata updates the display nickname and avatar URL of a game account.
+func (r *SQLiteAccountRepo) UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE game_accounts SET nickname = ?, avatar_url = ? WHERE id = ?;`,
+		nullableString(nickname), nullableString(avatarURL), id.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update profile metadata for account %s: %w", id, err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("%w: game account %s", domain.ErrNotFound, id)
+	}
+	return nil
+}
+
+// GetPublicOwnerInfoByAccountID returns public owner metadata for the account or domain.ErrNotFound
+// if the account does not exist or the owner is banned.
+func (r *SQLiteAccountRepo) GetPublicOwnerInfoByAccountID(ctx context.Context, accountID uuid.UUID) (*domain.PublicOwnerInfo, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.verified_at, ga.show_discord,
+		        u.username, u.avatar_url
+		 FROM game_accounts ga
+		 JOIN users u ON u.id = ga.user_id
+		 WHERE ga.id = ? AND u.banned_at IS NULL;`,
+		accountID.String(),
+	)
+
+	var (
+		uid              string
+		region           string
+		nickname         sql.NullString
+		avatarURL        sql.NullString
+		verifiedAt       sql.NullString
+		showDiscord      int
+		discordUsername  string
+		discordAvatarURL sql.NullString
+	)
+	if err := row.Scan(&uid, &region, &nickname, &avatarURL, &verifiedAt, &showDiscord, &discordUsername, &discordAvatarURL); err != nil {
+		return nil, notFound("game account public owner", err)
+	}
+
+	return scanPublicOwnerInfo(uid, region, nickname, avatarURL, verifiedAt, showDiscord, discordUsername, discordAvatarURL), nil
+}
+
 // Delete removes the game account and cascades to its builds and teams.
 func (r *SQLiteAccountRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	res, err := r.db.ExecContext(ctx, `DELETE FROM game_accounts WHERE id = ?;`, id.String())
@@ -116,12 +165,17 @@ func (r *SQLiteAccountRepo) Delete(ctx context.Context, id uuid.UUID) error {
 
 func scanAccountRow(row rowScanner) (*domain.GameAccount, error) {
 	var (
-		a         domain.GameAccount
-		id        string
-		userID    string
-		createdAt string
+		a                domain.GameAccount
+		id               string
+		userID           string
+		nickname         sql.NullString
+		avatarURL        sql.NullString
+		verifiedAt       sql.NullString
+		isPublicShowcase int
+		showDiscord      int
+		createdAt        string
 	)
-	if err := row.Scan(&id, &userID, &a.UID, &a.Region, &createdAt); err != nil {
+	if err := row.Scan(&id, &userID, &a.UID, &a.Region, &nickname, &avatarURL, &verifiedAt, &isPublicShowcase, &showDiscord, &createdAt); err != nil {
 		return nil, notFound("game account", err)
 	}
 
@@ -137,9 +191,18 @@ func scanAccountRow(row rowScanner) (*domain.GameAccount, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse game account created_at: %w", err)
 	}
+	parsedVerifiedAt, err := parseNullableTime(verifiedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse game account verified_at: %w", err)
+	}
 
 	a.ID = parsedID
 	a.UserID = parsedUserID
+	a.Nickname = nullStringPointer(nickname)
+	a.AvatarURL = nullStringPointer(avatarURL)
+	a.VerifiedAt = parsedVerifiedAt
+	a.IsPublicShowcase = isPublicShowcase != 0
+	a.ShowDiscord = showDiscord != 0
 	a.CreatedAt = createdAtParsed
 	return &a, nil
 }
