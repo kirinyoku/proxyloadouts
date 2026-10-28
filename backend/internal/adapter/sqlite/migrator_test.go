@@ -66,6 +66,9 @@ func TestMigrate_CreatesSchema(t *testing.T) {
 		"idx_teams_account",
 		"idx_team_members_team",
 		"idx_team_members_build",
+		"idx_game_accounts_verified_uid",
+		"idx_agent_builds_public_account",
+		"idx_teams_public_account",
 	}
 	for _, index := range indexes {
 		if !objectExists(t, db, "index", index) {
@@ -235,5 +238,47 @@ func TestMigrate_ForeignKeyEnforcement(t *testing.T) {
 	}
 	if builds != 0 {
 		t.Errorf("expected builds to be cascade-deleted with account, got %d remaining", builds)
+	}
+}
+
+func TestMigrate_VerifiedUIDUniqueConstraint(t *testing.T) {
+	db := newMigratedTestDB(t)
+
+	// Two different users can have game accounts with the same UID when verified_at is NULL.
+	if _, err := db.Exec(`
+		INSERT INTO users (id, discord_id, username) VALUES
+			('u1', 'discord-1', 'user1'),
+			('u2', 'discord-2', 'user2');
+	`); err != nil {
+		t.Fatalf("failed to seed users: %v", err)
+	}
+
+	uid := "1504687050"
+	if _, err := db.Exec(`
+		INSERT INTO game_accounts (id, user_id, uid, verified_at) VALUES
+			('g1', 'u1', ?, NULL),
+			('g2', 'u2', ?, NULL);
+	`, uid, uid); err != nil {
+		t.Fatalf("expected multiple unverified accounts with same UID to succeed: %v", err)
+	}
+
+	// Setting verified_at on the first account succeeds.
+	if _, err := db.Exec(`UPDATE game_accounts SET verified_at = datetime('now') WHERE id = 'g1';`); err != nil {
+		t.Fatalf("failed to verify first account: %v", err)
+	}
+
+	// Attempting to set verified_at on the second account with the same UID must fail with UNIQUE constraint violation.
+	if _, err := db.Exec(`UPDATE game_accounts SET verified_at = datetime('now') WHERE id = 'g2';`); err == nil {
+		t.Error("expected UNIQUE constraint error when verifying duplicate UID, got nil")
+	} else if !strings.Contains(err.Error(), "UNIQUE") {
+		t.Errorf("expected UNIQUE constraint error, got: %v", err)
+	}
+
+	// Clearing verified_at on the first account allows verifying the second account.
+	if _, err := db.Exec(`UPDATE game_accounts SET verified_at = NULL WHERE id = 'g1';`); err != nil {
+		t.Fatalf("failed to clear verification on first account: %v", err)
+	}
+	if _, err := db.Exec(`UPDATE game_accounts SET verified_at = datetime('now') WHERE id = 'g2';`); err != nil {
+		t.Fatalf("expected verifying second account to succeed after un-verifying first, got: %v", err)
 	}
 }
