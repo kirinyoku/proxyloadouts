@@ -321,6 +321,11 @@ func (s *Service) ScanByUID(ctx context.Context, uid string, lang ...string) (*S
 	return buildShowcaseResponse(profile, status, remTTL), nil
 }
 
+// FetchFreshProfile delegates to FetchFreshRawProfile for verification callers.
+func (s *Service) FetchFreshProfile(ctx context.Context, uid string) (*FreshVerificationProfile, error) {
+	return s.FetchFreshRawProfile(ctx, uid)
+}
+
 // FetchFreshRawProfile bypasses local caches (both TTL cache and negative cache)
 // to fetch the latest upstream profile directly from the provider.
 // On success, it enriches the profile in fairy.LangRU to obtain canonical Nickname
