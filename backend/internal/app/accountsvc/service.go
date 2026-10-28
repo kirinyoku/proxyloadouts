@@ -68,6 +68,8 @@ type AccountStore interface {
 	Create(ctx context.Context, account *domain.GameAccount) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.GameAccount, error)
 	GetByUserAndUID(ctx context.Context, userID uuid.UUID, uid string) (*domain.GameAccount, error)
+	GetVerifiedByUID(ctx context.Context, uid string) (*domain.GameAccount, *domain.PublicOwnerInfo, error)
+	GetPublicOwnerInfoByAccountID(ctx context.Context, accountID uuid.UUID) (*domain.PublicOwnerInfo, error)
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]*domain.GameAccount, error)
 	CountByUser(ctx context.Context, userID uuid.UUID) (int, error)
 	UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error
@@ -230,6 +232,16 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, uid, region stri
 // UpdateProfileMetadata updates the display nickname and avatar URL of a game account.
 func (s *Service) UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error {
 	return s.accounts.UpdateProfileMetadata(ctx, id, nickname, avatarURL)
+}
+
+// GetVerifiedByUID returns the verified game account and public owner metadata for the given UID,
+// or domain.ErrNotFound if not verified or if the owner is banned.
+func (s *Service) GetVerifiedByUID(ctx context.Context, uid string) (*domain.GameAccount, *domain.PublicOwnerInfo, error) {
+	cleanUID := strings.TrimSpace(uid)
+	if err := domain.ValidateUID(cleanUID); err != nil {
+		return nil, nil, fmt.Errorf("%w: %w", domain.ErrInvalidInput, err)
+	}
+	return s.accounts.GetVerifiedByUID(ctx, cleanUID)
 }
 
 // List returns all linked game accounts for the given user.

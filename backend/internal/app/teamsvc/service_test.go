@@ -782,3 +782,67 @@ func TestService_SetVisibility_AndUpdateIsPublic(t *testing.T) {
 		t.Errorf("expected ErrForbidden for foreign user, got %v", err)
 	}
 }
+
+func TestService_ListPublicByAccount(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+	ids := env.buildIDs(t)
+
+	// Initially empty
+	publicTeams, err := env.svc.ListPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("ListPublicByAccount failed: %v", err)
+	}
+	if len(publicTeams) != 0 {
+		t.Fatalf("expected 0 public teams, got %d", len(publicTeams))
+	}
+
+	// Create private team
+	t1, err := env.svc.Create(ctx, CreateInput{
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Private Team",
+		BuildIDs:      []uuid.UUID{ids[0]},
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	publicTeams, _ = env.svc.ListPublicByAccount(ctx, env.accountID)
+	if len(publicTeams) != 0 {
+		t.Fatalf("expected 0 public teams, got %d", len(publicTeams))
+	}
+
+	// Create public team
+	isPublic := true
+	t2, err := env.svc.Create(ctx, CreateInput{
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Public Team",
+		IsPublic:      &isPublic,
+		BuildIDs:      []uuid.UUID{ids[1]},
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	publicTeams, err = env.svc.ListPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("ListPublicByAccount failed: %v", err)
+	}
+	if len(publicTeams) != 1 || publicTeams[0].Team.ID != t2.ID {
+		t.Fatalf("expected 1 public team with ID %s, got %v", t2.ID, publicTeams)
+	}
+
+	// Make t1 public as well
+	if err := env.svc.SetVisibility(ctx, env.ownerID, t1.ID, true); err != nil {
+		t.Fatalf("SetVisibility failed: %v", err)
+	}
+	publicTeams, err = env.svc.ListPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("ListPublicByAccount failed: %v", err)
+	}
+	if len(publicTeams) != 2 {
+		t.Fatalf("expected 2 public teams, got %d", len(publicTeams))
+	}
+}

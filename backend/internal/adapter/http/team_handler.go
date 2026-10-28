@@ -188,6 +188,25 @@ func (h *TeamHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, newTeamResponse(team))
 }
 
+func newTeamSummaryListResponse(summaries []*teamsvc.TeamSummary) []teamSummaryResponse {
+	out := make([]teamSummaryResponse, 0, len(summaries))
+	for _, s := range summaries {
+		members := make([]teamMemberResponse, 0, len(s.Members))
+		for _, m := range s.Members {
+			members = append(members, teamMemberResponse{
+				SlotNumber: m.Member.SlotNumber,
+				Build:      newBuildResponse(m.Build),
+			})
+		}
+		out = append(out, teamSummaryResponse{
+			Team:    newTeamResponse(s.Team),
+			Report:  s.Report,
+			Members: members,
+		})
+	}
+	return out
+}
+
 // handleList returns teams of an owned account with validity reports.
 func (h *TeamHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	user := MustUserFromContext(r.Context())
@@ -205,22 +224,7 @@ func (h *TeamHandler) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out := make([]teamSummaryResponse, 0, len(summaries))
-	for _, s := range summaries {
-		members := make([]teamMemberResponse, 0, len(s.Members))
-		for _, m := range s.Members {
-			members = append(members, teamMemberResponse{
-				SlotNumber: m.Member.SlotNumber,
-				Build:      newBuildResponse(m.Build),
-			})
-		}
-		out = append(out, teamSummaryResponse{
-			Team:    newTeamResponse(s.Team),
-			Report:  s.Report,
-			Members: members,
-		})
-	}
-	respondJSON(w, http.StatusOK, out)
+	respondJSON(w, http.StatusOK, newTeamSummaryListResponse(summaries))
 }
 
 // teamCountResponse reports how many teams exist on a game account along with the effective limit.

@@ -371,6 +371,7 @@ func TestBuildRepo_ListPublicByAccount(t *testing.T) {
 
 	b1 := makeDomainBuild(user.ID, account.ID, "Public Build 1", 1511)
 	b1.IsPublic = true
+	b1.CreatedAt = time.Now().UTC().Add(-time.Second)
 	if err := builds.Create(ctx, b1); err != nil {
 		t.Fatalf("failed to create build 1: %v", err)
 	}

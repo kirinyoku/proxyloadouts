@@ -169,6 +169,50 @@ export interface paths {
         delete: operations["deleteAccount"];
         options?: never;
         head?: never;
+        /**
+         * Update game account settings
+         * @description Updates privacy settings such as public showcase visibility and Discord identity sharing. Enabling public showcase requires verified ownership.
+         */
+        patch: operations["updateAccount"];
+        trace?: never;
+    };
+    "/accounts/{accountID}/verify/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start UID ownership verification
+         * @description Generates or returns an active one-time verification code (PXL-XXXX) to be placed into the in-game profile signature.
+         */
+        post: operations["startAccountVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/accounts/{accountID}/verify/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm UID ownership verification
+         * @description Fetches a fresh showcase profile from Enka Network bypassing cache and checks if the player's signature contains the active verification code.
+         */
+        post: operations["confirmAccountVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -184,6 +228,26 @@ export interface paths {
          * @description Public endpoint retrieving character showcase from Enka Network via Fairy SDK. Coalesced with singleflight and cached in-memory.
          */
         get: operations["scanShowcase"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/showcase/{uid}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get verified public showcase roster
+         * @description Retrieves publicly shared build presets and squad assemblies for a verified ZZZ UID directly from local database without upstream network calls.
+         */
+        get: operations["getPublicShowcaseRoster"];
         put?: never;
         post?: never;
         delete?: never;
@@ -608,6 +672,20 @@ export interface components {
              */
             region?: "Europe" | "America" | "Asia" | "TW/HK/MO";
         };
+        UpdateAccountRequest: {
+            /** @description Whether this account's showcase roster is public (requires verified ownership) */
+            is_public_showcase?: boolean;
+            /** @description Whether to display owner's Discord identity on public pages */
+            show_discord?: boolean;
+        };
+        VerificationChallengeResponse: {
+            /** @example PXL-9A4B */
+            code: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** @example 30 */
+            cooldown_seconds: number;
+        };
         UserLimits: {
             /**
              * @description Effective maximum number of saved builds per agent for this user
@@ -776,6 +854,12 @@ export interface components {
             members: components["schemas"]["TeamMember"][];
             owner: components["schemas"]["PublicOwnerInfo"];
         };
+        PublicShowcaseRosterResponse: {
+            owner: components["schemas"]["PublicOwnerInfo"];
+            is_public_showcase: boolean;
+            builds: components["schemas"]["Build"][];
+            teams: components["schemas"]["TeamSummary"][];
+        };
         ShowcaseResponse: {
             uid: string;
             nickname: string;
@@ -789,6 +873,10 @@ export interface components {
             fetched_at: string;
             agent_count: number;
             agents: Record<string, never>[];
+            /** @description Public owner profile if UID is claimed and verified by an active user */
+            verified_owner?: components["schemas"]["PublicOwnerInfo"] | null;
+            /** @description True if verified owner has published presets and squads */
+            has_public_roster?: boolean;
         };
         AdminStats: {
             /** Format: date-time */
@@ -1250,6 +1338,92 @@ export interface operations {
             404: components["responses"]["NotFoundError"];
         };
     };
+    updateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Account updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameAccount"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+        };
+    };
+    startAccountVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verification challenge generated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationChallengeResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    confirmAccountVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Account ownership verified successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameAccount"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            429: components["responses"]["RateLimitedError"];
+            502: components["responses"]["BadGatewayError"];
+        };
+    };
     scanShowcase: {
         parameters: {
             query?: {
@@ -1277,6 +1451,34 @@ export interface operations {
             404: components["responses"]["NotFoundError"];
             429: components["responses"]["RateLimitedError"];
             502: components["responses"]["BadGatewayError"];
+        };
+    };
+    getPublicShowcaseRoster: {
+        parameters: {
+            query?: {
+                /** @description Preferred localization language for agent equipment and metadata (e.g. 'ru', 'en') */
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                uid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public showcase roster */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicShowcaseRosterResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            429: components["responses"]["RateLimitedError"];
         };
     };
     listBuilds: {

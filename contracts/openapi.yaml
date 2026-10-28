@@ -194,6 +194,44 @@ paths:
           $ref: '#/components/responses/ConflictError'
 
   /accounts/{accountID}:
+    patch:
+      summary: Update game account settings
+      description: Updates privacy settings such as public showcase visibility and Discord identity sharing. Enabling public showcase requires verified ownership.
+      operationId: updateAccount
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: accountID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountRequest'
+      responses:
+        '200':
+          description: Account updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameAccount'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
     delete:
       summary: Unlink a game account
       description: Removes linked game account; cascades to associated builds and teams.
@@ -220,6 +258,76 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+
+  /accounts/{accountID}/verify/challenge:
+    post:
+      summary: Start UID ownership verification
+      description: Generates or returns an active one-time verification code (PXL-XXXX) to be placed into the in-game profile signature.
+      operationId: startAccountVerification
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: accountID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Verification challenge generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationChallengeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /accounts/{accountID}/verify/confirm:
+    post:
+      summary: Confirm UID ownership verification
+      description: Fetches a fresh showcase profile from Enka Network bypassing cache and checks if the player's signature contains the active verification code.
+      operationId: confirmAccountVerification
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: accountID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Account ownership verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameAccount'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '502':
+          $ref: '#/components/responses/BadGatewayError'
 
   /showcase/{uid}:
     get:
@@ -260,6 +368,44 @@ paths:
           $ref: '#/components/responses/RateLimitedError'
         '502':
           $ref: '#/components/responses/BadGatewayError'
+
+  /showcase/{uid}/roster:
+    get:
+      summary: Get verified public showcase roster
+      description: Retrieves publicly shared build presets and squad assemblies for a verified ZZZ UID directly from local database without upstream network calls.
+      operationId: getPublicShowcaseRoster
+      tags:
+        - Showcase
+      security: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{9,10}$'
+            example: "1500000000"
+        - name: lang
+          in: query
+          required: false
+          description: Preferred localization language for agent equipment and metadata (e.g. 'ru', 'en')
+          schema:
+            type: string
+            default: "ru"
+            example: "ru"
+      responses:
+        '200':
+          description: Public showcase roster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicShowcaseRosterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /builds:
     get:
@@ -1183,6 +1329,33 @@ components:
           enum: [Europe, America, Asia, TW/HK/MO]
           example: "Europe"
 
+    UpdateAccountRequest:
+      type: object
+      properties:
+        is_public_showcase:
+          type: boolean
+          description: Whether this account's showcase roster is public (requires verified ownership)
+        show_discord:
+          type: boolean
+          description: Whether to display owner's Discord identity on public pages
+
+    VerificationChallengeResponse:
+      type: object
+      required:
+        - code
+        - expires_at
+        - cooldown_seconds
+      properties:
+        code:
+          type: string
+          example: "PXL-9A4B"
+        expires_at:
+          type: string
+          format: date-time
+        cooldown_seconds:
+          type: integer
+          example: 30
+
     UserLimits:
       type: object
       required:
@@ -1579,6 +1752,27 @@ components:
         owner:
           $ref: '#/components/schemas/PublicOwnerInfo'
 
+    PublicShowcaseRosterResponse:
+      type: object
+      required:
+        - owner
+        - is_public_showcase
+        - builds
+        - teams
+      properties:
+        owner:
+          $ref: '#/components/schemas/PublicOwnerInfo'
+        is_public_showcase:
+          type: boolean
+        builds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Build'
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamSummary'
+
     ShowcaseResponse:
       type: object
       required:
@@ -1616,6 +1810,14 @@ components:
           type: array
           items:
             type: object
+        verified_owner:
+          anyOf:
+            - $ref: '#/components/schemas/PublicOwnerInfo'
+            - type: "null"
+          description: Public owner profile if UID is claimed and verified by an active user
+        has_public_roster:
+          type: boolean
+          description: True if verified owner has published presets and squads
 
     # ---------------------------------------------------------------------
     # Admin (see docs/product/PRD-admin-dashboard.md)

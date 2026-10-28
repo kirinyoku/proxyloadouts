@@ -110,7 +110,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 	r.Get("/health", health)
 
 	authHandler := NewAuthHandler(deps.Auth, deps.Users, deps.Accounts, opts)
-	showcaseHandler := NewShowcaseHandler(deps.Scanner)
+	showcaseHandler := NewShowcaseHandler(deps.Scanner, deps.Accounts, deps.Builds, deps.Teams)
 	accountHandler := NewAccountHandler(deps.Accounts)
 	buildHandler := NewBuildHandler(deps.Builds)
 	teamHandler := NewTeamHandler(deps.Teams)
@@ -149,6 +149,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		api.With(authLimiter.Handler).Get("/auth/discord/callback", authHandler.handleCallback)
 		api.With(checkOrigin, authLimiter.Handler).Post("/auth/logout", authHandler.handleLogout)
 		api.With(showcaseLimiter.Handler).Get("/showcase/{uid}", showcaseHandler.handle)
+		api.With(publicLimiter.Handler).Get("/showcase/{uid}/roster", showcaseHandler.handleRoster)
 
 		api.With(publicLimiter.Handler).Get("/public/builds/{buildID}", publicHandler.handleGetBuild)
 		api.With(publicLimiter.Handler).Get("/public/teams/{teamID}", publicHandler.handleGetTeam)
@@ -164,7 +165,10 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 
 			private.Get("/accounts", accountHandler.handleList)
 			private.Post("/accounts", accountHandler.handleCreate)
+			private.Patch("/accounts/{accountID}", accountHandler.handleUpdate)
 			private.Delete("/accounts/{accountID}", accountHandler.handleDelete)
+			private.Post("/accounts/{accountID}/verify/challenge", accountHandler.handleVerifyChallenge)
+			private.Post("/accounts/{accountID}/verify/confirm", accountHandler.handleVerifyConfirm)
 
 			private.Get("/builds", buildHandler.handleList)
 			private.Post("/builds", buildHandler.handleCreate)

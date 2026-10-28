@@ -65,6 +65,17 @@ type createAccountRequest struct {
 	Region string `json:"region"`
 }
 
+type updateAccountRequest struct {
+	IsPublicShowcase *bool `json:"is_public_showcase"`
+	ShowDiscord      *bool `json:"show_discord"`
+}
+
+type verificationChallengeResponse struct {
+	Code            string `json:"code"`
+	ExpiresAt       string `json:"expires_at"`
+	CooldownSeconds int    `json:"cooldown_seconds"`
+}
+
 // handleCreate links a ZZZ UID to the current user.
 func (h *AccountHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	user := MustUserFromContext(r.Context())
@@ -110,4 +121,68 @@ func (h *AccountHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleUpdate updates privacy settings of an owned game account.
+func (h *AccountHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	user := MustUserFromContext(r.Context())
+
+	accountID, err := uuid.Parse(chi.URLParam(r, "accountID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid account id")
+		return
+	}
+
+	var req updateAccountRequest
+	if err := decodeJSON(r, &req); err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+
+	account, err := h.accounts.UpdateSettings(r.Context(), user.ID, accountID, req.IsPublicShowcase, req.ShowDiscord)
+	if err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, newAccountResponse(account))
+}
+
+// handleVerifyChallenge generates or returns an active verification challenge code.
+func (h *AccountHandler) handleVerifyChallenge(w http.ResponseWriter, r *http.Request) {
+	user := MustUserFromContext(r.Context())
+
+	accountID, err := uuid.Parse(chi.URLParam(r, "accountID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid account id")
+		return
+	}
+
+	challenge, err := h.accounts.StartVerification(r.Context(), user.ID, accountID)
+	if err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, verificationChallengeResponse{
+		Code:            challenge.Code,
+		ExpiresAt:       challenge.ExpiresAt.UTC().Format(time.RFC3339),
+		CooldownSeconds: challenge.CooldownSeconds,
+	})
+}
+
+// handleVerifyConfirm validates the in-game signature and completes verification.
+func (h *AccountHandler) handleVerifyConfirm(w http.ResponseWriter, r *http.Request) {
+	user := MustUserFromContext(r.Context())
+
+	accountID, err := uuid.Parse(chi.URLParam(r, "accountID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid account id")
+		return
+	}
+
+	account, err := h.accounts.ConfirmVerification(r.Context(), user.ID, accountID)
+	if err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, newAccountResponse(account))
 }

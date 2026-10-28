@@ -501,6 +501,7 @@ func TestTeamRepo_ListPublicByAccount(t *testing.T) {
 		GameAccountID: account.ID,
 		Name:          "Public Team 1",
 		IsPublic:      true,
+		CreatedAt:     time.Now().UTC().Add(-time.Second),
 	}
 	if err := repo.Create(ctx, t1, []domain.TeamMember{{SlotNumber: 1, BuildID: buildsList[0].ID}}); err != nil {
 		t.Fatalf("failed to create team 1: %v", err)

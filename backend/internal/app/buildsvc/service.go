@@ -302,6 +302,26 @@ func (s *Service) ListByAccount(ctx context.Context, userID, accountID uuid.UUID
 	return builds, nil
 }
 
+// ListPublicByAccount returns all publicly shared builds of a game account, dynamically
+// localized when lang is specified.
+func (s *Service) ListPublicByAccount(ctx context.Context, accountID uuid.UUID, lang ...string) ([]*domain.AgentBuild, error) {
+	if accountID == uuid.Nil {
+		return nil, fmt.Errorf("%w: game account is required", domain.ErrInvalidInput)
+	}
+	builds, err := s.builds.ListPublicByAccount(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	requestedLang := ""
+	if len(lang) > 0 {
+		requestedLang = lang[0]
+	}
+	for _, b := range builds {
+		s.enrichBuildWithLang(ctx, b, requestedLang)
+	}
+	return builds, nil
+}
+
 // enrichBuildWithLang rewrites the build's payload and agent name in place for
 // the requested language. A localization failure is non-fatal: the build keeps
 // whatever the repository returned.

@@ -1013,3 +1013,70 @@ func TestService_Create_BackgroundProfileSync(t *testing.T) {
 		t.Errorf("expected AvatarURL https://example.com/avatar_from_scanner.png, got %v", accAfter.AvatarURL)
 	}
 }
+
+func TestService_ListPublicByAccount(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	// 1. Initially empty
+	publicBuilds, err := env.svc.ListPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("ListPublicByAccount failed: %v", err)
+	}
+	if len(publicBuilds) != 0 {
+		t.Fatalf("expected 0 builds, got %d", len(publicBuilds))
+	}
+
+	// 2. Create private build
+	b1, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Private Miyabi",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// Still 0 public builds
+	publicBuilds, _ = env.svc.ListPublicByAccount(ctx, env.accountID)
+	if len(publicBuilds) != 0 {
+		t.Fatalf("expected 0 public builds, got %d", len(publicBuilds))
+	}
+
+	// 3. Create public build
+	isPublic := true
+	b2, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Public Ellen",
+		IsPublic:        &isPublic,
+		RawAgentPayload: fairyAgentJSON(t, 1411, "Ellen", false),
+		RawData:         sampleRawAvatar(1411),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// Now returns 1 public build
+	publicBuilds, err = env.svc.ListPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("ListPublicByAccount failed: %v", err)
+	}
+	if len(publicBuilds) != 1 || publicBuilds[0].ID != b2.ID {
+		t.Fatalf("expected 1 public build with ID %s, got %v", b2.ID, publicBuilds)
+	}
+
+	// 4. Publish first build as well
+	if err := env.svc.SetVisibility(ctx, env.ownerID, b1.ID, true); err != nil {
+		t.Fatalf("SetVisibility failed: %v", err)
+	}
+	publicBuilds, err = env.svc.ListPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("ListPublicByAccount failed: %v", err)
+	}
+	if len(publicBuilds) != 2 {
+		t.Fatalf("expected 2 public builds, got %d", len(publicBuilds))
+	}
+}

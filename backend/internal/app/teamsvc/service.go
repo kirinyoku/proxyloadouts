@@ -373,6 +373,89 @@ func (s *Service) List(ctx context.Context, userID, accountID uuid.UUID, lang ..
 	return summaries, nil
 }
 
+// ListPublicByAccount returns all publicly shared teams of a game account with their validity reports
+// and implicitly read member builds, dynamically localized when lang is specified.
+func (s *Service) ListPublicByAccount(ctx context.Context, accountID uuid.UUID, lang ...string) ([]*TeamSummary, error) {
+	if accountID == uuid.Nil {
+		return nil, fmt.Errorf("%w: game account is required", domain.ErrInvalidInput)
+	}
+
+	teams, err := s.teams.ListPublicByAccount(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if len(teams) == 0 {
+		return []*TeamSummary{}, nil
+	}
+
+	requestedLang := ""
+	if len(lang) > 0 {
+		requestedLang = lang[0]
+	}
+
+	teamIDs := make([]uuid.UUID, len(teams))
+	for i, team := range teams {
+		teamIDs[i] = team.ID
+	}
+
+	membersByTeam, err := s.teams.GetMembersByTeams(ctx, teamIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	uniqueBuildIDMap := make(map[uuid.UUID]struct{})
+	for _, members := range membersByTeam {
+		for _, member := range members {
+			uniqueBuildIDMap[member.BuildID] = struct{}{}
+		}
+	}
+	buildIDs := make([]uuid.UUID, 0, len(uniqueBuildIDMap))
+	for id := range uniqueBuildIDMap {
+		buildIDs = append(buildIDs, id)
+	}
+
+	buildMap, err := s.builds.GetByIDs(ctx, buildIDs)
+	if err != nil {
+		return nil, err
+	}
+	if buildMap == nil {
+		buildMap = make(map[uuid.UUID]*domain.AgentBuild)
+	}
+
+	for _, b := range buildMap {
+		s.enrichBuildWithLang(ctx, b, requestedLang)
+	}
+
+	summaries := make([]*TeamSummary, 0, len(teams))
+	for _, team := range teams {
+		members := membersByTeam[team.ID]
+		buildsList := make([]*domain.AgentBuild, 0, len(members))
+		detailMembers := make([]MemberDetail, 0, len(members))
+		for _, member := range members {
+			build, ok := buildMap[member.BuildID]
+			if !ok {
+				var err error
+				build, err = s.builds.GetByID(ctx, member.BuildID)
+				if err != nil {
+					return nil, fmt.Errorf("failed to load build %s of public team %s: %w", member.BuildID, team.ID, err)
+				}
+				s.enrichBuildWithLang(ctx, build, requestedLang)
+				buildMap[member.BuildID] = build
+			}
+			buildsList = append(buildsList, build)
+			detailMembers = append(detailMembers, MemberDetail{Member: member, Build: build})
+		}
+		report := conflicts.Validate(buildsList)
+
+		summaries = append(summaries, &TeamSummary{
+			Team:    team,
+			Report:  report,
+			Members: detailMembers,
+		})
+	}
+	return summaries, nil
+}
+
 // CountForAccount returns the number of teams on an owned game account.
 //
 // Callers that only need to know whether the per-account team limit has been

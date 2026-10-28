@@ -110,6 +110,35 @@ func (m *mockAccountStore) VerifyOwnership(_ context.Context, accountID uuid.UUI
 	return nil
 }
 
+func (m *mockAccountStore) GetVerifiedByUID(_ context.Context, uid string) (*domain.GameAccount, *domain.PublicOwnerInfo, error) {
+	for _, a := range m.accounts {
+		if a.UID == uid && a.VerifiedAt != nil {
+			return a, &domain.PublicOwnerInfo{
+				UID:        a.UID,
+				Region:     a.Region,
+				Nickname:   a.Nickname,
+				AvatarURL:  a.AvatarURL,
+				IsVerified: true,
+			}, nil
+		}
+	}
+	return nil, nil, domain.ErrNotFound
+}
+
+func (m *mockAccountStore) GetPublicOwnerInfoByAccountID(_ context.Context, accountID uuid.UUID) (*domain.PublicOwnerInfo, error) {
+	a, ok := m.accounts[accountID]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	return &domain.PublicOwnerInfo{
+		UID:        a.UID,
+		Region:     a.Region,
+		Nickname:   a.Nickname,
+		AvatarURL:  a.AvatarURL,
+		IsVerified: a.IsVerified(),
+	}, nil
+}
+
 func (m *mockAccountStore) Delete(_ context.Context, id uuid.UUID) error {
 	if _, ok := m.accounts[id]; !ok {
 		return domain.ErrNotFound
