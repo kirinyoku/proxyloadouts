@@ -14,7 +14,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/kirinyoku/fairy"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/buildsvc"
+	"github.com/kirinyoku/proxyloadouts/backend/internal/app/scannersvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/teamsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
@@ -63,19 +65,22 @@ func (m *metaProvider) GetPublicTeam(ctx context.Context, id uuid.UUID, lang ...
 }
 
 var (
-	titleRegex     = regexp.MustCompile(`(?i)<title>.*?</title>`)
-	ogTitleRegex   = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:title["'][^>]*>`)
-	twTitleRegex   = regexp.MustCompile(`(?i)<meta\s+[^>]*name=["']twitter:title["'][^>]*>`)
-	descRegex      = regexp.MustCompile(`(?i)<meta\s+[^>]*name=["']description["'][^>]*>`)
-	ogDescRegex    = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:description["'][^>]*>`)
-	twDescRegex    = regexp.MustCompile(`(?i)<meta\s+[^>]*name=["']twitter:description["'][^>]*>`)
-	ogURLRegex     = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:url["'][^>]*>`)
-	canonicalRegex = regexp.MustCompile(`(?i)<link\s+[^>]*rel=["']canonical["'][^>]*>`)
-	ogImageRegex   = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:image["'][^>]*>`)
-	twImageRegex   = regexp.MustCompile(`(?i)<meta\s+[^>]*name=["']twitter:image["'][^>]*>`)
+	titleRegex       = regexp.MustCompile(`(?i)<title>.*?</title>`)
+	ogTitleRegex     = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:title["'][^>]*>`)
+	twTitleRegex     = regexp.MustCompile(`(?i)<meta\s+[^>]*name=["']twitter:title["'][^>]*>`)
+	descRegex        = regexp.MustCompile(`(?i)<meta\s+[^>]*name=["']description["'][^>]*>`)
+	ogDescRegex      = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:description["'][^>]*>`)
+	twDescRegex      = regexp.MustCompile(`(?i)<meta\s+[^>]*name=["']twitter:description["'][^>]*>`)
+	ogURLRegex       = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:url["'][^>]*>`)
+	canonicalRegex   = regexp.MustCompile(`(?i)<link\s+[^>]*rel=["']canonical["'][^>]*>`)
+	ogImageRegex     = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:image["'][^>]*>`)
+	twImageRegex     = regexp.MustCompile(`(?i)<meta\s+[^>]*name=["']twitter:image["'][^>]*>`)
+	ogLocaleRegex    = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:locale["'][^>]*>`)
+	ogLocaleAltRegex = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:locale:alternate["'][^>]*>`)
+	htmlLangRegex    = regexp.MustCompile(`(?i)(<html[^>]*\blang=["'])[^"']*`)
 )
 
-func injectOpenGraph(htmlContent, title, description, pageURL, imageURL string) string {
+func injectOpenGraph(htmlContent, title, description, pageURL, imageURL string, lang ...string) string {
 	escapedTitle := html.EscapeString(title)
 	escapedDesc := html.EscapeString(description)
 
@@ -96,6 +101,21 @@ func injectOpenGraph(htmlContent, title, description, pageURL, imageURL string) 
 		htmlContent = ogImageRegex.ReplaceAllLiteralString(htmlContent, `<meta property="og:image" content="`+escapedImg+`" />`)
 		htmlContent = twImageRegex.ReplaceAllLiteralString(htmlContent, `<meta name="twitter:image" content="`+escapedImg+`" />`)
 	}
+
+	reqLang := ""
+	if len(lang) > 0 {
+		reqLang = lang[0]
+	}
+	if isEnglishLang(reqLang) {
+		htmlContent = ogLocaleRegex.ReplaceAllLiteralString(htmlContent, `<meta property="og:locale" content="en_US" />`)
+		htmlContent = ogLocaleAltRegex.ReplaceAllLiteralString(htmlContent, `<meta property="og:locale:alternate" content="ru_RU" />`)
+		htmlContent = htmlLangRegex.ReplaceAllString(htmlContent, `${1}en`)
+	} else {
+		htmlContent = ogLocaleRegex.ReplaceAllLiteralString(htmlContent, `<meta property="og:locale" content="ru_RU" />`)
+		htmlContent = ogLocaleAltRegex.ReplaceAllLiteralString(htmlContent, `<meta property="og:locale:alternate" content="en_US" />`)
+		htmlContent = htmlLangRegex.ReplaceAllString(htmlContent, `${1}ru`)
+	}
+
 	return htmlContent
 }
 
@@ -139,15 +159,33 @@ type buildDataOG struct {
 	SplashArtURL string `json:"splash_art_url"`
 }
 
-func buildMetaForBuild(detail *buildsvc.PublicBuildDetail) (title, desc, imageURL string) {
+func isEnglishLang(lang string) bool {
+	clean := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(lang)), "_", "-")
+	if clean == "" {
+		return false
+	}
+	return scannersvc.NormalizeLanguage(clean) == fairy.LangEN
+}
+
+func buildMetaForBuild(detail *buildsvc.PublicBuildDetail, lang ...string) (title, desc, imageURL string) {
 	b := detail.Build
 	owner := detail.Owner
+
+	reqLang := ""
+	if len(lang) > 0 {
+		reqLang = lang[0]
+	}
+	en := isEnglishLang(reqLang)
 
 	ownerName := "UID " + owner.UID
 	if owner.Nickname != nil && *owner.Nickname != "" {
 		ownerName = *owner.Nickname
 	}
-	title = fmt.Sprintf("%s — %s | Сборка игрока %s (UID %s)", b.AgentName, b.Name, ownerName, owner.UID)
+	if en {
+		title = fmt.Sprintf("%s — %s | Build by %s (UID %s)", b.AgentName, b.Name, ownerName, owner.UID)
+	} else {
+		title = fmt.Sprintf("%s — %s | Сборка игрока %s (UID %s)", b.AgentName, b.Name, ownerName, owner.UID)
+	}
 
 	var descParts []string
 	var data buildDataOG
@@ -160,7 +198,11 @@ func buildMetaForBuild(detail *buildsvc.PublicBuildDetail) (title, desc, imageUR
 	}
 
 	if data.WEngine != nil && data.WEngine.Name != "" {
-		descParts = append(descParts, "Амплификатор: "+data.WEngine.Name)
+		if en {
+			descParts = append(descParts, "W-Engine: "+data.WEngine.Name)
+		} else {
+			descParts = append(descParts, "Амплификатор: "+data.WEngine.Name)
+		}
 	}
 
 	var setStrs []string
@@ -170,7 +212,11 @@ func buildMetaForBuild(detail *buildsvc.PublicBuildDetail) (title, desc, imageUR
 		}
 	}
 	if len(setStrs) > 0 {
-		descParts = append(descParts, "Диски: "+strings.Join(setStrs, ", "))
+		if en {
+			descParts = append(descParts, "Drive Discs: "+strings.Join(setStrs, ", "))
+		} else {
+			descParts = append(descParts, "Диски: "+strings.Join(setStrs, ", "))
+		}
 	}
 
 	var statStrs []string
@@ -178,16 +224,46 @@ func buildMetaForBuild(detail *buildsvc.PublicBuildDetail) (title, desc, imageUR
 		statStrs = append(statStrs, "ATK "+data.UIStats.ATK.Total)
 	}
 	if data.UIStats.CritRate.Total != "" && data.UIStats.CritRate.Total != "0" && data.UIStats.CritRate.Total != "0%" {
-		statStrs = append(statStrs, "Крит "+data.UIStats.CritRate.Total)
+		if en {
+			statStrs = append(statStrs, "CRIT Rate "+data.UIStats.CritRate.Total)
+		} else {
+			statStrs = append(statStrs, "Крит "+data.UIStats.CritRate.Total)
+		}
 	}
 	if data.UIStats.CritDMG.Total != "" && data.UIStats.CritDMG.Total != "0" && data.UIStats.CritDMG.Total != "0%" {
-		statStrs = append(statStrs, "КУ "+data.UIStats.CritDMG.Total)
+		if en {
+			statStrs = append(statStrs, "CRIT DMG "+data.UIStats.CritDMG.Total)
+		} else {
+			statStrs = append(statStrs, "КУ "+data.UIStats.CritDMG.Total)
+		}
 	}
 	if data.UIStats.AnomalyProficiency.Total != "" && data.UIStats.AnomalyProficiency.Total != "0" {
-		statStrs = append(statStrs, "Знание аномалии "+data.UIStats.AnomalyProficiency.Total)
+		if en {
+			statStrs = append(statStrs, "Anomaly Proficiency "+data.UIStats.AnomalyProficiency.Total)
+		} else {
+			statStrs = append(statStrs, "Знание аномалии "+data.UIStats.AnomalyProficiency.Total)
+		}
+	}
+	if data.UIStats.AnomalyMastery.Total != "" && data.UIStats.AnomalyMastery.Total != "0" {
+		if en {
+			statStrs = append(statStrs, "Anomaly Mastery "+data.UIStats.AnomalyMastery.Total)
+		} else {
+			statStrs = append(statStrs, "Контроль аномалии "+data.UIStats.AnomalyMastery.Total)
+		}
+	}
+	if data.UIStats.EnergyRegen.Total != "" && data.UIStats.EnergyRegen.Total != "0" {
+		if en {
+			statStrs = append(statStrs, "Energy Regen "+data.UIStats.EnergyRegen.Total)
+		} else {
+			statStrs = append(statStrs, "Восст. энергии "+data.UIStats.EnergyRegen.Total)
+		}
 	}
 	if data.UIStats.PenRatio.Total != "" && data.UIStats.PenRatio.Total != "0" && data.UIStats.PenRatio.Total != "0%" {
-		statStrs = append(statStrs, "Пробивание "+data.UIStats.PenRatio.Total)
+		if en {
+			statStrs = append(statStrs, "PEN Ratio "+data.UIStats.PenRatio.Total)
+		} else {
+			statStrs = append(statStrs, "Пробивание "+data.UIStats.PenRatio.Total)
+		}
 	}
 	if len(statStrs) > 0 {
 		descParts = append(descParts, strings.Join(statStrs, " • "))
@@ -200,21 +276,35 @@ func buildMetaForBuild(detail *buildsvc.PublicBuildDetail) (title, desc, imageUR
 	if len(descParts) > 0 {
 		desc = strings.Join(descParts, " | ")
 	} else {
-		desc = fmt.Sprintf("Сборка персонажа %s от игрока %s", b.AgentName, ownerName)
+		if en {
+			desc = fmt.Sprintf("%s build by %s", b.AgentName, ownerName)
+		} else {
+			desc = fmt.Sprintf("Сборка персонажа %s от игрока %s", b.AgentName, ownerName)
+		}
 	}
 
 	return title, desc, imageURL
 }
 
-func teamMetaForTeam(detail *teamsvc.PublicTeamDetail) (title, desc string) {
+func teamMetaForTeam(detail *teamsvc.PublicTeamDetail, lang ...string) (title, desc string) {
 	t := detail.Team
 	owner := detail.Owner
+
+	reqLang := ""
+	if len(lang) > 0 {
+		reqLang = lang[0]
+	}
+	en := isEnglishLang(reqLang)
 
 	ownerName := "UID " + owner.UID
 	if owner.Nickname != nil && *owner.Nickname != "" {
 		ownerName = *owner.Nickname
 	}
-	title = fmt.Sprintf("%s | Отряд игрока %s (UID %s)", t.Name, ownerName, owner.UID)
+	if en {
+		title = fmt.Sprintf("%s | Squad by %s (UID %s)", t.Name, ownerName, owner.UID)
+	} else {
+		title = fmt.Sprintf("%s | Отряд игрока %s (UID %s)", t.Name, ownerName, owner.UID)
+	}
 
 	var agentEntries []string
 	for _, m := range detail.Members {
@@ -232,21 +322,36 @@ func teamMetaForTeam(detail *teamsvc.PublicTeamDetail) (title, desc string) {
 				agentStr = fmt.Sprintf("%s (%s)", agentStr, bData.WEngine.Name)
 			}
 		}
+		if agentStr == "" {
+			agentStr = "Agent"
+		}
 		agentEntries = append(agentEntries, agentStr)
 	}
 
 	var descParts []string
 	if len(agentEntries) > 0 {
-		descParts = append(descParts, "Состав: "+strings.Join(agentEntries, ", "))
+		if en {
+			descParts = append(descParts, "Lineup: "+strings.Join(agentEntries, ", "))
+		} else {
+			descParts = append(descParts, "Состав: "+strings.Join(agentEntries, ", "))
+		}
 	}
 	if t.Description != nil && *t.Description != "" {
-		descParts = append(descParts, "Заметка: "+*t.Description)
+		if en {
+			descParts = append(descParts, "Note: "+*t.Description)
+		} else {
+			descParts = append(descParts, "Заметка: "+*t.Description)
+		}
 	}
 
 	if len(descParts) > 0 {
 		desc = strings.Join(descParts, " | ")
 	} else {
-		desc = "Отряд игрока " + ownerName
+		if en {
+			desc = "Squad by " + ownerName
+		} else {
+			desc = "Отряд игрока " + ownerName
+		}
 	}
 
 	return title, desc
@@ -312,19 +417,19 @@ func spaHandler(provider ...PublicMetaProvider) http.Handler {
 					switch parts[0] {
 					case "b":
 						if detail, err := metaProv.GetPublicBuild(r.Context(), id, lang); err == nil && detail != nil {
-							ogTitle, ogDesc, imageURL = buildMetaForBuild(detail)
+							ogTitle, ogDesc, imageURL = buildMetaForBuild(detail, lang)
 							found = true
 						}
 					case "t":
 						if detail, err := metaProv.GetPublicTeam(r.Context(), id, lang); err == nil && detail != nil {
-							ogTitle, ogDesc = teamMetaForTeam(detail)
+							ogTitle, ogDesc = teamMetaForTeam(detail, lang)
 							found = true
 						}
 					}
 
 					if found {
 						pageURL := canonicalURLForRequest(r)
-						injected := injectOpenGraph(indexHTML, ogTitle, ogDesc, pageURL, imageURL)
+						injected := injectOpenGraph(indexHTML, ogTitle, ogDesc, pageURL, imageURL, lang)
 						w.Header().Set("Content-Type", "text/html; charset=utf-8")
 						w.Header().Set("Cache-Control", revalidateCacheControl)
 						w.WriteHeader(http.StatusOK)
