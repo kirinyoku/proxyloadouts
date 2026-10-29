@@ -21,7 +21,7 @@ vi.mock('react-i18next', async (importOriginal) => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string) => {
+      t: (key: string, options?: Record<string, string>) => {
         const dict: Record<string, string> = {
           'common.loading': 'Загрузка…',
           'sharing.teamNotFoundTitle': 'Отряд не найден или скрыт владельцем',
@@ -29,7 +29,15 @@ vi.mock('react-i18next', async (importOriginal) => {
           'sharing.backToHome': 'На главную',
           'sharing.backToShowcase': 'К витрине',
           'sharing.squadMembers': 'Участники отряда',
+          'sharing.teamPageTitle': 'Отряд {{name}} — ProxyLoadouts',
+          'sharing.teamPageMetaDesc': 'Публичный боевой отряд «{{name}}» игрока {{owner}} в ProxyLoadouts.',
           'teams.slotLabel': 'Слот {{slot}}',
+        }
+        if (key === 'sharing.teamPageTitle') {
+          return `Отряд ${options?.name ?? ''} — ProxyLoadouts`
+        }
+        if (key === 'sharing.teamPageMetaDesc') {
+          return `Публичный боевой отряд «${options?.name ?? ''}» игрока ${options?.owner ?? ''} в ProxyLoadouts.`
         }
         return dict[key] ?? key
       },
@@ -130,9 +138,12 @@ describe('PublicTeamPage', () => {
 
     const html = renderToString(<PublicTeamPage />)
     expect(html).toContain('ProxyMaster')
+    expect(html).toContain('/showcase?uid=1504687050&amp;tab=squads')
     expect(html).toContain('Ледяное трио')
     expect(html).toContain('Ротация через Е-шку и свап')
     expect(html).toContain('Участники отряда')
     expect(html).toContain('Эллен')
+    expect(html).toContain('<title>Отряд Ледяное трио — ProxyLoadouts</title>')
+    expect(html).toContain('content="Публичный боевой отряд «Ледяное трио» игрока ProxyMaster в ProxyLoadouts."')
   })
 })

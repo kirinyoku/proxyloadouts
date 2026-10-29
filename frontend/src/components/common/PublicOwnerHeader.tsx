@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
-import { BadgeCheck, Check, Copy, ExternalLink, Share2 } from 'lucide-react'
+import { Check, Copy, ExternalLink, Share2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { DiscordIcon } from '@/components/common/DiscordIcon'
 import { RegionBadge } from '@/components/showcase/ShowcaseProfileHeader'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/sonner'
@@ -12,9 +13,15 @@ export interface PublicOwnerHeaderProps {
   owner: PublicOwnerInfo
   shareUrl?: string
   className?: string
+  targetTab?: 'presets' | 'squads' | 'live'
 }
 
-export function PublicOwnerHeader({ owner, shareUrl, className }: PublicOwnerHeaderProps) {
+export function PublicOwnerHeader({
+  owner,
+  shareUrl,
+  className,
+  targetTab,
+}: PublicOwnerHeaderProps) {
   const { t } = useTranslation()
   const [uidCopied, setUidCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
@@ -47,6 +54,10 @@ export function PublicOwnerHeader({ owner, shareUrl, className }: PublicOwnerHea
       // ignore
     }
   }
+
+  const showcaseHref = `/showcase?uid=${encodeURIComponent(owner.uid)}${
+    targetTab && targetTab !== 'live' ? `&tab=${targetTab}` : ''
+  }`
 
   return (
     <div
@@ -83,16 +94,6 @@ export function PublicOwnerHeader({ owner, shareUrl, className }: PublicOwnerHea
                 {displayName}
               </span>
               <RegionBadge region={owner.region} />
-
-              {owner.is_verified && (
-                <span
-                  title={t('sharing.verifiedOwner')}
-                  className="inline-flex items-center gap-1 rounded-[3px_3px_0_3px] border border-emerald-500/50 bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold tracking-wider text-emerald-400 select-none shadow-[0_1px_2px_rgba(0,0,0,0.35)]"
-                >
-                  <BadgeCheck className="size-3 text-emerald-400 shrink-0" />
-                  <span>{t('sharing.verifiedOwner')}</span>
-                </span>
-              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-muted-foreground">
@@ -123,7 +124,7 @@ export function PublicOwnerHeader({ owner, shareUrl, className }: PublicOwnerHea
                       className="size-3.5 rounded-full object-cover"
                     />
                   ) : (
-                    <span className="font-bold text-xs">#</span>
+                    <DiscordIcon className="size-3.5" />
                   )}
                   <span className="font-sans font-medium text-xs text-foreground/90">
                     {owner.discord_username}
@@ -143,7 +144,7 @@ export function PublicOwnerHeader({ owner, shareUrl, className }: PublicOwnerHea
             asChild
           >
             <Link
-              to={`/showcase?uid=${owner.uid}`}
+              to={showcaseHref}
               title={t('sharing.viewShowcaseTitle', { uid: owner.uid })}
             >
               <ExternalLink className="size-3.5" />

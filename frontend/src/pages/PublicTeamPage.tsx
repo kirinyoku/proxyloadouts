@@ -65,11 +65,18 @@ export function PublicTeamPage() {
 
   const { team, owner, report } = data
   const hasConflict = Boolean(report && !report.is_valid)
+  const pageTitle = t('sharing.teamPageTitle', { name: team.name })
+  const pageDescription = t('sharing.teamPageMetaDesc', {
+    name: team.name,
+    owner: owner.nickname || owner.uid,
+  })
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 px-3 sm:px-4 py-4 sm:py-6">
+      <title>{pageTitle}</title>
+      <meta name="description" content={pageDescription} />
       {/* Author Header */}
-      <PublicOwnerHeader owner={owner} />
+      <PublicOwnerHeader owner={owner} targetTab="squads" />
 
       {/* Main Team Card */}
       <div className="rounded-3xl border border-white/[0.08] bg-card/96 p-4 sm:p-6 shadow-2xl backdrop-blur-sm space-y-5">
@@ -137,6 +144,8 @@ export function PublicTeamPage() {
               if (!open) setInspectBuild(null)
             }}
             teamName={team.name}
+            publicMode={true}
+            isPublicView={true}
           />
         </Suspense>
       )}

@@ -65,12 +65,14 @@ vi.mock('@/api/hooks', () => ({
   useAccounts: () => ({ data: mockAccounts, isPending: false }),
 }))
 
+const mockUseActiveAccount = vi.fn().mockReturnValue({
+  activeAccount: mockAccounts[0],
+  accounts: mockAccounts,
+  isPending: false,
+})
+
 vi.mock('@/hooks/useActiveAccount', () => ({
-  useActiveAccount: () => ({
-    activeAccount: mockAccounts[0],
-    accounts: mockAccounts,
-    isPending: false,
-  }),
+  useActiveAccount: () => mockUseActiveAccount(),
 }))
 
 // Mock dropdown-menu to render content directly during server rendering
@@ -123,6 +125,23 @@ describe('UserMenu component', () => {
     const setActiveAccount = useAccountStore.getState().setActiveAccount
     setActiveAccount(account.id)
     expect(useAccountStore.getState().activeAccountId).toBe('acc-2')
+  })
+
+  it('renders active account nickname and ZZZ avatar when available', () => {
+    const accountWithProfile = {
+      ...mockAccounts[0],
+      nickname: 'ZZZ_Hero',
+      avatar_url: 'https://example.com/zzz-avatar.png',
+    }
+    mockUseActiveAccount.mockReturnValueOnce({
+      activeAccount: accountWithProfile,
+      accounts: [accountWithProfile, mockAccounts[1]],
+      isPending: false,
+    })
+
+    const html = renderToString(<UserMenu />)
+    expect(html).toContain('ZZZ_Hero')
+    expect(html).toContain('https://example.com/zzz-avatar.png')
   })
 })
 

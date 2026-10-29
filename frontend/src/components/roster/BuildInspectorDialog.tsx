@@ -78,13 +78,18 @@ interface BuildInspectorDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   teamName?: string
+  isPublicView?: boolean
+  publicMode?: boolean
 }
 
 export function BuildInspectorDialog({
   build,
   open,
   onOpenChange,
+  isPublicView,
+  publicMode,
 }: BuildInspectorDialogProps) {
+  const isPublic = Boolean(publicMode ?? isPublicView)
   const { t } = useTranslation()
   const [mobileSection, setMobileSection] = useState<MobileInspectorSection>('discs')
   const [prevBuildId, setPrevBuildId] = useState(build?.id)
@@ -198,24 +203,26 @@ export function BuildInspectorDialog({
                 </div>
               </div>
 
-              {/* Actions: Open in Roster + Close Button */}
+              {/* Actions: Open in Roster (private mode) + Close Button */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-2.5 sm:px-3 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95 hover:border-primary/60 hover:bg-primary/15 hover:text-primary dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground dark:hover:border-primary/60 dark:hover:bg-primary/15 dark:hover:text-primary"
-                  asChild
-                >
-                  <Link
-                    to={`/roster?build=${encodeURIComponent(build.id)}&from=teams`}
-                    title={t('roster.openInRoster')}
-                    aria-label={t('roster.openInRoster')}
-                    className="inline-flex items-center gap-1.5"
+                {!isPublic && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-2.5 sm:px-3 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95 hover:border-primary/60 hover:bg-primary/15 hover:text-primary dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground dark:hover:border-primary/60 dark:hover:bg-primary/15 dark:hover:text-primary"
+                    asChild
                   >
-                    <span className="hidden min-[380px]:inline sm:inline">{t('roster.openInRoster')}</span>
-                    <ExternalLink className="size-3.5 shrink-0" />
-                  </Link>
-                </Button>
+                    <Link
+                      to={`/roster?build=${encodeURIComponent(build.id)}&from=teams`}
+                      title={t('roster.openInRoster')}
+                      aria-label={t('roster.openInRoster')}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <span className="hidden min-[380px]:inline sm:inline">{t('roster.openInRoster')}</span>
+                      <ExternalLink className="size-3.5 shrink-0" />
+                    </Link>
+                  </Button>
+                )}
 
                 <DialogClose asChild>
                   <Button
@@ -285,8 +292,28 @@ export function BuildInspectorDialog({
             </div>
           </div>
 
-          {/* Footer: Build snapshot date metadata */}
-          <div className="flex items-center justify-end border-t border-white/[0.08] pt-2 text-right">
+          {/* Footer: Build snapshot date metadata & optional action button */}
+          <div className="flex items-center justify-between border-t border-white/[0.08] pt-2 text-right">
+            <div>
+              {isPublic && build.is_public && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7.5 gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-2.5 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95 hover:border-primary/60 hover:bg-primary/15 hover:text-primary dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground dark:hover:border-primary/60 dark:hover:bg-primary/15 dark:hover:text-primary"
+                  asChild
+                >
+                  <Link
+                    to={`/b/${encodeURIComponent(build.id)}`}
+                    title={t('sharing.viewBuildPage')}
+                    aria-label={t('sharing.viewBuildPage')}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <span>{t('sharing.viewBuildPage')}</span>
+                    <ExternalLink className="size-3.5 shrink-0" />
+                  </Link>
+                </Button>
+              )}
+            </div>
             <DialogDescription className="font-mono text-[11px] text-muted-foreground/60">
               {t('roster.updatedAt', { date: formatDateTime(build.updated_at) })}
             </DialogDescription>

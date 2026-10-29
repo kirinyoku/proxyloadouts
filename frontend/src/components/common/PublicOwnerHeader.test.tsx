@@ -48,13 +48,13 @@ describe('PublicOwnerHeader', () => {
     is_verified: false,
   }
 
-  it('renders verified owner badge and discord tag', () => {
+  it('renders owner info and discord tag without verified badge', () => {
     const html = renderToString(<PublicOwnerHeader owner={verifiedOwner} />)
 
     expect(html).toContain('ProxyMaster')
     expect(html).toContain('EU')
     expect(html).toContain('UID 1504687050')
-    expect(html).toContain('VERIFIED OWNER')
+    expect(html).not.toContain('VERIFIED OWNER')
     expect(html).toContain('proxyleader#0001')
     expect(html).toContain('/showcase?uid=1504687050')
     expect(html).toContain('Витрина в игре')
@@ -70,5 +70,17 @@ describe('PublicOwnerHeader', () => {
     expect(html).not.toContain('proxyleader')
     expect(html).not.toContain('Discord:')
     expect(html).toContain('/showcase?uid=1500000000')
+  })
+
+  it('appends target tab query parameter when targetTab prop is provided', () => {
+    const htmlPresets = renderToString(
+      <PublicOwnerHeader owner={verifiedOwner} targetTab="presets" />,
+    )
+    expect(htmlPresets).toContain('/showcase?uid=1504687050&amp;tab=presets')
+
+    const htmlSquads = renderToString(
+      <PublicOwnerHeader owner={verifiedOwner} targetTab="squads" />,
+    )
+    expect(htmlSquads).toContain('/showcase?uid=1504687050&amp;tab=squads')
   })
 })

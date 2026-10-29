@@ -125,10 +125,18 @@ export function PublicBuildPage() {
   const generalUrl = agentRoleIconUrl(agent.id)
   const iconUrl = circleUrl ?? selectUrl ?? generalUrl ?? agent.splash_art_url
 
+  const pageTitle = t('sharing.buildPageTitle', { agent: agentName, build: build.name })
+  const pageDescription = t('sharing.buildPageMetaDesc', {
+    agent: agentName,
+    owner: owner.nickname || owner.uid,
+  })
+
   return (
     <div className="mx-auto max-w-6xl space-y-4 px-3 sm:px-4 py-4 sm:py-6">
+      <title>{pageTitle}</title>
+      <meta name="description" content={pageDescription} />
       {/* Top Author / Owner Header */}
-      <PublicOwnerHeader owner={owner} />
+      <PublicOwnerHeader owner={owner} targetTab="presets" />
 
       {/* Main Build Card */}
       <div className="rounded-3xl border border-white/[0.08] bg-card/96 p-3.5 sm:p-5 shadow-2xl backdrop-blur-sm">
@@ -232,6 +240,7 @@ export function PublicBuildPage() {
                 uiStats={agent.ui_stats}
                 specialty={agent.specialty}
                 agentId={agent.id}
+                highlightProps={agent.highlight_props}
               />
             </div>
 
@@ -240,6 +249,8 @@ export function PublicBuildPage() {
                 driveDiscs={agent.drive_discs}
                 wEngine={agent.w_engine}
                 agentId={agent.id}
+                highlightProps={agent.highlight_props}
+                recommendedSubStats={agent.recommended_sub_stats}
                 headingLevel={3}
               />
             </div>

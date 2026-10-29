@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BadgeCheck, Check, Copy, RefreshCw } from 'lucide-react'
+import { Check, Copy, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DiscordIcon } from '@/components/common/DiscordIcon'
 import { formatNumber } from '@/lib/format'
@@ -248,7 +248,9 @@ function CacheStatusPill({
         <>
           <RefreshCw className="size-3.5 shrink-0 opacity-50" />
           <span className="font-medium whitespace-nowrap text-[11px]">
-            <span className="text-muted-foreground/80 mr-1">{t('showcase.cacheLabel')}</span>
+            <span className="hidden min-[420px]:inline text-muted-foreground/80 mr-1">
+              {t('showcase.cacheLabel')}
+            </span>
             <span className="tabular-nums font-semibold text-foreground/80">
               {`${formatNumber(timeLeft)}${unit}`}
             </span>
@@ -295,7 +297,6 @@ export function ShowcaseProfileHeader({
   onUidInputChange,
   onRefresh,
 }: ShowcaseProfileHeaderProps) {
-  const { t } = useTranslation()
   const owner = verifiedOwner ?? showcase.verified_owner
 
   return (
@@ -320,9 +321,11 @@ export function ShowcaseProfileHeader({
                 {showcase.nickname.slice(0, 2).toUpperCase()}
               </div>
             )}
-            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-[3px_3px_0_3px] border border-black bg-primary px-1 font-heading text-[8px] leading-[1.2] font-black whitespace-nowrap text-primary-foreground shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-              IL {showcase.interknot_level}
-            </span>
+            {Boolean(showcase.interknot_level && showcase.interknot_level > 0) && (
+              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-[3px_3px_0_3px] border border-black bg-primary px-1 font-heading text-[8px] leading-[1.2] font-black whitespace-nowrap text-primary-foreground shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                IL {showcase.interknot_level}
+              </span>
+            )}
           </div>
 
           <div className="flex min-w-0 flex-col gap-0.5">
@@ -331,15 +334,6 @@ export function ShowcaseProfileHeader({
                 {showcase.nickname}
               </span>
               <RegionBadge region={showcase.region} />
-              {owner?.is_verified && (
-                <span
-                  title={t('sharing.verifiedOwner')}
-                  className="inline-flex items-center gap-1 rounded-[3px_3px_0_3px] border border-emerald-500/50 bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold tracking-wider text-emerald-400 select-none shadow-[0_1px_2px_rgba(0,0,0,0.35)] shrink-0"
-                >
-                  <BadgeCheck className="size-3 text-emerald-400 shrink-0" />
-                  <span>{t('sharing.verifiedOwner')}</span>
-                </span>
-              )}
             </div>
             <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] leading-none text-muted-foreground">
               <UidCopyChip uid={showcase.uid} />

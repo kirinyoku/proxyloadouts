@@ -89,6 +89,7 @@ describe('ShowcaseProfileHeader', () => {
     )
 
     expect(html).toContain('кэш')
+    expect(html).toContain('hidden min-[420px]:inline')
     expect(html).toContain('45с')
   })
 
@@ -178,5 +179,27 @@ describe('ShowcaseProfileHeader', () => {
 
     expect(html).not.toContain('showcase.linkUid')
     expect(html).not.toContain('Привязать UID')
+  })
+
+  it('hides IL badge when interknot_level is 0 or not provided', () => {
+    const zeroLevelShowcase: ShowcaseResponse = {
+      ...mockShowcase,
+      interknot_level: 0,
+    }
+
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={zeroLevelShowcase}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />,
+    )
+
+    expect(html).not.toMatch(/IL\s*(<!-- -->)?\s*0/)
+    expect(html).not.toContain('IL')
   })
 })

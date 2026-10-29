@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, Check, Layers, Plus, RefreshCw, Sparkles, Users } from 'lucide-react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { AlertCircle, Check, Layers, RefreshCw, Sparkles, Users } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useBuilds, useMe, useShowcase, useShowcaseRoster } from '@/api/hooks'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
 import { findMatchingSavedBuild, getAgentEquipmentFingerprint } from '@/lib/builds'
@@ -8,7 +8,6 @@ import { persistLastUid, readLastUid, UID_PATTERN } from '@/lib/uid'
 import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
 import { ShowcaseProfileHeader } from '@/components/showcase/ShowcaseProfileHeader'
-import { ShowcaseGuestBanner } from '@/components/showcase/ShowcaseGuestBanner'
 import { ShowcaseSavedPresets } from '@/components/showcase/ShowcaseSavedPresets'
 import { ShowcaseSquads } from '@/components/showcase/ShowcaseSquads'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
@@ -21,6 +20,7 @@ import { ShowcaseProfileHeaderSkeleton } from '@/components/showcase/ShowcasePro
 import { InterknotTerminalError } from '@/components/common/InterknotTerminalError'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { getAttributeLabel, getSpecialtyLabel } from '@/lib/design-tokens'
 import { useTranslation } from 'react-i18next'
@@ -53,8 +53,6 @@ interface AgentShowcaseSectionProps {
   isSaved: boolean
   matchingBuildName?: string | null
   canSave: boolean
-  isAuthed: boolean
-  isOwnedUid: boolean
   onSaveClick: () => void
 }
 
@@ -109,8 +107,6 @@ function AgentShowcaseSection({
   isSaved,
   matchingBuildName,
   canSave,
-  isAuthed,
-  isOwnedUid,
   onSaveClick,
 }: AgentShowcaseSectionProps) {
   const { t, i18n } = useTranslation()
@@ -139,19 +135,6 @@ function AgentShowcaseSection({
         title={t('showcase.saveBuild')}
       >
         <span>{t('showcase.saveBuild')}</span>
-      </Button>
-    )
-  } else if (isAuthed && !isOwnedUid) {
-    saveButton = (
-      <Button
-        variant="outline"
-        className="h-7.5 shrink-0 gap-1.5 border-dashed border-primary/40 px-2.5 text-[11px] text-primary hover:bg-primary/10 cursor-pointer sm:h-8 sm:px-3 sm:text-xs"
-        asChild
-      >
-        <Link to="/settings" title={t('showcase.linkUidTooltip')} aria-label={t('showcase.linkUid')}>
-          <Plus className="size-3.5" />
-          <span>{t('showcase.linkUid')}</span>
-        </Link>
       </Button>
     )
   }
@@ -288,15 +271,39 @@ export function ShowcasePage() {
   const [savingAgent, setSavingAgent] = useState<Agent | null>(null)
   const [locallySavedFingerprints, setLocallySavedFingerprints] = useState<ReadonlySet<string>>(new Set())
 
+  type ShowcaseMode = 'live' | 'presets' | 'squads'
+  const urlTab = searchParams.get('tab')
+
+  const mode: ShowcaseMode = useMemo(() => {
+    if (urlTab === 'presets' || urlTab === 'roster') return 'presets'
+    if (urlTab === 'squads' || urlTab === 'teams') return 'squads'
+    return 'live'
+  }, [urlTab])
+
   const [uidInput, setUidInput] = useState(() => scannedUid || readLastUid())
-  const [prevScannedUid, setPrevScannedUid] = useState(scannedUid)
-  if (scannedUid && scannedUid !== prevScannedUid) {
-    setPrevScannedUid(scannedUid)
-    setUidInput(scannedUid)
-    setSelectedAgentId(null)
-    setSavingAgent(null)
-    setLocallySavedFingerprints(new Set())
-  }
+  const prevScannedUidRef = useRef(scannedUid)
+
+  useEffect(() => {
+    if (prevScannedUidRef.current && scannedUid !== prevScannedUidRef.current) {
+      setUidInput(scannedUid)
+      setSelectedAgentId(null)
+      setSavingAgent(null)
+      setLocallySavedFingerprints(new Set())
+      if (searchParams.has('tab')) {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev)
+            next.delete('tab')
+            return next
+          },
+          { replace: true },
+        )
+      }
+    } else {
+      setUidInput(scannedUid)
+    }
+    prevScannedUidRef.current = scannedUid
+  }, [scannedUid, searchParams, setSearchParams])
 
   const detailRef = useRef<HTMLDivElement>(null)
   const agentRailRef = useRef<HTMLDivElement>(null)
@@ -305,11 +312,17 @@ export function ShowcasePage() {
   const showcaseQuery = useShowcase(scannedUid)
   const rosterQuery = useShowcaseRoster(scannedUid)
 
-  type ShowcaseMode = 'live' | 'presets' | 'squads'
-  const [mode, setMode] = useState<ShowcaseMode>('live')
+  const hasPublicBuilds = Boolean(
+    (rosterQuery.data?.is_public_roster ?? rosterQuery.data?.is_public_showcase) &&
+      rosterQuery.data.builds.length > 0,
+  )
+  const hasPublicTeams = Boolean(
+    (rosterQuery.data?.is_public_teams ?? rosterQuery.data?.is_public_showcase) &&
+      rosterQuery.data.teams.length > 0,
+  )
 
   const isEnkaDownWithRosterFallback =
-    showcaseQuery.isError && Boolean(rosterQuery.data)
+    showcaseQuery.isError && (hasPublicBuilds || hasPublicTeams)
 
   const fallbackShowcase: ShowcaseResponse | null = useMemo(() => {
     if (!isEnkaDownWithRosterFallback || !rosterQuery.data) return null
@@ -317,7 +330,7 @@ export function ShowcasePage() {
       uid: scannedUid,
       nickname: rosterQuery.data.owner.nickname || `UID ${scannedUid}`,
       region: rosterQuery.data.owner.region,
-      interknot_level: 60,
+      interknot_level: 0,
       avatar_url: rosterQuery.data.owner.avatar_url ?? undefined,
       source: 'cached',
       ttl_seconds: 0,
@@ -325,20 +338,52 @@ export function ShowcasePage() {
       agent_count: 0,
       agents: [],
       verified_owner: rosterQuery.data.owner,
-      has_public_roster: rosterQuery.data.is_public_showcase,
+      has_public_roster: hasPublicBuilds || hasPublicTeams,
     }
-  }, [isEnkaDownWithRosterFallback, rosterQuery.data, scannedUid])
+  }, [isEnkaDownWithRosterFallback, rosterQuery.data, scannedUid, hasPublicBuilds, hasPublicTeams])
 
   const showcase = showcaseQuery.data ?? fallbackShowcase
 
-  const hasPublicRoster = Boolean(
-    rosterQuery.data?.is_public_showcase &&
-      (rosterQuery.data.builds.length > 0 || rosterQuery.data.teams.length > 0),
-  )
-  const showModeSwitcher = hasPublicRoster || isEnkaDownWithRosterFallback
+  const effectiveMode: ShowcaseMode = useMemo(() => {
+    if (showcaseQuery.isError) {
+      if (mode === 'presets' && hasPublicBuilds) return 'presets'
+      if (mode === 'squads' && hasPublicTeams) return 'squads'
+      return hasPublicBuilds ? 'presets' : hasPublicTeams ? 'squads' : 'live'
+    }
+    if (mode === 'presets') {
+      if (!hasPublicBuilds && !rosterQuery.isPending) return 'live'
+      return 'presets'
+    }
+    if (mode === 'squads') {
+      if (!hasPublicTeams && !rosterQuery.isPending) return 'live'
+      return 'squads'
+    }
+    return 'live'
+  }, [showcaseQuery.isError, mode, hasPublicBuilds, hasPublicTeams, rosterQuery.isPending])
 
-  const effectiveMode: ShowcaseMode =
-    isEnkaDownWithRosterFallback && mode === 'live' ? 'presets' : mode
+  function handleModeChange(nextMode: ShowcaseMode) {
+    const nextParams = new URLSearchParams(searchParams)
+    if (nextMode === 'live') {
+      nextParams.delete('tab')
+    } else {
+      nextParams.set('tab', nextMode)
+    }
+    setSearchParams(nextParams, { replace: true })
+  }
+
+  // Clean up URL tab parameter when queries resolve and requested tab is unavailable
+  useEffect(() => {
+    if (rosterQuery.isPending || showcaseQuery.isPending) return
+    if (urlTab && effectiveMode !== mode) {
+      const nextParams = new URLSearchParams(searchParams)
+      if (effectiveMode === 'live') {
+        nextParams.delete('tab')
+      } else {
+        nextParams.set('tab', effectiveMode)
+      }
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [rosterQuery.isPending, showcaseQuery.isPending, urlTab, effectiveMode, mode, searchParams, setSearchParams])
 
   useEffect(() => {
     if (scannedUid) {
@@ -359,6 +404,7 @@ export function ShowcasePage() {
       setSearchParams((previous) => {
         const next = new URLSearchParams(previous)
         next.set('uid', uid)
+        next.delete('tab')
         return next
       })
     }
@@ -416,7 +462,7 @@ export function ShowcasePage() {
     ? t('showcase.pageTitleWithUid', { uid: scannedUid })
     : t('showcase.pageTitle')
 
-  if (showcaseQuery.isError && !isEnkaDownWithRosterFallback) {
+  if (showcaseQuery.isError && !rosterQuery.isPending && !isEnkaDownWithRosterFallback) {
     return (
       <div className="flex flex-1 min-h-[calc(100dvh-10rem)] flex-col items-center justify-center py-6 sm:py-10">
         <title>{pageTitle}</title>
@@ -446,23 +492,35 @@ export function ShowcasePage() {
           },
         ]
       : []),
-    {
-      value: 'presets' as const,
-      label: `${t('showcase.savedPresets')} (${rosterQuery.data?.builds.length ?? 0})`,
-      glyph: <Layers className="size-3.5" />,
-    },
-    {
-      value: 'squads' as const,
-      label: `${t('showcase.squads')} (${rosterQuery.data?.teams.length ?? 0})`,
-      glyph: <Users className="size-3.5" />,
-    },
+    ...(hasPublicBuilds
+      ? [
+          {
+            value: 'presets' as const,
+            label: `${t('showcase.savedPresets')} (${rosterQuery.data?.builds.length ?? 0})`,
+            glyph: <Layers className="size-3.5" />,
+          },
+        ]
+      : []),
+    ...(hasPublicTeams
+      ? [
+          {
+            value: 'squads' as const,
+            label: `${t('showcase.squads')} (${rosterQuery.data?.teams.length ?? 0})`,
+            glyph: <Users className="size-3.5" />,
+          },
+        ]
+      : []),
   ]
+
+  const showModeSwitcher = modeOptions.length > 1
 
   return (
     <div className="space-y-3">
       <title>{pageTitle}</title>
       <meta name="description" content={t('showcase.metaDescription')} />
-      {showcaseQuery.isPending && !showcase && scannedUid && <ShowcasePageSkeleton />}
+      {(showcaseQuery.isPending || (showcaseQuery.isError && rosterQuery.isPending)) &&
+        !showcase &&
+        scannedUid && <ShowcasePageSkeleton />}
 
       {showcase && (
         <div className="space-y-3">
@@ -495,7 +553,7 @@ export function ShowcasePage() {
               <SegmentedControl
                 options={modeOptions}
                 value={effectiveMode}
-                onValueChange={setMode}
+                onValueChange={handleModeChange}
                 ariaLabel={t('showcase.liveShowcase')}
               />
             </div>
@@ -503,8 +561,6 @@ export function ShowcasePage() {
 
           {effectiveMode === 'live' && (
             <>
-              {!isAuthed && <ShowcaseGuestBanner />}
-
               {/* Empty State when showcase has 0 agents */}
               {showcase.agents.length === 0 && (
                 <EmptyState
@@ -558,8 +614,6 @@ export function ShowcasePage() {
                       isSaved={isCurrentBuildSaved}
                       matchingBuildName={matchingSavedBuild?.name}
                       canSave={isAuthed && isOwnedUid}
-                      isAuthed={isAuthed}
-                      isOwnedUid={isOwnedUid}
                       onSaveClick={() => setSavingAgent(selectedAgent)}
                     />
                   </div>
@@ -569,11 +623,25 @@ export function ShowcasePage() {
           )}
 
           {effectiveMode === 'presets' && (
-            <ShowcaseSavedPresets builds={rosterQuery.data?.builds ?? []} />
+            rosterQuery.isPending ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <Spinner size="md" color="primary" />
+                <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
+              </div>
+            ) : (
+              <ShowcaseSavedPresets builds={rosterQuery.data?.builds ?? []} />
+            )
           )}
 
           {effectiveMode === 'squads' && (
-            <ShowcaseSquads teams={rosterQuery.data?.teams ?? []} />
+            rosterQuery.isPending ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <Spinner size="md" color="primary" />
+                <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
+              </div>
+            ) : (
+              <ShowcaseSquads teams={rosterQuery.data?.teams ?? []} />
+            )
           )}
         </div>
       )}

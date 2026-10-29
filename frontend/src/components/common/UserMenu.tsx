@@ -63,9 +63,9 @@ export function UserMenu() {
         >
           {/* Avatar with ZZZ-style border */}
           <div className="relative shrink-0">
-            {user.avatar_url ? (
+            {activeAccount?.avatar_url || user.avatar_url ? (
               <img
-                src={user.avatar_url}
+                src={activeAccount?.avatar_url || user.avatar_url || ''}
                 alt=""
                 width={26}
                 height={26}
@@ -84,7 +84,7 @@ export function UserMenu() {
           {/* User info snippet */}
           <div className="flex min-w-0 flex-col text-left">
             <span className="max-w-28 truncate font-heading text-xs font-bold leading-tight tracking-wide text-foreground sm:max-w-32">
-              {user.username}
+              {activeAccount?.nickname || user.username}
             </span>
             <span className="max-w-28 truncate font-mono text-[10px] leading-tight text-muted-foreground sm:max-w-32">
               {activeAccount ? (
@@ -102,7 +102,7 @@ export function UserMenu() {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" sideOffset={8} className="w-60">
+      <DropdownMenuContent align="end" sideOffset={8} className="w-64">
         {/* User Identity Header */}
         <div className="flex items-center justify-between px-2.5 py-1.5">
           <div className="flex min-w-0 flex-col">
@@ -140,30 +140,54 @@ export function UserMenu() {
           ) : (
             accounts.map((account) => {
               const isActive = account.id === activeAccount?.id
+              const regionCode = getRegionShortCode(account.region)
+              const displayName = account.nickname || account.uid
               return (
                 <DropdownMenuItem
                   key={account.id}
                   onClick={() => handleSelectAccount(account)}
                   className={cn(
-                    'justify-between font-mono cursor-pointer',
-                    isActive && 'bg-white/[0.08] text-foreground font-bold'
+                    'flex items-center justify-between gap-2.5 py-1.5 px-2 cursor-pointer',
+                    isActive && 'bg-white/[0.08] text-foreground'
                   )}
                 >
-                  <div className="flex min-w-0 items-center gap-2 truncate">
-                    <span
-                      className={cn(
-                        'size-1.5 shrink-0 rounded-full',
-                        isActive
-                          ? 'bg-primary shadow-[0_0_6px_color-mix(in_oklch,var(--primary)_80%,transparent)]'
-                          : 'bg-muted-foreground/30'
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="relative shrink-0">
+                      {account.avatar_url ? (
+                        <img
+                          src={account.avatar_url}
+                          alt=""
+                          width={24}
+                          height={24}
+                          className="size-6 rounded-full border border-black object-cover ring-1 ring-white/10"
+                        />
+                      ) : (
+                        <span className="flex size-6 items-center justify-center rounded-full border border-black bg-elevated text-muted-foreground ring-1 ring-white/10">
+                          <UserRound className="size-3" />
+                        </span>
                       )}
-                    />
-                    <span className="truncate">{account.uid}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase">
-                      · {getRegionShortCode(account.region)}
-                    </span>
+                      <span
+                        className={cn(
+                          'absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full',
+                          isActive
+                            ? 'bg-primary shadow-[0_0_6px_color-mix(in_oklch,var(--primary)_80%,transparent)]'
+                            : 'bg-muted-foreground/30'
+                        )}
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-col text-left">
+                      <span className="truncate font-heading text-xs font-semibold leading-tight text-foreground">
+                        {displayName}
+                      </span>
+                      <span className="truncate font-mono text-[10px] leading-tight text-muted-foreground">
+                        {account.uid}
+                        {regionCode && (
+                          <span className="uppercase"> · {regionCode}</span>
+                        )}
+                      </span>
+                    </div>
                   </div>
-                  {isActive && <Check className="size-3.5 text-primary stroke-[2.5]" />}
+                  {isActive && <Check className="size-3.5 text-primary stroke-[2.5] shrink-0" />}
                 </DropdownMenuItem>
               )
             })
