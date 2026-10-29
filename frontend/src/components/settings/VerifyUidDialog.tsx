@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { ApiError } from '@/api/client'
 import { useConfirmVerification, useStartVerification } from '@/api/hooks'
 import { toast } from '@/components/ui/sonner'
 import { Button } from '@/components/ui/button'
@@ -13,15 +14,25 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
-import type { GameAccount, VerificationChallengeResponse } from '@/types'
+import type { GameAccount, Region, VerificationChallengeResponse } from '@/types'
 
 export interface VerifyUidDialogProps {
-  account: GameAccount
+  account?: GameAccount
+  uid?: string
+  region?: Region
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: (account: GameAccount) => void
 }
 
-export function VerifyUidDialog({ account, open, onOpenChange }: VerifyUidDialogProps) {
+export function VerifyUidDialog({
+  account,
+  uid,
+  region,
+  open,
+  onOpenChange,
+  onSuccess,
+}: VerifyUidDialogProps) {
   const { t } = useTranslation()
   const startMutation = useStartVerification()
   const confirmMutation = useConfirmVerification()
@@ -34,16 +45,25 @@ export function VerifyUidDialog({ account, open, onOpenChange }: VerifyUidDialog
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
   const startMutate = startMutation.mutate
 
+  const targetUid = uid || account?.uid || ''
+  const targetRegion = region || account?.region
+  const verifyTarget = useMemo(
+    () => (account?.id ? account.id : { uid: targetUid, region: targetRegion }),
+    [account, targetUid, targetRegion],
+  )
+
   // Fetch challenge when opened
   useEffect(() => {
-    if (!open) return
+    if (!open || !targetUid) {
+      return
+    }
 
-    startMutate(account.id, {
+    startMutate(verifyTarget, {
       onSuccess: (data) => {
         setChallenge(data)
       },
     })
-  }, [open, account.id, startMutate])
+  }, [open, targetUid, verifyTarget, startMutate])
 
   // Cooldown countdown
   useEffect(() => {
@@ -97,10 +117,11 @@ export function VerifyUidDialog({ account, open, onOpenChange }: VerifyUidDialog
   }
 
   function handleConfirm() {
-    if (cooldown > 0 || confirmMutation.isPending) return
+    if (cooldown > 0 || confirmMutation.isPending || !targetUid) return
 
-    confirmMutation.mutate(account.id, {
-      onSuccess: () => {
+    confirmMutation.mutate(verifyTarget, {
+      onSuccess: (updated) => {
+        onSuccess?.(updated)
         onOpenChange(false)
       },
       onError: () => {
@@ -110,7 +131,13 @@ export function VerifyUidDialog({ account, open, onOpenChange }: VerifyUidDialog
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setChallenge(null)
+        onOpenChange(nextOpen)
+      }}
+    >
       <DialogContent className="w-[calc(100vw-32px)] max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
@@ -121,7 +148,14 @@ export function VerifyUidDialog({ account, open, onOpenChange }: VerifyUidDialog
               <ShieldCheck className="size-5" />
             </span>
             <div>
-              <DialogTitle>{t('settings.verifyDialogTitle')}</DialogTitle>
+              <DialogTitle className="flex flex-wrap items-center gap-2">
+                <span>{t('settings.verifyDialogTitle')}</span>
+                {targetUid && (
+                  <span className="rounded bg-primary/10 border border-primary/30 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-primary">
+                    UID {targetUid}
+                  </span>
+                )}
+              </DialogTitle>
               <DialogDescription className="text-xs">
                 {t('settings.verifyDialogDesc')}
               </DialogDescription>
@@ -134,6 +168,22 @@ export function VerifyUidDialog({ account, open, onOpenChange }: VerifyUidDialog
             <div className="flex flex-col items-center justify-center py-8 gap-3">
               <Spinner size="md" color="primary" />
               <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
+            </div>
+          ) : startMutation.isError && !challenge ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+              <p className="text-xs text-destructive font-medium">
+                {startMutation.error instanceof ApiError
+                  ? startMutation.error.message
+                  : t('settings.verifyError')}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => startMutate(verifyTarget, { onSuccess: (data) => setChallenge(data) })}
+              >
+                {t('common.retry')}
+              </Button>
             </div>
           ) : (
             <>

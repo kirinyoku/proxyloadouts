@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
-import { ArrowLeft, RotateCcw, Search, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ArrowLeft, Check, Globe, Lock, RotateCcw, Search, Share2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { toast } from '@/components/ui/sonner'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import {
   ALL_ATTRIBUTES,
@@ -11,7 +12,7 @@ import {
   getSpecialtyLabel,
 } from '@/lib/design-tokens'
 import { cn } from '@/lib/utils'
-import type { Attribute, Specialty } from '@/types'
+import type { Attribute, GameAccount, Specialty } from '@/types'
 
 /**
  * Uniform neutral active styling for roster filter items (attributes and specialties).
@@ -54,6 +55,12 @@ interface RosterToolbarProps {
   rosterSpecialties?: Set<Specialty>
   fromTeams?: boolean
   onResetFilters?: () => void
+  activeAccount?: GameAccount | null
+  isPublicRoster?: boolean
+  onTogglePublicRoster?: () => void
+  isUpdatingVisibility?: boolean
+  title?: string
+  hideTitle?: boolean
 }
 
 /**
@@ -82,10 +89,30 @@ export function RosterToolbar({
   rosterSpecialties,
   fromTeams,
   onResetFilters,
+  activeAccount,
+  isPublicRoster,
+  onTogglePublicRoster,
+  isUpdatingVisibility,
+  title,
+  hideTitle,
 }: RosterToolbarProps) {
   const { t } = useTranslation()
   const formattedCount = String(totalAgents).padStart(2, '0')
   const hasFilter = Boolean(search || selectedAttribute || selectedSpecialty)
+  const [rosterLinkCopied, setRosterLinkCopied] = useState(false)
+
+  async function handleCopyRosterLink() {
+    if (!activeAccount?.uid) return
+    const url = `${window.location.origin}/showcase?uid=${encodeURIComponent(activeAccount.uid)}&tab=presets`
+    try {
+      await navigator.clipboard.writeText(url)
+      setRosterLinkCopied(true)
+      setTimeout(() => setRosterLinkCopied(false), 2000)
+      toast.success(t('sharing.linkCopied'))
+    } catch {
+      // ignore
+    }
+  }
 
   function handleReset() {
     if (onResetFilters) {
@@ -181,43 +208,102 @@ export function RosterToolbar({
     })
   }
 
+  const hasLeftSection = Boolean(fromTeams || !hideTitle || activeAccount)
+
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 rounded-2xl border border-white/[0.08] bg-card/90 p-2 sm:px-3 sm:py-1.5 shadow-lg backdrop-blur-xl">
       {/* 1. Top row on mobile / Left section on desktop: Title, back to teams navigation, count badge, and mobile search */}
-      <div className="flex items-center justify-between gap-2 w-full md:w-auto select-none">
-        <div className="flex items-center gap-2">
-          {fromTeams && (
-            <Button
-              variant="ghost"
-              size="sm"
-              asChild
-              className="h-7 px-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/50 gap-1 rounded-xl border border-white/10 bg-black/40 hover:bg-white/[0.08] transition-all -ml-1 cursor-pointer shadow-xs"
-              title={t('roster.toTeamsTitle')}
-            >
-              <Link to="/teams">
-                <ArrowLeft className="size-3.5" />
-                <span className="hidden sm:inline">{t('roster.toTeams')}</span>
-              </Link>
-            </Button>
-          )}
-          <h1 className="font-heading text-base font-bold uppercase tracking-wide text-foreground sm:text-lg flex items-center">
-            {t('nav.roster')}
-            {totalAgents > 0 && (
-              <span
-                className="ml-2.5 font-heading"
-                aria-label={t('roster.buildsCount', { count: totalAgents })}
-                title={t('roster.buildsCount', { count: totalAgents })}
+      <div
+        className={cn(
+          'flex items-center justify-between gap-2 select-none',
+          hideTitle && !fromTeams && !activeAccount ? 'w-full md:hidden' : 'w-full md:w-auto',
+        )}
+      >
+        {hasLeftSection && (
+          <div className="flex items-center gap-2">
+            {fromTeams && (
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="h-7 px-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/50 gap-1 rounded-xl border border-white/10 bg-black/40 hover:bg-white/[0.08] transition-all -ml-1 cursor-pointer shadow-xs"
+                title={t('roster.toTeamsTitle')}
               >
-                <span className="text-primary select-none">//</span>{' '}
-                <span className="text-muted-foreground">{formattedCount}</span>
-              </span>
+                <Link to="/teams">
+                  <ArrowLeft className="size-3.5" />
+                  <span className="hidden sm:inline">{t('roster.toTeams')}</span>
+                </Link>
+              </Button>
             )}
-          </h1>
-        </div>
+            {!hideTitle && (
+              <h1 className="font-heading text-base font-bold uppercase tracking-wide text-foreground sm:text-lg flex items-center">
+                {title ?? t('nav.roster')}
+                {totalAgents > 0 && (
+                  <span
+                    className="ml-2.5 font-heading"
+                    aria-label={t('roster.buildsCount', { count: totalAgents })}
+                    title={t('roster.buildsCount', { count: totalAgents })}
+                  >
+                    <span className="text-primary select-none">//</span>{' '}
+                    <span className="text-muted-foreground">{formattedCount}</span>
+                  </span>
+                )}
+              </h1>
+            )}
+
+            {/* Master Roster Visibility Toggle & Copy Link */}
+            {activeAccount && (
+              <div className="flex items-center gap-1.5 ml-1 sm:ml-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onTogglePublicRoster}
+                  disabled={isUpdatingVisibility}
+                  title={isPublicRoster ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
+                  className={cn(
+                    'h-7.5 px-2 text-xs font-semibold gap-1.5 rounded-xl border transition-all cursor-pointer',
+                    isPublicRoster
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                      : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
+                  )}
+                >
+                  {isPublicRoster ? (
+                    <Globe className="size-3.5" />
+                  ) : (
+                    <Lock className="size-3.5" />
+                  )}
+                  <span className="hidden min-[480px]:inline text-[11px] font-sans">
+                    {isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
+                  </span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleCopyRosterLink}
+                  title={t('roster.copyPublicLink')}
+                  aria-label={t('roster.copyPublicLink')}
+                  className="size-7.5 rounded-xl border border-white/10 bg-white/[0.04] text-muted-foreground hover:text-foreground hover:bg-white/[0.08] cursor-pointer"
+                >
+                  {rosterLinkCopied ? (
+                    <Check className="size-3.5 text-primary stroke-[2.5]" />
+                  ) : (
+                    <Share2 className="size-3.5" />
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Mobile Search input & Reset button placed on the top row */}
         {totalAgents > 0 && (
-          <div className="flex items-center gap-1.5 md:hidden flex-1 justify-end min-w-0 max-w-[210px]">
+          <div
+            className={cn(
+              'flex items-center gap-1.5 md:hidden flex-1 min-w-0',
+              hideTitle ? 'w-full' : 'justify-end max-w-[210px]',
+            )}
+          >
             <div className="relative w-full">
               <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground/80" />
               <input
@@ -277,60 +363,69 @@ export function RosterToolbar({
 
       {/* 3. Desktop Filter Controls: Inline row with Attribute capsule, Specialty capsule, Search, and Reset */}
       {totalAgents > 0 && (
-        <div className="hidden md:flex items-center gap-2">
-          {/* Desktop Attribute capsule */}
-          <div
-            role="group"
-            aria-label={t('roster.filterAttributes')}
-            className="flex items-center gap-1 rounded-xl border border-white/[0.1] bg-black/50 p-1 shadow-inner shrink-0"
-          >
-            {renderAttributeButtons()}
+        <div
+          className={cn(
+            'hidden md:flex items-center gap-2',
+            hideTitle ? 'w-full justify-between' : '',
+          )}
+        >
+          <div className="flex items-center gap-2">
+            {/* Desktop Attribute capsule */}
+            <div
+              role="group"
+              aria-label={t('roster.filterAttributes')}
+              className="flex items-center gap-1 rounded-xl border border-white/[0.1] bg-black/50 p-1 shadow-inner shrink-0"
+            >
+              {renderAttributeButtons()}
+            </div>
+
+            {/* Subtle separator */}
+            <div className="h-4 w-px bg-white/10 shrink-0" aria-hidden="true" />
+
+            {/* Desktop Specialty capsule */}
+            <div
+              role="group"
+              aria-label={t('roster.filterSpecialties')}
+              className="flex items-center gap-1 rounded-xl border border-white/[0.1] bg-black/50 p-1 shadow-inner shrink-0"
+            >
+              {renderSpecialtyButtons()}
+            </div>
           </div>
 
-          {/* Subtle separator */}
-          <div className="h-4 w-px bg-white/10 shrink-0" aria-hidden="true" />
+          <div className="flex items-center gap-2">
+            {/* Desktop Search input placed after the filters */}
+            <div className="relative min-w-[130px] max-w-[180px] lg:max-w-[200px]">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/80" />
+              <input
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={t('roster.searchPlaceholder')}
+                className="h-8 w-full pl-8 pr-7 text-xs bg-black/60 border border-white/[0.15] hover:border-white/[0.28] focus:border-primary/60 focus:ring-1 focus:ring-primary/40 text-foreground placeholder:text-muted-foreground/60 rounded-[10px_10px_0_10px] transition-all outline-none"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                  title={t('roster.clearSearch')}
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
 
-          {/* Desktop Specialty capsule */}
-          <div
-            role="group"
-            aria-label={t('roster.filterSpecialties')}
-            className="flex items-center gap-1 rounded-xl border border-white/[0.1] bg-black/50 p-1 shadow-inner shrink-0"
-          >
-            {renderSpecialtyButtons()}
-          </div>
-
-          {/* Desktop Search input placed after the filters */}
-          <div className="relative min-w-[130px] max-w-[180px] lg:max-w-[200px]">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/80" />
-            <input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={t('roster.searchPlaceholder')}
-              className="h-8 w-full pl-8 pr-7 text-xs bg-black/60 border border-white/[0.15] hover:border-white/[0.28] focus:border-primary/60 focus:ring-1 focus:ring-primary/40 text-foreground placeholder:text-muted-foreground/60 rounded-[10px_10px_0_10px] transition-all outline-none"
-            />
-            {search && (
+            {/* Desktop Reset all filters button */}
+            {hasFilter && (
               <button
                 type="button"
-                onClick={() => onSearchChange('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                title={t('roster.clearSearch')}
+                onClick={handleReset}
+                className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/60 transition-all cursor-pointer select-none"
+                title={t('roster.resetFiltersTitle')}
               >
-                <X className="size-3.5" />
+                <RotateCcw className="size-3.5" />
               </button>
             )}
           </div>
-
-          {/* Desktop Reset all filters button */}
-          {hasFilter && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/60 transition-all cursor-pointer select-none"
-              title={t('roster.resetFiltersTitle')}
-            >
-              <RotateCcw className="size-3.5" />
-            </button>
-          )}
         </div>
       )}
     </div>

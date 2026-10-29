@@ -49,6 +49,7 @@ vi.mock('@/api/hooks', async (importOriginal) => {
     ...actual,
     useMe: () => ({ data: undefined, isLoading: false }),
     useBuilds: () => mockUseBuilds(),
+    useUpdateAccount: () => ({ mutate: vi.fn(), isPending: false }),
     useRenameBuild: () => ({ mutate: vi.fn(), isPending: false }),
     useDeleteBuild: () => ({ mutate: vi.fn(), isPending: false }),
     useToggleBuildVisibility: () => ({ mutate: vi.fn(), isPending: false }),

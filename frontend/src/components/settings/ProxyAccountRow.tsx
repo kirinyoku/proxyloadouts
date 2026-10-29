@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BadgeCheck, Check, Copy, ShieldCheck, Trash2 } from 'lucide-react'
+import { BadgeCheck, Check, Copy, ShieldCheck, Trash2, UserRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
@@ -30,9 +30,9 @@ interface ProxyAccountRowProps {
 
 /**
  * Account row:
- * - Upper bar: status dot + mono UID + region + active/verified badges + copy / active / delete actions
+ * - Upper bar: avatar + nickname + mono UID & region + active/verified badges + copy / active / delete actions
  * - Secondary section:
- *   - If verified: public showcase & discord visibility toggles
+ *   - If verified: public roster, public teams & discord visibility toggles
  *   - If unverified: verify UID button opening verification modal
  */
 export function ProxyAccountRow({ account, isActive }: ProxyAccountRowProps) {
@@ -46,6 +46,7 @@ export function ProxyAccountRow({ account, isActive }: ProxyAccountRowProps) {
 
   const regionCode = getRegionShortCode(account.region)
   const isVerified = Boolean(account.verified_at)
+  const displayName = account.nickname || account.uid
 
   function handleCopyUid() {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -66,46 +67,68 @@ export function ProxyAccountRow({ account, isActive }: ProxyAccountRowProps) {
     >
       {/* Upper bar: identity on the left, actions on the right */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* Left: status dot, UID, region, badges */}
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <span
-            aria-hidden="true"
-            className={cn(
-              'size-2 shrink-0 rounded-full transition-colors',
-              isActive
-                ? 'bg-primary shadow-[0_0_8px_color-mix(in_oklch,var(--primary)_70%,transparent)]'
-                : 'bg-white/20',
+        {/* Left: avatar, nickname, UID, region, badges */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative shrink-0">
+            {account.avatar_url ? (
+              <img
+                src={account.avatar_url}
+                alt=""
+                width={36}
+                height={36}
+                className="size-9 rounded-full border border-white/10 object-cover ring-1 ring-white/10"
+              />
+            ) : (
+              <div className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-muted-foreground ring-1 ring-white/10">
+                <UserRound className="size-4" />
+              </div>
             )}
-          />
-
-          <span className="font-mono text-sm font-semibold tracking-wide text-foreground tabular-nums">
-            {account.uid}
-          </span>
-
-          {regionCode && (
             <span
-              title={account.region}
-              className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground uppercase"
-            >
-              {regionCode}
-            </span>
-          )}
+              aria-hidden="true"
+              className={cn(
+                'absolute -right-0.5 -bottom-0.5 size-2 rounded-full transition-colors',
+                isActive
+                  ? 'bg-primary shadow-[0_0_8px_color-mix(in_oklch,var(--primary)_70%,transparent)]'
+                  : 'bg-white/20',
+              )}
+            />
+          </div>
 
-          {isActive && (
-            <Badge className="h-5 gap-1 border border-primary/30 bg-primary/15 px-2 text-[10px] font-medium text-primary uppercase">
-              {t('settings.activeBadge')}
-            </Badge>
-          )}
+          <div className="flex flex-col min-w-0">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <span className="truncate font-heading text-sm font-bold text-foreground">
+                {displayName}
+              </span>
 
-          {isVerified && (
-            <Badge
-              variant="outline"
-              className="h-5 gap-1 border-emerald-500/40 bg-emerald-500/15 px-2 text-[10px] font-semibold text-emerald-400 uppercase shadow-xs"
-            >
-              <BadgeCheck className="size-3 text-emerald-400 shrink-0" />
-              <span>{t('settings.verifiedBadge')}</span>
-            </Badge>
-          )}
+              {isActive && (
+                <Badge className="h-5 gap-1 border border-primary/30 bg-primary/15 px-2 text-[10px] font-medium text-primary uppercase">
+                  {t('settings.activeBadge')}
+                </Badge>
+              )}
+
+              {isVerified && (
+                <Badge
+                  variant="outline"
+                  className="h-5 gap-1 border-emerald-500/40 bg-emerald-500/15 px-2 text-[10px] font-semibold text-emerald-400 uppercase shadow-xs"
+                >
+                  <BadgeCheck className="size-3 text-emerald-400 shrink-0" />
+                  <span>{t('settings.verifiedBadge')}</span>
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground tabular-nums">
+              <span>{account.uid}</span>
+              {regionCode && (
+                <span
+                  title={account.region}
+                  className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.2 font-mono text-[10px] font-medium text-muted-foreground uppercase"
+                >
+                  {regionCode}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right: copy, make active, delete */}
@@ -184,23 +207,39 @@ export function ProxyAccountRow({ account, isActive }: ProxyAccountRowProps) {
 
         {isVerified ? (
           <div className="flex flex-wrap items-center gap-4 text-xs">
-            {/* Toggle 1: Public showcase */}
+            {/* Toggle 1: Public roster */}
             <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground select-none">
               <Switch
-                checked={Boolean(account.is_public_showcase)}
+                checked={Boolean(account.is_public_roster ?? account.is_public_showcase)}
                 disabled={updateAccountMutation.isPending}
                 onCheckedChange={(checked) =>
                   updateAccountMutation.mutate({
                     id: account.id,
-                    is_public_showcase: checked,
+                    is_public_roster: checked,
                   })
                 }
-                aria-label={t('settings.publicShowcase')}
+                aria-label={t('settings.publicRoster')}
               />
-              <span className="text-[11.5px] font-medium">{t('settings.publicShowcase')}</span>
+              <span className="text-[11.5px] font-medium">{t('settings.publicRoster')}</span>
             </label>
 
-            {/* Toggle 2: Show Discord */}
+            {/* Toggle 2: Public teams */}
+            <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground select-none">
+              <Switch
+                checked={Boolean(account.is_public_teams ?? account.is_public_showcase)}
+                disabled={updateAccountMutation.isPending}
+                onCheckedChange={(checked) =>
+                  updateAccountMutation.mutate({
+                    id: account.id,
+                    is_public_teams: checked,
+                  })
+                }
+                aria-label={t('settings.publicTeams')}
+              />
+              <span className="text-[11.5px] font-medium">{t('settings.publicTeams')}</span>
+            </label>
+
+            {/* Toggle 3: Show Discord */}
             <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground select-none">
               <Switch
                 checked={Boolean(account.show_discord)}

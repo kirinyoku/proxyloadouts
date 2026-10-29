@@ -2,7 +2,7 @@ import { useDeferredValue, useMemo, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
-import { useMe, useTeams } from '@/api/hooks'
+import { useMe, useTeams, useUpdateAccount } from '@/api/hooks'
 import { TeamFilterBar, type TeamSortOption } from '@/components/teams/TeamFilterBar'
 import { TeamsEmptyState } from '@/components/teams/TeamsEmptyState'
 import { TeamsHeader } from '@/components/teams/TeamsHeader'
@@ -18,6 +18,17 @@ export function TeamsPage() {
   const { data: me } = useMe()
   const { activeAccount, accounts, isPending: accountsPending } = useActiveAccount()
   const teamsQuery = useTeams(activeAccount?.id)
+  const updateAccountMutation = useUpdateAccount()
+
+  const isPublicTeams = Boolean(activeAccount?.is_public_teams ?? activeAccount?.is_public_showcase)
+
+  function handleTogglePublicTeams() {
+    if (!activeAccount) return
+    updateAccountMutation.mutate({
+      id: activeAccount.id,
+      is_public_teams: !isPublicTeams,
+    })
+  }
 
   const maxTeams = me?.limits?.max_teams_per_account ?? 100
 
@@ -77,7 +88,13 @@ export function TeamsPage() {
       <title>{t('teams.pageTitle')}</title>
       <meta name="description" content={t('teams.metaDescription')} />
       {/* Page Header */}
-      <TeamsHeader totalCount={totalCount} />
+      <TeamsHeader
+        totalCount={totalCount}
+        activeAccount={activeAccount}
+        isPublicTeams={isPublicTeams}
+        onTogglePublicTeams={handleTogglePublicTeams}
+        isUpdatingVisibility={updateAccountMutation.isPending}
+      />
 
       {/* Account / Team States */}
       {accountsPending ? (

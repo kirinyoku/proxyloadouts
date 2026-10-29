@@ -228,4 +228,46 @@ describe('RosterToolbar', () => {
     expect(html).toContain('aria-disabled="true"')
     expect(html).toContain('cursor-not-allowed')
   })
+
+  it('omits h1 heading and title when hideTitle is true', () => {
+    const html = renderToString(
+      <RosterToolbar
+        search=""
+        onSearchChange={vi.fn()}
+        selectedAttribute={null}
+        onAttributeChange={vi.fn()}
+        selectedSpecialty={null}
+        onSpecialtyChange={vi.fn()}
+        totalAgents={6}
+        hideTitle
+      />,
+    )
+
+    // Heading and title should not be rendered
+    expect(html).not.toContain('<h1')
+    expect(html).not.toContain('РОСТЕР')
+    expect(html).not.toContain('font-heading')
+
+    // Filter controls and search are still present
+    expect(html).toContain('aria-label="Фильтр по атрибуту"')
+    expect(html).toContain('aria-label="Фильтр по специальности"')
+    expect(html).toContain('placeholder="Поиск агента..."')
+  })
+
+  it('renders desktop filters with full-width justification when hideTitle is true', () => {
+    const html = renderToString(
+      <RosterToolbar
+        search=""
+        onSearchChange={vi.fn()}
+        selectedAttribute={null}
+        onAttributeChange={vi.fn()}
+        selectedSpecialty={null}
+        onSpecialtyChange={vi.fn()}
+        totalAgents={6}
+        hideTitle
+      />,
+    )
+
+    expect(html).toContain('hidden md:flex items-center gap-2 w-full justify-between')
+  })
 })

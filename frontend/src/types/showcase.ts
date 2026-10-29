@@ -9,7 +9,7 @@ export interface ShowcaseResponse {
   uid: string
   nickname: string
   region: string
-  interknot_level: number
+  interknot_level?: number
   avatar_url?: string
   source: ShowcaseSource
   ttl_seconds: number
@@ -22,6 +22,8 @@ export interface ShowcaseResponse {
 
 export interface PublicShowcaseRosterResponse {
   owner: PublicOwnerInfo
+  is_public_roster?: boolean
+  is_public_teams?: boolean
   is_public_showcase: boolean
   builds: Build[]
   teams: TeamSummary[]

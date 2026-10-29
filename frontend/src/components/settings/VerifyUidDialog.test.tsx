@@ -45,11 +45,15 @@ vi.mock('@/components/ui/dialog', () => ({
 const mockStartMutate = vi.fn()
 const mockConfirmMutate = vi.fn()
 
+const mockUseStartVerification = vi.fn().mockReturnValue({
+  mutate: mockStartMutate,
+  isPending: false,
+  isError: false,
+  error: null,
+})
+
 vi.mock('@/api/hooks', () => ({
-  useStartVerification: () => ({
-    mutate: mockStartMutate,
-    isPending: false,
-  }),
+  useStartVerification: () => mockUseStartVerification(),
   useConfirmVerification: () => ({
     mutate: mockConfirmMutate,
     isPending: false,
@@ -81,5 +85,25 @@ describe('VerifyUidDialog', () => {
     expect(html).toContain('Exit to game menu to sync')
     expect(html).toContain('Click check button below')
     expect(html).toContain('Check')
+  })
+
+  it('renders error state and retry action when challenge request fails', () => {
+    mockUseStartVerification.mockReturnValueOnce({
+      mutate: mockStartMutate,
+      isPending: false,
+      isError: true,
+      error: new Error('Rate limit exceeded'),
+    })
+
+    const html = renderToString(
+      <VerifyUidDialog
+        account={account}
+        open={true}
+        onOpenChange={vi.fn()}
+      />,
+    )
+
+    expect(html).toContain('common.retry')
+    expect(html).not.toContain('Verification Code')
   })
 })

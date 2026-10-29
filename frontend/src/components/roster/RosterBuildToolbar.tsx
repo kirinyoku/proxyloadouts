@@ -238,7 +238,12 @@ export function RosterBuildToolbar({
                   {builds.map((build) => (
                     <SelectItem key={build.id} value={build.id} title={build.name}>
                       <div className="flex w-full items-center justify-between gap-3">
-                        <span className="truncate">{build.name}</span>
+                        <span className="truncate flex items-center gap-1.5 min-w-0">
+                          {!build.is_public && (
+                            <Lock className="size-3.5 text-muted-foreground shrink-0" />
+                          )}
+                          <span className="truncate">{build.name}</span>
+                        </span>
                         <span className="shrink-0 font-mono text-[10px] text-muted-foreground/90">
                           {formatDateTime(build.updated_at || build.created_at)}
                         </span>
@@ -476,7 +481,12 @@ export function RosterBuildToolbar({
                       value={build.id}
                       title={`${build.name} (${formatDateTime(build.updated_at || build.created_at)})`}
                     >
-                      <span className="truncate">{build.name}</span>
+                      <span className="truncate flex items-center gap-1.5 min-w-0">
+                        {!build.is_public && (
+                          <Lock className="size-3.5 text-muted-foreground shrink-0" />
+                        )}
+                        <span className="truncate">{build.name}</span>
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

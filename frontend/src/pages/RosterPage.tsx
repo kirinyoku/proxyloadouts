@@ -3,7 +3,7 @@ import { Layers, Plus, RotateCcw, ScanLine, Search } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
-import { useBuilds, useMe } from '@/api/hooks'
+import { useBuilds, useMe, useUpdateAccount } from '@/api/hooks'
 import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { RosterBuildToolbar } from '@/components/roster/RosterBuildToolbar'
 import { RosterToolbar } from '@/components/roster/RosterToolbar'
@@ -85,6 +85,17 @@ export function RosterPage({
   const { data: me } = useMe()
   const { activeAccount, accounts, isPending: accountsPending } = useActiveAccount()
   const buildsQuery = useBuilds(activeAccount?.id)
+  const updateAccountMutation = useUpdateAccount()
+
+  const isPublicRoster = Boolean(activeAccount?.is_public_roster ?? activeAccount?.is_public_showcase)
+
+  function handleTogglePublicRoster() {
+    if (!activeAccount) return
+    updateAccountMutation.mutate({
+      id: activeAccount.id,
+      is_public_roster: !isPublicRoster,
+    })
+  }
 
   const maxBuilds = me?.limits?.max_builds_per_agent ?? DEFAULT_MAX_BUILDS_PER_AGENT
   const [searchParams, setSearchParams] = useSearchParams()
@@ -313,6 +324,10 @@ export function RosterPage({
         rosterSpecialties={rosterSpecialties}
         fromTeams={fromTeams}
         onResetFilters={handleResetFilters}
+        activeAccount={activeAccount}
+        isPublicRoster={isPublicRoster}
+        onTogglePublicRoster={handleTogglePublicRoster}
+        isUpdatingVisibility={updateAccountMutation.isPending}
       />
 
       {/* 2. Account loading / empty states */}

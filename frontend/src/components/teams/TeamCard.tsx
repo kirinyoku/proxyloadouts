@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { toast } from '@/components/ui/sonner'
 import { ApiError } from '@/api/client'
-import { queryKeys, useBuilds, useDeleteTeam, useUpdateTeam } from '@/api/hooks'
+import { queryKeys, useBuilds, useDeleteTeam, usePatchTeam, useUpdateTeam } from '@/api/hooks'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +49,7 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
   const queryClient = useQueryClient()
   const deleteMutation = useDeleteTeam()
   const updateMutation = useUpdateTeam()
+  const patchMutation = usePatchTeam()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [activePickerSlot, setActivePickerSlot] = useState<number | null>(null)
   const [updatingSlot, setUpdatingSlot] = useState<number | null>(null)
@@ -133,14 +134,11 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
     }
 
     if (!team.is_public) {
-      updateMutation.mutate(
+      patchMutation.mutate(
         {
           id: team.id,
-          game_account_id: team.game_account_id,
-          name: team.name,
-          description: team.description,
-          build_ids: sortedMembers.map((m) => m.build.id),
-          is_public: true,
+          gameAccountId: team.game_account_id,
+          body: { is_public: true },
         },
         {
           onSuccess: () => {
@@ -154,14 +152,11 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
   }
 
   function handleToggleTeamVisibility(newPublic: boolean) {
-    updateMutation.mutate(
+    patchMutation.mutate(
       {
         id: team.id,
-        game_account_id: team.game_account_id,
-        name: team.name,
-        description: team.description,
-        build_ids: sortedMembers.map((m) => m.build.id),
-        is_public: newPublic,
+        gameAccountId: team.game_account_id,
+        body: { is_public: newPublic },
       },
       {
         onSuccess: () => {
@@ -228,7 +223,7 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
               <button
                 type="button"
                 onClick={() => handleToggleTeamVisibility(!team.is_public)}
-                disabled={updateMutation.isPending}
+                disabled={updateMutation.isPending || patchMutation.isPending}
                 aria-label={team.is_public ? t('sharing.teamPublicTooltip') : t('sharing.teamPrivateTooltip')}
                 className={cn(
                   'flex size-8 shrink-0 items-center justify-center rounded-(--radius-input) border-2 border-black transition-all cursor-pointer select-none',
@@ -254,7 +249,7 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
             variant="secondary"
             size="sm"
             onClick={handleShareTeam}
-            disabled={updateMutation.isPending}
+            disabled={updateMutation.isPending || patchMutation.isPending}
             className="size-8 p-0 sm:w-auto sm:px-3 gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated text-xs text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-accent hover:text-primary active:translate-y-px"
             title={t('sharing.share')}
             aria-label={t('sharing.share')}

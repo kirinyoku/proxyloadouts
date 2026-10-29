@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useCornerStyle } from '@/hooks/useCornerStyle'
 import { useColorPalette } from '@/hooks/useColorPalette'
 import { useBgAnimation } from '@/hooks/useBgAnimation'
-import { useCreateAccount, useDeleteMe, useMe } from '@/api/hooks'
+import { useDeleteMe, useMe } from '@/api/hooks'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +28,7 @@ import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { LinkUidForm } from '@/components/settings/LinkUidForm'
 import { ProxyAccountRow } from '@/components/settings/ProxyAccountRow'
 import { ProxyAccountRowSkeleton } from '@/components/settings/ProxyAccountRowSkeleton'
+import { VerifyUidDialog } from '@/components/settings/VerifyUidDialog'
 import {
   SegmentedControl,
   type SegmentedOption,
@@ -152,11 +153,12 @@ export function SettingsPage() {
   const { colorPalette, setColorPalette } = useColorPalette()
   const { isSharp, setCornerStyle } = useCornerStyle()
   const { isEnabled: isBgAnimEnabled, setBgAnimationMode } = useBgAnimation()
-  const createMutation = useCreateAccount()
   const deleteMeMutation = useDeleteMe()
 
   const [uid, setUid] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [pendingUid, setPendingUid] = useState<string | null>(null)
+  const [isVerifyOpen, setIsVerifyOpen] = useState(false)
 
   const maxAccounts = me?.limits?.max_accounts_per_user ?? MAX_ACCOUNTS
   const isMaxAccounts = accounts.length >= maxAccounts
@@ -196,15 +198,8 @@ export function SettingsPage() {
     event.preventDefault()
     setSubmitted(true)
     if (!uidIsValid || isMaxAccounts) return
-    createMutation.mutate(
-      { uid: uid.trim() },
-      {
-        onSuccess: () => {
-          setUid('')
-          setSubmitted(false)
-        },
-      },
-    )
+    setPendingUid(uid.trim())
+    setIsVerifyOpen(true)
   }
 
   return (
@@ -337,7 +332,7 @@ export function SettingsPage() {
               onUidChange={handleUidChange}
               onSubmit={handleSubmit}
               errorMessage={errorMessage}
-              isPending={createMutation.isPending}
+              isPending={false}
               isMaxReached={isMaxAccounts}
             />
           }
@@ -364,6 +359,22 @@ export function SettingsPage() {
             </ul>
           )}
         </SettingsSection>
+      )}
+
+      {isAuthed && (
+        <VerifyUidDialog
+          uid={pendingUid ?? ''}
+          open={isVerifyOpen}
+          onOpenChange={(open) => {
+            setIsVerifyOpen(open)
+            if (!open) setPendingUid(null)
+          }}
+          onSuccess={() => {
+            setUid('')
+            setSubmitted(false)
+            setPendingUid(null)
+          }}
+        />
       )}
 
       {isAuthed && (

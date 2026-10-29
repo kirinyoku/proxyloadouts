@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
 import * as api from './client'
-import { queryKeys } from './hooks'
+import {
+  queryKeys,
+  useConfirmAccountVerification,
+  useConfirmVerification,
+  useToggleTeamVisibility,
+  useUpdateAccount,
+  useUpdateAccountSettings,
+} from './hooks'
 import type { GameAccount, MeResponse } from '@/types'
 
 const ACCOUNTS: GameAccount[] = [
@@ -241,5 +248,64 @@ describe('account verification and showcase roster api methods', () => {
 
     await api.fetchShowcaseRoster('1504687050', 'ru')
     expect(seen[0]).toBe('/api/v1/showcase/1504687050/roster?lang=ru')
+  })
+
+  it('patchTeam calls PATCH /api/v1/teams/{id}', async () => {
+    const seen: { url: string; method: string; body?: unknown }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        seen.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: init?.body ? JSON.parse(String(init.body)) : undefined,
+        })
+        return new Response(JSON.stringify({ team: { id: 'team-1', name: 'T1' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }),
+    )
+
+    await api.patchTeam('team-1', { is_public: true }, 'en')
+    expect(seen[0]?.method).toBe('PATCH')
+    expect(seen[0]?.url).toBe('/api/v1/teams/team-1?lang=en')
+    expect(seen[0]?.body).toEqual({ is_public: true })
+  })
+
+  it('exports useToggleTeamVisibility and hook aliases', () => {
+    expect(typeof useToggleTeamVisibility).toBe('function')
+    expect(useUpdateAccountSettings).toBe(useUpdateAccount)
+    expect(useConfirmAccountVerification).toBe(useConfirmVerification)
+  })
+
+  it('invalidating showcase prefix marks showcase and roster queries as invalidated', async () => {
+    const client = new QueryClient()
+    client.setQueryData(queryKeys.showcase('1504687050', 'ru'), { uid: '1504687050' })
+    client.setQueryData(queryKeys.showcaseRoster('1504687050', 'ru'), { owner: { uid: '1504687050' } })
+
+    expect(client.getQueryState(queryKeys.showcase('1504687050', 'ru'))?.isInvalidated).toBe(false)
+    expect(client.getQueryState(queryKeys.showcaseRoster('1504687050', 'ru'))?.isInvalidated).toBe(false)
+
+    await client.invalidateQueries({ queryKey: ['showcase'] })
+
+    expect(client.getQueryState(queryKeys.showcase('1504687050', 'ru'))?.isInvalidated).toBe(true)
+    expect(client.getQueryState(queryKeys.showcaseRoster('1504687050', 'ru'))?.isInvalidated).toBe(true)
+  })
+
+  it('invalidating public build/team prefixes marks respective queries as invalidated', async () => {
+    const client = new QueryClient()
+    client.setQueryData(queryKeys.publicBuild('b1', 'ru'), { build: { id: 'b1' } })
+    client.setQueryData(queryKeys.publicTeam('t1', 'ru'), { team: { id: 't1' } })
+
+    expect(client.getQueryState(queryKeys.publicBuild('b1', 'ru'))?.isInvalidated).toBe(false)
+    expect(client.getQueryState(queryKeys.publicTeam('t1', 'ru'))?.isInvalidated).toBe(false)
+
+    await client.invalidateQueries({ queryKey: ['public', 'build'] })
+    expect(client.getQueryState(queryKeys.publicBuild('b1', 'ru'))?.isInvalidated).toBe(true)
+    expect(client.getQueryState(queryKeys.publicTeam('t1', 'ru'))?.isInvalidated).toBe(false)
+
+    await client.invalidateQueries({ queryKey: ['public', 'team'] })
+    expect(client.getQueryState(queryKeys.publicTeam('t1', 'ru'))?.isInvalidated).toBe(true)
   })
 })

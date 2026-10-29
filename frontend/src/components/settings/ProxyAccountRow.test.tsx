@@ -13,7 +13,8 @@ vi.mock('react-i18next', async (importOriginal) => {
           'settings.activeBadge': 'Active',
           'settings.verifiedBadge': 'VERIFIED',
           'settings.verifyUidButton': 'Verify UID',
-          'settings.publicShowcase': 'Public Showcase',
+          'settings.publicRoster': 'Public Roster',
+          'settings.publicTeams': 'Public Squads',
           'settings.showDiscord': 'Show Discord',
           'settings.copyUid': 'Copy UID',
           'settings.makeActive': 'Set as active',
@@ -39,7 +40,8 @@ const unverifiedAccount: GameAccount = {
   uid: '1504687050',
   region: 'Europe',
   verified_at: null,
-  is_public_showcase: false,
+  is_public_roster: false,
+  is_public_teams: false,
   show_discord: false,
   created_at: '2026-01-01T00:00:00Z',
 }
@@ -49,7 +51,8 @@ const verifiedAccount: GameAccount = {
   uid: '1504687051',
   region: 'Europe',
   verified_at: '2026-01-02T00:00:00Z',
-  is_public_showcase: true,
+  is_public_roster: true,
+  is_public_teams: true,
   show_discord: true,
   created_at: '2026-01-02T00:00:00Z',
 }
@@ -61,7 +64,8 @@ describe('ProxyAccountRow', () => {
     )
     expect(html).toContain('Verify UID')
     expect(html).not.toContain('VERIFIED')
-    expect(html).not.toContain('Public Showcase')
+    expect(html).not.toContain('Public Roster')
+    expect(html).not.toContain('Public Squads')
     expect(html).not.toContain('Show Discord')
   })
 
@@ -70,7 +74,8 @@ describe('ProxyAccountRow', () => {
       <ProxyAccountRow account={verifiedAccount} isActive={true} />,
     )
     expect(html).toContain('VERIFIED')
-    expect(html).toContain('Public Showcase')
+    expect(html).toContain('Public Roster')
+    expect(html).toContain('Public Squads')
     expect(html).toContain('Show Discord')
     expect(html).not.toContain('Verify UID')
   })
