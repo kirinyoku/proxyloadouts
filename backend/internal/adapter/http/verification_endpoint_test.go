@@ -441,3 +441,174 @@ func TestAccount_ReclaimEndpointFlow(t *testing.T) {
 		t.Fatalf("expected user 2 to own build %s after reclaim, got %d %s", buildID, buildRec2.Code, buildRec2.Body.String())
 	}
 }
+
+func TestShowcase_PrivacyEdgeCases(t *testing.T) {
+	f := newFixture(t)
+	session := f.login(t)
+	ctx := context.Background()
+
+	uid := "1504687099"
+	f.fetcher.profile = &fairy.Profile{UID: uid, Nickname: "PrivacyTester", Region: fairy.RegionEU}
+
+	// Link and verify account
+	accRec := f.do(t, http.MethodPost, "/api/v1/accounts", map[string]string{"uid": uid}, session)
+	if accRec.Code != http.StatusCreated {
+		t.Fatalf("create account failed: %d", accRec.Code)
+	}
+	accIDStr := decodeBody(t, accRec)["id"].(string)
+	accID, _ := uuid.Parse(accIDStr)
+
+	accRepo := sqlite.NewAccountRepo(f.db)
+	nick := "PrivacyMaster"
+	avatar := "https://example.com/avatar.png"
+	if err := accRepo.VerifyOwnership(ctx, accID, uid, time.Now().UTC(), &nick, &avatar); err != nil {
+		t.Fatalf("VerifyOwnership failed: %v", err)
+	}
+
+	// 1. All privacy settings disabled (is_public_roster=false, is_public_teams=false, show_discord=false)
+	if err := accRepo.UpdateSettings(ctx, accID, false, false, false); err != nil {
+		t.Fatalf("UpdateSettings failed: %v", err)
+	}
+
+	scanRec1 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid, nil)
+	if scanRec1.Code != http.StatusOK {
+		t.Fatalf("expected 200 for showcase scan, got %d", scanRec1.Code)
+	}
+	scanData1 := decodeBody(t, scanRec1)
+	if scanData1["verified_owner"] != nil {
+		t.Errorf("expected verified_owner to be null when all privacy settings are off, got %v", scanData1["verified_owner"])
+	}
+	if scanData1["has_public_roster"] != false {
+		t.Errorf("expected has_public_roster=false, got %v", scanData1["has_public_roster"])
+	}
+
+	rosterRec1 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid+"/roster", nil)
+	if rosterRec1.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for fully private roster, got %d: %s", rosterRec1.Code, rosterRec1.Body.String())
+	}
+
+	// 2. Public flags enabled (is_public_roster=true, is_public_teams=true), but 0 builds and 0 teams
+	if err := accRepo.UpdateSettings(ctx, accID, true, true, false); err != nil {
+		t.Fatalf("UpdateSettings failed: %v", err)
+	}
+
+	scanRec2 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid, nil)
+	if scanRec2.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", scanRec2.Code)
+	}
+	scanData2 := decodeBody(t, scanRec2)
+	if scanData2["verified_owner"] == nil {
+		t.Errorf("expected verified_owner to be non-nil when public roster is enabled")
+	}
+	// has_public_roster must be false because there is no real public content yet!
+	if scanData2["has_public_roster"] != false {
+		t.Errorf("expected has_public_roster=false when 0 builds and 0 teams, got %v", scanData2["has_public_roster"])
+	}
+
+	rosterRec2 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid+"/roster", nil)
+	if rosterRec2.Code != http.StatusOK {
+		t.Fatalf("expected 200 for empty public roster, got %d", rosterRec2.Code)
+	}
+	rosterData2 := decodeBody(t, rosterRec2)
+	bArr2 := rosterData2["builds"].([]any)
+	tArr2 := rosterData2["teams"].([]any)
+	if len(bArr2) != 0 || len(tArr2) != 0 {
+		t.Errorf("expected empty builds and teams, got %d builds, %d teams", len(bArr2), len(tArr2))
+	}
+
+	// 3. Create 1 public build
+	buildPayload := map[string]any{
+		"id": 1511, "name": "Miyabi", "level": 60,
+		"w_engine":    map[string]any{"id": 15110, "uid": "1511_eng", "name": "Asasumaru"},
+		"drive_discs": map[string]any{"slots": []any{map[string]any{"uid": "32700_1", "slot": 1}}},
+	}
+	buildID := saveBuildViaAPI(t, f, session, accIDStr, buildPayload)
+
+	// Make build private (is_public=false): has_public_roster must still be false!
+	f.do(t, http.MethodPatch, "/api/v1/builds/"+buildID, map[string]any{"is_public": false}, session)
+	scanRecPrivate := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid, nil)
+	scanDataPrivate := decodeBody(t, scanRecPrivate)
+	if scanDataPrivate["has_public_roster"] != false {
+		t.Errorf("expected has_public_roster=false when all builds are private, got %v", scanDataPrivate["has_public_roster"])
+	}
+
+	// Now publish the build: has_public_roster must flip to true!
+	f.do(t, http.MethodPatch, "/api/v1/builds/"+buildID, map[string]any{"is_public": true}, session)
+
+	// Now has_public_roster must be true
+	scanRec3 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid, nil)
+	scanData3 := decodeBody(t, scanRec3)
+	if scanData3["has_public_roster"] != true {
+		t.Errorf("expected has_public_roster=true after publishing build, got %v", scanData3["has_public_roster"])
+	}
+
+	// 4. Test is_public_roster=true, is_public_teams=false: only builds returned
+	if err := accRepo.UpdateSettings(ctx, accID, true, false, false); err != nil {
+		t.Fatalf("UpdateSettings failed: %v", err)
+	}
+	rosterRec3 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid+"/roster", nil)
+	rosterData3 := decodeBody(t, rosterRec3)
+	if rosterData3["is_public_roster"] != true || rosterData3["is_public_teams"] != false {
+		t.Errorf("expected is_public_roster=true, is_public_teams=false")
+	}
+	if len(rosterData3["builds"].([]any)) != 1 {
+		t.Errorf("expected 1 build, got %d", len(rosterData3["builds"].([]any)))
+	}
+	if len(rosterData3["teams"].([]any)) != 0 {
+		t.Errorf("expected 0 teams when is_public_teams=false, got %d", len(rosterData3["teams"].([]any)))
+	}
+
+	// 5. Create a public team, and test is_public_roster=false, is_public_teams=true: only teams returned
+	teamPayload := map[string]any{
+		"game_account_id": accIDStr,
+		"name":            "Solo Miyabi",
+		"description":     "Solo run",
+		"is_public":       true,
+		"build_ids":       []string{buildID},
+	}
+	teamRec := f.do(t, http.MethodPost, "/api/v1/teams", teamPayload, session)
+	if teamRec.Code != http.StatusCreated {
+		t.Fatalf("create team failed: %d", teamRec.Code)
+	}
+
+	if err := accRepo.UpdateSettings(ctx, accID, false, true, false); err != nil {
+		t.Fatalf("UpdateSettings failed: %v", err)
+	}
+	rosterRec4 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid+"/roster", nil)
+	rosterData4 := decodeBody(t, rosterRec4)
+	if rosterData4["is_public_roster"] != false || rosterData4["is_public_teams"] != true {
+		t.Errorf("expected is_public_roster=false, is_public_teams=true")
+	}
+	if len(rosterData4["builds"].([]any)) != 0 {
+		t.Errorf("expected 0 builds when is_public_roster=false, got %d", len(rosterData4["builds"].([]any)))
+	}
+	if len(rosterData4["teams"].([]any)) != 1 {
+		t.Errorf("expected 1 team when is_public_teams=true, got %d", len(rosterData4["teams"].([]any)))
+	}
+
+	// 6. Test is_public_roster=false, is_public_teams=false, show_discord=true
+	if err := accRepo.UpdateSettings(ctx, accID, false, false, true); err != nil {
+		t.Fatalf("UpdateSettings failed: %v", err)
+	}
+	scanRec5 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid, nil)
+	scanData5 := decodeBody(t, scanRec5)
+	if scanData5["verified_owner"] == nil {
+		t.Errorf("expected verified_owner to be non-nil when show_discord=true")
+	}
+	if scanData5["has_public_roster"] != false {
+		t.Errorf("expected has_public_roster=false when public roster and teams are off, got %v", scanData5["has_public_roster"])
+	}
+	rosterRec5 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid+"/roster", nil)
+	if rosterRec5.Code != http.StatusOK {
+		t.Fatalf("expected 200 for show_discord=true roster, got %d", rosterRec5.Code)
+	}
+
+	// 7. Turn all off again -> returns 404
+	if err := accRepo.UpdateSettings(ctx, accID, false, false, false); err != nil {
+		t.Fatalf("UpdateSettings failed: %v", err)
+	}
+	rosterRec6 := f.do(t, http.MethodGet, "/api/v1/showcase/"+uid+"/roster", nil)
+	if rosterRec6.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for fully private roster, got %d", rosterRec6.Code)
+	}
+}

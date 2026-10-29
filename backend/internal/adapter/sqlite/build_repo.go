@@ -134,6 +134,19 @@ func (r *SQLiteBuildRepo) ListPublicByAccount(ctx context.Context, accountID uui
 	return builds, nil
 }
 
+// HasPublicByAccount reports whether the given account has at least one public build.
+func (r *SQLiteBuildRepo) HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error) {
+	var exists int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM agent_builds WHERE game_account_id = ? AND is_public = 1);`,
+		accountID.String(),
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check public agent builds existence: %w", err)
+	}
+	return exists == 1, nil
+}
+
 // GetByIDs returns a map of builds keyed by their UUIDs for batch fetching.
 func (r *SQLiteBuildRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*domain.AgentBuild, error) {
 	if len(ids) == 0 {

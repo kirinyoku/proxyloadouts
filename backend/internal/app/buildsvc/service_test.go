@@ -1103,3 +1103,56 @@ func TestService_ListPublicByAccount(t *testing.T) {
 		t.Fatalf("expected 2 public builds, got %d", len(publicBuilds))
 	}
 }
+
+func TestService_HasPublicByAccount(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	// Nil account ID fails
+	_, err := env.svc.HasPublicByAccount(ctx, uuid.Nil)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput for nil account ID, got %v", err)
+	}
+
+	// Empty account -> false
+	has, err := env.svc.HasPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if has {
+		t.Errorf("expected false for empty account")
+	}
+
+	// Create private build -> still false
+	isPriv := false
+	b, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Private",
+		IsPublic:        &isPriv,
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	has, err = env.svc.HasPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if has {
+		t.Errorf("expected false for account with only private builds")
+	}
+
+	// Flip visibility to public -> true
+	if err := env.svc.SetVisibility(ctx, env.ownerID, b.ID, true); err != nil {
+		t.Fatalf("SetVisibility failed: %v", err)
+	}
+	has, err = env.svc.HasPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !has {
+		t.Errorf("expected true after making build public")
+	}
+}

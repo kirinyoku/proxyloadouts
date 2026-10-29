@@ -456,6 +456,15 @@ func (s *Service) ListPublicByAccount(ctx context.Context, accountID uuid.UUID, 
 	return summaries, nil
 }
 
+// HasPublicByAccount reports whether an account has at least one publicly shared team.
+// Unlike ListPublicByAccount, this executes an efficient existence check without loading member builds or running conflict validation.
+func (s *Service) HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error) {
+	if accountID == uuid.Nil {
+		return false, fmt.Errorf("%w: game account is required", domain.ErrInvalidInput)
+	}
+	return s.teams.HasPublicByAccount(ctx, accountID)
+}
+
 // CountForAccount returns the number of teams on an owned game account.
 //
 // Callers that only need to know whether the per-account team limit has been

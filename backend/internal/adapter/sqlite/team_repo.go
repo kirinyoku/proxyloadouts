@@ -354,6 +354,19 @@ func (r *SQLiteTeamRepo) ListPublicByAccount(ctx context.Context, accountID uuid
 	return teams, nil
 }
 
+// HasPublicByAccount reports whether the given account has at least one public team.
+func (r *SQLiteTeamRepo) HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error) {
+	var exists int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM teams WHERE game_account_id = ? AND is_public = 1);`,
+		accountID.String(),
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check public teams existence: %w", err)
+	}
+	return exists == 1, nil
+}
+
 // CountByAccount returns the number of teams created for a game account.
 func (r *SQLiteTeamRepo) CountByAccount(ctx context.Context, accountID uuid.UUID) (int, error) {
 	var count int

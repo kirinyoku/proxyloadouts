@@ -322,6 +322,15 @@ func (s *Service) ListPublicByAccount(ctx context.Context, accountID uuid.UUID, 
 	return builds, nil
 }
 
+// HasPublicByAccount reports whether an account has at least one publicly shared build.
+// Unlike ListPublicByAccount, this executes an efficient existence check without loading or enriching builds.
+func (s *Service) HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error) {
+	if accountID == uuid.Nil {
+		return false, fmt.Errorf("%w: game account is required", domain.ErrInvalidInput)
+	}
+	return s.builds.HasPublicByAccount(ctx, accountID)
+}
+
 // enrichBuildWithLang rewrites the build's payload and agent name in place for
 // the requested language. A localization failure is non-fatal: the build keeps
 // whatever the repository returned.

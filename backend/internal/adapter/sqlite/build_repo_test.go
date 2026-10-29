@@ -447,3 +447,50 @@ func TestBuildRepo_GetByIDs(t *testing.T) {
 		t.Errorf("expected missing ID not in map, got %+v", gotMap[missingID])
 	}
 }
+
+func TestBuildRepo_HasPublicByAccount(t *testing.T) {
+	db := newMigratedTestDB(t)
+	ctx := context.Background()
+
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	builds := NewBuildRepo(db)
+
+	user := seedUser(t, ctx, users, "717171717171717171")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687071")
+
+	// 1. No builds -> false
+	has, err := builds.HasPublicByAccount(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if has {
+		t.Errorf("expected HasPublicByAccount=false for account without builds")
+	}
+
+	// 2. Private build -> false
+	b1 := makeDomainBuild(user.ID, account.ID, "Private Build", 1511)
+	b1.IsPublic = false
+	if err := builds.Create(ctx, b1); err != nil {
+		t.Fatalf("failed to create build: %v", err)
+	}
+	has, err = builds.HasPublicByAccount(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if has {
+		t.Errorf("expected HasPublicByAccount=false when all builds are private")
+	}
+
+	// 3. Make public -> true
+	if err := builds.UpdateVisibility(ctx, b1.ID, true); err != nil {
+		t.Fatalf("failed to update visibility: %v", err)
+	}
+	has, err = builds.HasPublicByAccount(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !has {
+		t.Errorf("expected HasPublicByAccount=true after making build public")
+	}
+}

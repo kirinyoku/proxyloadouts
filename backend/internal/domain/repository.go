@@ -53,6 +53,7 @@ type BuildRepository interface {
 	GetPublicByID(ctx context.Context, id uuid.UUID) (*AgentBuild, *PublicOwnerInfo, error)
 	ListByAccount(ctx context.Context, accountID uuid.UUID) ([]*AgentBuild, error)
 	ListPublicByAccount(ctx context.Context, accountID uuid.UUID) ([]*AgentBuild, error)
+	HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error)
 	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*AgentBuild, error)
 	CountByAccountAndAgent(ctx context.Context, accountID uuid.UUID, agentID int) (int, error)
 	UpdateDetails(ctx context.Context, id uuid.UUID, name string, description *string) error
@@ -75,6 +76,7 @@ type TeamRepository interface {
 	GetMembersByTeams(ctx context.Context, teamIDs []uuid.UUID) (map[uuid.UUID][]TeamMember, error)
 	ListByAccount(ctx context.Context, accountID uuid.UUID) ([]*Team, error)
 	ListPublicByAccount(ctx context.Context, accountID uuid.UUID) ([]*Team, error)
+	HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error)
 	CountByAccount(ctx context.Context, accountID uuid.UUID) (int, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }

@@ -78,12 +78,6 @@ func (h *ShowcaseHandler) handle(w http.ResponseWriter, r *http.Request) {
 	if h.accounts != nil {
 		account, owner, err := h.accounts.GetVerifiedByUID(r.Context(), uid)
 		if err == nil && account != nil && owner != nil {
-			resp.HasPublicRoster = account.IsPublicShowcase()
-			if account.IsPublicShowcase() || (owner.DiscordUsername != nil && *owner.DiscordUsername != "") {
-				ownerResp := newPublicOwnerInfoResponse(owner)
-				resp.VerifiedOwner = &ownerResp
-			}
-
 			// Asynchronously synchronize nickname and avatar_url if upstream data has updates
 			var nickPtr *string
 			if showcase.Nickname != "" {
@@ -103,12 +97,39 @@ func (h *ShowcaseHandler) handle(w http.ResponseWriter, r *http.Request) {
 				if avatarPtr == nil {
 					avatarPtr = account.AvatarURL
 				}
+				if nickChanged {
+					owner.Nickname = nickPtr
+				}
+				if avatarChanged {
+					owner.AvatarURL = avatarPtr
+				}
 				bgCtx := context.WithoutCancel(r.Context())
 				go func() {
 					ctx, cancel := context.WithTimeout(bgCtx, 5*time.Second)
 					defer cancel()
 					_ = h.accounts.UpdateProfileMetadata(ctx, account.ID, nickPtr, avatarPtr)
 				}()
+			}
+
+			isFullyPrivate := !account.IsPublicRoster && !account.IsPublicTeams && !account.ShowDiscord
+			if !isFullyPrivate {
+				hasRealPublicContent := false
+				if account.IsPublicRoster && h.builds != nil {
+					hasBuilds, err := h.builds.HasPublicByAccount(r.Context(), account.ID)
+					if err == nil && hasBuilds {
+						hasRealPublicContent = true
+					}
+				}
+				if !hasRealPublicContent && account.IsPublicTeams && h.teams != nil {
+					hasTeams, err := h.teams.HasPublicByAccount(r.Context(), account.ID)
+					if err == nil && hasTeams {
+						hasRealPublicContent = true
+					}
+				}
+
+				resp.HasPublicRoster = hasRealPublicContent
+				ownerResp := newPublicOwnerInfoResponse(owner)
+				resp.VerifiedOwner = &ownerResp
 			}
 		}
 	}
@@ -136,6 +157,11 @@ func (h *ShowcaseHandler) handleRoster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if account == nil || owner == nil {
+		respondError(w, http.StatusNotFound, "verified owner not found")
+		return
+	}
+
+	if !account.IsPublicRoster && !account.IsPublicTeams && !account.ShowDiscord {
 		respondError(w, http.StatusNotFound, "verified owner not found")
 		return
 	}
