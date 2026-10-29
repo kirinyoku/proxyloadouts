@@ -216,6 +216,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/accounts/verify/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start UID ownership verification by UID
+         * @description Generates or returns an active one-time verification code (PXL-XXXX) for the given UID to be placed into the in-game profile signature.
+         */
+        post: operations["startVerificationByUID"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/accounts/verify/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm UID ownership verification by UID
+         * @description Fetches fresh showcase profile from Enka Network and checks player signature for the active verification code. Atomically creates or re-claims the game account.
+         */
+        post: operations["confirmVerificationByUID"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/showcase/{uid}": {
         parameters: {
             query?: never;
@@ -417,7 +457,11 @@ export interface paths {
         delete: operations["deleteTeam"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Partially update team preset
+         * @description Updates the team preset name, description, or visibility flag. Roster slots remain untouched.
+         */
+        patch: operations["patchTeam"];
         trace?: never;
     };
     "/public/teams/{teamID}": {
@@ -656,7 +700,14 @@ export interface components {
             avatar_url?: string | null;
             /** Format: date-time */
             verified_at?: string | null;
-            /** @default false */
+            /** @default true */
+            is_public_roster: boolean;
+            /** @default true */
+            is_public_teams: boolean;
+            /**
+             * @deprecated
+             * @default false
+             */
             is_public_showcase: boolean;
             /** @default false */
             show_discord: boolean;
@@ -673,10 +724,35 @@ export interface components {
             region?: "Europe" | "America" | "Asia" | "TW/HK/MO";
         };
         UpdateAccountRequest: {
-            /** @description Whether this account's showcase roster is public (requires verified ownership) */
+            /** @description Whether this account's agent presets are public (requires verified ownership) */
+            is_public_roster?: boolean;
+            /** @description Whether this account's team squads are public (requires verified ownership) */
+            is_public_teams?: boolean;
+            /**
+             * @deprecated
+             * @description Deprecated alias for updating both roster and teams visibility
+             */
             is_public_showcase?: boolean;
             /** @description Whether to display owner's Discord identity on public pages */
             show_discord?: boolean;
+        };
+        VerificationChallengeRequest: {
+            uid: string;
+            /**
+             * @description Server region (optional; automatically determined from 10-digit UID prefix if omitted)
+             * @example Europe
+             * @enum {string}
+             */
+            region?: "Europe" | "America" | "Asia" | "TW/HK/MO";
+        };
+        VerificationConfirmRequest: {
+            uid: string;
+            /**
+             * @description Server region (optional; automatically determined from 10-digit UID prefix if omitted)
+             * @example Europe
+             * @enum {string}
+             */
+            region?: "Europe" | "America" | "Asia" | "TW/HK/MO";
         };
         VerificationChallengeResponse: {
             /** @example PXL-9A4B */
@@ -807,6 +883,11 @@ export interface components {
             is_public?: boolean;
             build_ids: string[];
         };
+        PatchTeamRequest: {
+            name?: string;
+            description?: string | null;
+            is_public?: boolean;
+        };
         /** @enum {string} */
         ConflictCode: "DUPLICATE_AGENT" | "ITEM_REUSE" | "WEAPON_REUSE" | "ACCOUNT_MISMATCH";
         ConflictError: {
@@ -834,8 +915,6 @@ export interface components {
             /** @example ProxyLeader */
             nickname: string | null;
             avatar_url: string | null;
-            /** @example true */
-            is_verified: boolean;
             /**
              * @description Owner's Discord username (only populated if show_discord is true)
              * @example ProxyLeader
@@ -856,6 +935,9 @@ export interface components {
         };
         PublicShowcaseRosterResponse: {
             owner: components["schemas"]["PublicOwnerInfo"];
+            is_public_roster: boolean;
+            is_public_teams: boolean;
+            /** @deprecated */
             is_public_showcase: boolean;
             builds: components["schemas"]["Build"][];
             teams: components["schemas"]["TeamSummary"][];
@@ -1424,6 +1506,63 @@ export interface operations {
             502: components["responses"]["BadGatewayError"];
         };
     };
+    startVerificationByUID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Verification challenge generated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationChallengeResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            409: components["responses"]["ConflictError"];
+        };
+    };
+    confirmVerificationByUID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Account ownership verified and claimed successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameAccount"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            429: components["responses"]["RateLimitedError"];
+            502: components["responses"]["BadGatewayError"];
+        };
+    };
     scanShowcase: {
         parameters: {
             query?: {
@@ -1829,6 +1968,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    patchTeam: {
+        parameters: {
+            query?: {
+                /** @description Target language for dynamic localization (e.g. ru, en) */
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchTeamRequest"];
+            };
+        };
+        responses: {
+            /** @description Team updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSummary"];
+                };
             };
             400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];

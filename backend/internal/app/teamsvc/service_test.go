@@ -607,10 +607,12 @@ func TestService_GetPublic_PrivateTeamReturnsNotFound(t *testing.T) {
 	ctx := context.Background()
 	ids := env.buildIDs(t)
 
+	isPrivate := false
 	team, err := env.svc.Create(ctx, CreateInput{
 		UserID:        env.ownerID,
 		GameAccountID: env.accountID,
 		Name:          "Private Team",
+		IsPublic:      &isPrivate,
 		BuildIDs:      ids[:1],
 	})
 	if err != nil {
@@ -620,6 +622,25 @@ func TestService_GetPublic_PrivateTeamReturnsNotFound(t *testing.T) {
 	_, err = env.svc.GetPublic(ctx, team.ID)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound reading private team via GetPublic, got %v", err)
+	}
+}
+
+func TestService_Create_DefaultIsPublicTrue(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+	ids := env.buildIDs(t)
+
+	team, err := env.svc.Create(ctx, CreateInput{
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Default Public Team",
+		BuildIDs:      ids[:1],
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if !team.IsPublic {
+		t.Errorf("expected team to default to is_public = true, got %v", team.IsPublic)
 	}
 }
 
@@ -723,10 +744,12 @@ func TestService_SetVisibility_AndUpdateIsPublic(t *testing.T) {
 	ids := env.buildIDs(t)
 
 	// Create private team initially
+	isPrivate := false
 	team, err := env.svc.Create(ctx, CreateInput{
 		UserID:        env.ownerID,
 		GameAccountID: env.accountID,
 		Name:          "Initial Private Team",
+		IsPublic:      &isPrivate,
 		BuildIDs:      ids[:1],
 	})
 	if err != nil {
@@ -770,15 +793,19 @@ func TestService_SetVisibility_AndUpdateIsPublic(t *testing.T) {
 	}
 
 	// 3. SetVisibility back to false
-	if err := env.svc.SetVisibility(ctx, env.ownerID, team.ID, false); err != nil {
+	teamAfter, err := env.svc.SetVisibility(ctx, env.ownerID, team.ID, false)
+	if err != nil {
 		t.Fatalf("SetVisibility(false) failed: %v", err)
+	}
+	if teamAfter == nil || teamAfter.IsPublic {
+		t.Errorf("expected teamAfter.IsPublic == false, got %v", teamAfter)
 	}
 	if _, err := env.svc.GetPublic(ctx, team.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for private team, got %v", err)
 	}
 
 	// 4. Foreign user cannot SetVisibility
-	if err := env.svc.SetVisibility(ctx, env.foreignID, team.ID, true); !errors.Is(err, domain.ErrForbidden) {
+	if _, err := env.svc.SetVisibility(ctx, env.foreignID, team.ID, true); !errors.Is(err, domain.ErrForbidden) {
 		t.Errorf("expected ErrForbidden for foreign user, got %v", err)
 	}
 }
@@ -798,10 +825,12 @@ func TestService_ListPublicByAccount(t *testing.T) {
 	}
 
 	// Create private team
+	isPrivate := false
 	t1, err := env.svc.Create(ctx, CreateInput{
 		UserID:        env.ownerID,
 		GameAccountID: env.accountID,
 		Name:          "Private Team",
+		IsPublic:      &isPrivate,
 		BuildIDs:      []uuid.UUID{ids[0]},
 	})
 	if err != nil {
@@ -835,7 +864,7 @@ func TestService_ListPublicByAccount(t *testing.T) {
 	}
 
 	// Make t1 public as well
-	if err := env.svc.SetVisibility(ctx, env.ownerID, t1.ID, true); err != nil {
+	if _, err := env.svc.SetVisibility(ctx, env.ownerID, t1.ID, true); err != nil {
 		t.Fatalf("SetVisibility failed: %v", err)
 	}
 	publicTeams, err = env.svc.ListPublicByAccount(ctx, env.accountID)
@@ -844,5 +873,81 @@ func TestService_ListPublicByAccount(t *testing.T) {
 	}
 	if len(publicTeams) != 2 {
 		t.Fatalf("expected 2 public teams, got %d", len(publicTeams))
+	}
+}
+
+func TestService_Patch(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+	ids := env.buildIDs(t)
+
+	team, err := env.svc.Create(ctx, CreateInput{
+		UserID:        env.ownerID,
+		GameAccountID: env.accountID,
+		Name:          "Original Team",
+		BuildIDs:      ids[:2],
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// 1. Patch name and description
+	newName := "Patched Team Name"
+	newDesc := "Patched Description"
+	summary, err := env.svc.Patch(ctx, PatchInput{
+		TeamID:      team.ID,
+		UserID:      env.ownerID,
+		Name:        &newName,
+		Description: &newDesc,
+	})
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
+	if summary.Team.Name != newName {
+		t.Errorf("expected team name %q, got %q", newName, summary.Team.Name)
+	}
+	if summary.Team.Description == nil || *summary.Team.Description != newDesc {
+		t.Errorf("expected team description %q, got %v", newDesc, summary.Team.Description)
+	}
+	if len(summary.Members) != 2 {
+		t.Errorf("expected 2 members in summary, got %d", len(summary.Members))
+	}
+
+	// 2. Patch visibility alone: updated_at must NOT change
+	oldUpdatedAt := summary.Team.UpdatedAt
+	isPublicFalse := false
+	summary2, err := env.svc.Patch(ctx, PatchInput{
+		TeamID:   team.ID,
+		UserID:   env.ownerID,
+		IsPublic: &isPublicFalse,
+	})
+	if err != nil {
+		t.Fatalf("Patch visibility failed: %v", err)
+	}
+	if summary2.Team.IsPublic {
+		t.Errorf("expected team to be private")
+	}
+	if !summary2.Team.UpdatedAt.Equal(oldUpdatedAt) {
+		t.Errorf("expected updated_at to remain unchanged on visibility toggle, got %v != %v",
+			summary2.Team.UpdatedAt, oldUpdatedAt)
+	}
+
+	// 3. Foreign user cannot patch
+	if _, err := env.svc.Patch(ctx, PatchInput{
+		TeamID:   team.ID,
+		UserID:   env.foreignID,
+		IsPublic: &isPublicFalse,
+	}); !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("expected ErrForbidden for foreign user patch, got %v", err)
+	}
+
+	// 4. Invalid name returns ErrInvalidInput
+	emptyName := "   "
+	if _, err := env.svc.Patch(ctx, PatchInput{
+		TeamID: team.ID,
+		UserID: env.ownerID,
+		Name:   &emptyName,
+	}); !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput for empty name, got %v", err)
 	}
 }

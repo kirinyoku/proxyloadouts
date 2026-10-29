@@ -56,3 +56,9 @@ export interface PublicTeamResponse {
   members: TeamMember[]
   owner: PublicOwnerInfo
 }
+
+export interface PatchTeamRequest {
+  name?: string
+  description?: string | null
+  is_public?: boolean
+}

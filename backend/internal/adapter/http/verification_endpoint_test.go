@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -137,9 +138,9 @@ func TestShowcase_EnrichedOwnerAndRoster(t *testing.T) {
 		t.Fatalf("VerifyOwnership failed: %v", err)
 	}
 
-	// Initially after verification, is_public_showcase = true (set by VerifyOwnership)
-	// Let's set is_public_showcase = false to test private verified roster
-	if err := accRepo.UpdateSettings(ctx, accountID, false, true); err != nil {
+	// Initially after verification, is_public_roster/teams = true (set by VerifyOwnership)
+	// Let's set is_public_roster = false, is_public_teams = false to test private verified roster
+	if err := accRepo.UpdateSettings(ctx, accountID, false, false, true); err != nil {
 		t.Fatalf("UpdateSettings failed: %v", err)
 	}
 
@@ -161,12 +162,12 @@ func TestShowcase_EnrichedOwnerAndRoster(t *testing.T) {
 		t.Errorf("expected empty teams array, got %v", privRosterData["teams"])
 	}
 	ownerObj, ok := privRosterData["owner"].(map[string]any)
-	if !ok || ownerObj["uid"] != uid || ownerObj["is_verified"] != true {
-		t.Errorf("expected owner object with is_verified=true, got %v", privRosterData["owner"])
+	if !ok || ownerObj["uid"] != uid {
+		t.Errorf("expected owner object with uid=%s, got %v", uid, privRosterData["owner"])
 	}
 
 	// 5. Enable public showcase
-	if err := accRepo.UpdateSettings(ctx, accountID, true, true); err != nil {
+	if err := accRepo.UpdateSettings(ctx, accountID, true, true, true); err != nil {
 		t.Fatalf("UpdateSettings failed: %v", err)
 	}
 
@@ -185,7 +186,7 @@ func TestShowcase_EnrichedOwnerAndRoster(t *testing.T) {
 		"drive_discs": map[string]any{"slots": []any{map[string]any{"uid": "32800_1", "slot": 1}}},
 	}
 	privBuildID := saveBuildViaAPI(t, f, session, accountIDStr, payloadPriv)
-	// privBuildID remains is_public = false
+	f.do(t, http.MethodPatch, "/api/v1/builds/"+privBuildID, map[string]any{"is_public": false}, session)
 
 	// Create 1 public team containing the private build (testing Implicit Member Read)
 	teamPayload := map[string]any{
@@ -245,10 +246,198 @@ func TestShowcase_EnrichedOwnerAndRoster(t *testing.T) {
 		t.Errorf("expected has_public_roster=true, got %v", scData2["has_public_roster"])
 	}
 	vOwner, ok := scData2["verified_owner"].(map[string]any)
-	if !ok || vOwner["uid"] != uid || vOwner["is_verified"] != true {
+	if !ok || vOwner["uid"] != uid {
 		t.Fatalf("expected valid verified_owner object, got %v", scData2["verified_owner"])
 	}
 	if vOwner["discord_username"] != "kirin" {
 		t.Errorf("expected discord_username 'kirin', got %v", vOwner["discord_username"])
+	}
+}
+
+func TestAccount_VerificationByUIDFlow(t *testing.T) {
+	f := newFixture(t)
+	session := f.login(t)
+
+	uid := "1504687055"
+
+	// 1. Request challenge by UID without creating account first
+	chalRec := f.do(t, http.MethodPost, "/api/v1/accounts/verify/challenge", map[string]string{
+		"uid": uid,
+	}, session)
+	if chalRec.Code != http.StatusOK {
+		t.Fatalf("failed to start verification by UID: %d %s", chalRec.Code, chalRec.Body.String())
+	}
+	chalData := decodeBody(t, chalRec)
+	code, ok := chalData["code"].(string)
+	if !ok || len(code) == 0 {
+		t.Fatalf("expected valid code, got %v", chalData["code"])
+	}
+
+	// 2. Mock upstream profile with verification code in signature
+	f.fetcher.rawProfile = &zzz.Profile{
+		UID: uid,
+		PlayerInfo: zzz.PlayerInfo{
+			SocialDetail: &zzz.SocialDetail{
+				Desc: "Signature featuring " + code,
+				ProfileDetail: &zzz.ProfileDetail{
+					Nickname: "AutoClaimedProxy",
+				},
+			},
+		},
+	}
+
+	// 3. Confirm verification by UID -> automatically creates & verifies GameAccount
+	confirmRec := f.do(t, http.MethodPost, "/api/v1/accounts/verify/confirm", map[string]string{
+		"uid": uid,
+	}, session)
+	if confirmRec.Code != http.StatusOK {
+		t.Fatalf("failed to confirm verification by UID: %d %s", confirmRec.Code, confirmRec.Body.String())
+	}
+	accData := decodeBody(t, confirmRec)
+	if accData["uid"] != uid {
+		t.Errorf("expected uid %s, got %v", uid, accData["uid"])
+	}
+	if accData["verified_at"] == nil {
+		t.Errorf("expected verified_at to be non-nil")
+	}
+	if accData["is_public_roster"] != true || accData["is_public_teams"] != true {
+		t.Errorf("expected public roster and teams on verified account")
+	}
+}
+
+func TestTeam_PatchEndpoint(t *testing.T) {
+	f := newFixture(t)
+	session := f.login(t)
+
+	uid := "1504687050"
+	rec := f.do(t, http.MethodPost, "/api/v1/accounts", map[string]string{"uid": uid}, session)
+	accData := decodeBody(t, rec)
+	accountIDStr := accData["id"].(string)
+
+	// Create a build
+	payload := map[string]any{
+		"id": 1511, "name": "Miyabi", "level": 60,
+		"w_engine":    map[string]any{"id": 15110, "uid": "1511_eng", "name": "Asasumaru"},
+		"drive_discs": map[string]any{"slots": []any{map[string]any{"uid": "32700_1", "slot": 1}}},
+	}
+	buildID := saveBuildViaAPI(t, f, session, accountIDStr, payload)
+
+	// Create team
+	teamPayload := map[string]any{
+		"game_account_id": accountIDStr,
+		"name":            "Original Squad",
+		"description":     "Original squad description",
+		"is_public":       true,
+		"build_ids":       []string{buildID},
+	}
+	teamRec := f.do(t, http.MethodPost, "/api/v1/teams", teamPayload, session)
+	if teamRec.Code != http.StatusCreated {
+		t.Fatalf("failed to create team: %d %s", teamRec.Code, teamRec.Body.String())
+	}
+	teamData := decodeBody(t, teamRec)
+	teamID := teamData["id"].(string)
+
+	// Patch team name and visibility
+	newName := "Patched Squad Name"
+	patchRec := f.do(t, http.MethodPatch, "/api/v1/teams/"+teamID, map[string]any{
+		"name":      newName,
+		"is_public": false,
+	}, session)
+	if patchRec.Code != http.StatusOK {
+		t.Fatalf("failed to patch team: %d %s", patchRec.Code, patchRec.Body.String())
+	}
+	patchedSummary := decodeBody(t, patchRec)
+	teamObj := patchedSummary["team"].(map[string]any)
+	if teamObj["name"] != newName {
+		t.Errorf("expected patched name %q, got %v", newName, teamObj["name"])
+	}
+	if teamObj["is_public"] != false {
+		t.Errorf("expected is_public to be false")
+	}
+}
+
+func TestAccount_ReclaimEndpointFlow(t *testing.T) {
+	f := newFixture(t)
+	session1 := f.login(t)
+	session2 := f.loginAs(t, "userB")
+
+	uid := "1504687058"
+
+	// 1. User 1 links account, requests challenge and confirms verification
+	chalRec1 := f.do(t, http.MethodPost, "/api/v1/accounts/verify/challenge", map[string]string{"uid": uid}, session1)
+	if chalRec1.Code != http.StatusOK {
+		t.Fatalf("user 1 challenge failed: %d %s", chalRec1.Code, chalRec1.Body.String())
+	}
+	code1 := decodeBody(t, chalRec1)["code"].(string)
+
+	f.fetcher.rawProfile = &zzz.Profile{
+		UID: uid,
+		PlayerInfo: zzz.PlayerInfo{
+			SocialDetail: &zzz.SocialDetail{
+				Desc: "User 1 Code: " + code1,
+				ProfileDetail: &zzz.ProfileDetail{
+					Nickname: "FirstOwner",
+				},
+			},
+		},
+	}
+
+	confirmRec1 := f.do(t, http.MethodPost, "/api/v1/accounts/verify/confirm", map[string]string{"uid": uid}, session1)
+	if confirmRec1.Code != http.StatusOK {
+		t.Fatalf("user 1 confirm failed: %d %s", confirmRec1.Code, confirmRec1.Body.String())
+	}
+	acc1 := decodeBody(t, confirmRec1)
+	accID := acc1["id"].(string)
+
+	// User 1 creates a build on this account
+	payload := map[string]any{
+		"id": 1511, "name": "Miyabi", "level": 60,
+		"w_engine":    map[string]any{"id": 15110, "uid": "1511_eng", "name": "Asasumaru"},
+		"drive_discs": map[string]any{"slots": []any{map[string]any{"uid": "32700_1", "slot": 1}}},
+	}
+	buildID := saveBuildViaAPI(t, f, session1, accID, payload)
+
+	// 2. User 2 initiates challenge for the same UID (Re-claim)
+	chalRec2 := f.do(t, http.MethodPost, "/api/v1/accounts/verify/challenge", map[string]string{"uid": uid}, session2)
+	if chalRec2.Code != http.StatusOK {
+		t.Fatalf("user 2 challenge failed: %d %s", chalRec2.Code, chalRec2.Body.String())
+	}
+	code2 := decodeBody(t, chalRec2)["code"].(string)
+
+	// Upstream now shows User 2's code in signature
+	f.fetcher.rawProfile = &zzz.Profile{
+		UID: uid,
+		PlayerInfo: zzz.PlayerInfo{
+			SocialDetail: &zzz.SocialDetail{
+				Desc: "User 2 Reclaim: " + code2,
+				ProfileDetail: &zzz.ProfileDetail{
+					Nickname: "NewTrueOwner",
+				},
+			},
+		},
+	}
+
+	// 3. User 2 confirms verification
+	confirmRec2 := f.do(t, http.MethodPost, "/api/v1/accounts/verify/confirm", map[string]string{"uid": uid}, session2)
+	if confirmRec2.Code != http.StatusOK {
+		t.Fatalf("user 2 reclaim confirm failed: %d %s", confirmRec2.Code, confirmRec2.Body.String())
+	}
+	acc2 := decodeBody(t, confirmRec2)
+	if acc2["id"] != accID {
+		t.Errorf("expected account ID %s preserved on reclaim, got %v", accID, acc2["id"])
+	}
+
+	// 4. User 1 no longer has any accounts
+	listRec1 := f.do(t, http.MethodGet, "/api/v1/accounts", nil, session1)
+	var accounts1 []any
+	_ = json.Unmarshal(listRec1.Body.Bytes(), &accounts1)
+	if len(accounts1) != 0 {
+		t.Errorf("expected user 1 to have 0 accounts after reclaim, got %d", len(accounts1))
+	}
+
+	// 5. User 2 can access the build on the reclaimed account
+	buildRec2 := f.do(t, http.MethodGet, "/api/v1/builds/"+buildID, nil, session2)
+	if buildRec2.Code != http.StatusOK {
+		t.Fatalf("expected user 2 to own build %s after reclaim, got %d %s", buildID, buildRec2.Code, buildRec2.Body.String())
 	}
 }

@@ -209,14 +209,15 @@ func TestAccountRepo_GetPublicOwnerInfoByAccountID(t *testing.T) {
 	nick := "Wise"
 	avatar := "https://example.com/wise.png"
 	account := &domain.GameAccount{
-		UserID:           user.ID,
-		UID:              "1504687056",
-		Region:           domain.RegionEurope,
-		Nickname:         &nick,
-		AvatarURL:        &avatar,
-		VerifiedAt:       &now,
-		IsPublicShowcase: true,
-		ShowDiscord:      true,
+		UserID:         user.ID,
+		UID:            "1504687056",
+		Region:         domain.RegionEurope,
+		Nickname:       &nick,
+		AvatarURL:      &avatar,
+		VerifiedAt:     &now,
+		IsPublicRoster: true,
+		IsPublicTeams:  true,
+		ShowDiscord:    true,
 	}
 	if err := repo.Create(ctx, account); err != nil {
 		t.Fatalf("failed to create account: %v", err)
@@ -235,9 +236,6 @@ func TestAccountRepo_GetPublicOwnerInfoByAccountID(t *testing.T) {
 	}
 	if owner.AvatarURL == nil || *owner.AvatarURL != avatar {
 		t.Errorf("expected avatar URL %q, got %v", avatar, owner.AvatarURL)
-	}
-	if !owner.IsVerified {
-		t.Error("expected owner.IsVerified == true")
 	}
 	if owner.DiscordUsername == nil || *owner.DiscordUsername != "Phaethon" {
 		t.Errorf("expected DiscordUsername %q, got %v", "Phaethon", owner.DiscordUsername)
@@ -262,9 +260,6 @@ func TestAccountRepo_GetPublicOwnerInfoByAccountID(t *testing.T) {
 	}
 	if ownerNoDiscord.DiscordUsername != nil || ownerNoDiscord.DiscordAvatarURL != nil {
 		t.Errorf("expected masked discord fields, got username=%v, avatar=%v", ownerNoDiscord.DiscordUsername, ownerNoDiscord.DiscordAvatarURL)
-	}
-	if ownerNoDiscord.IsVerified {
-		t.Error("expected unverified account to have IsVerified == false")
 	}
 
 	// 3. User banned -> GetPublicOwnerInfoByAccountID returns domain.ErrNotFound
@@ -291,8 +286,8 @@ func TestAccountRepo_UpdateSettings(t *testing.T) {
 	user := seedUser(t, ctx, users, "404040404040404040")
 	account := seedAccount(t, ctx, repo, user.ID, "1504687090")
 
-	// 1. Enable showcase and discord
-	if err := repo.UpdateSettings(ctx, account.ID, true, true); err != nil {
+	// 1. Enable roster, teams, and discord
+	if err := repo.UpdateSettings(ctx, account.ID, true, true, true); err != nil {
 		t.Fatalf("failed to update settings: %v", err)
 	}
 
@@ -300,21 +295,21 @@ func TestAccountRepo_UpdateSettings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get account: %v", err)
 	}
-	if !got.IsPublicShowcase || !got.ShowDiscord {
-		t.Errorf("expected IsPublicShowcase=true and ShowDiscord=true, got %+v", got)
+	if !got.IsPublicRoster || !got.IsPublicTeams || !got.ShowDiscord {
+		t.Errorf("expected IsPublicRoster=true, IsPublicTeams=true, ShowDiscord=true, got %+v", got)
 	}
 
-	// 2. Disable showcase and keep discord
-	if err := repo.UpdateSettings(ctx, account.ID, false, true); err != nil {
+	// 2. Disable roster and keep teams and discord
+	if err := repo.UpdateSettings(ctx, account.ID, false, true, true); err != nil {
 		t.Fatalf("failed to update settings: %v", err)
 	}
 	got, _ = repo.GetByID(ctx, account.ID)
-	if got.IsPublicShowcase || !got.ShowDiscord {
-		t.Errorf("expected IsPublicShowcase=false and ShowDiscord=true, got %+v", got)
+	if got.IsPublicRoster || !got.IsPublicTeams || !got.ShowDiscord {
+		t.Errorf("expected IsPublicRoster=false, IsPublicTeams=true, ShowDiscord=true, got %+v", got)
 	}
 
 	// 3. Not found for non-existent account
-	if err := repo.UpdateSettings(ctx, uuid.New(), true, true); !errors.Is(err, domain.ErrNotFound) {
+	if err := repo.UpdateSettings(ctx, uuid.New(), true, true, true); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for non-existent account, got %v", err)
 	}
 }
@@ -345,7 +340,7 @@ func TestAccountRepo_VerifyOwnership_And_Reclaim(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get account A: %v", err)
 	}
-	if gotA.VerifiedAt == nil || !gotA.IsPublicShowcase {
+	if gotA.VerifiedAt == nil || !gotA.IsPublicShowcase() {
 		t.Fatalf("expected account A to be verified and have public showcase, got %+v", gotA)
 	}
 	if gotA.Nickname == nil || *gotA.Nickname != nickA {
@@ -362,33 +357,232 @@ func TestAccountRepo_VerifyOwnership_And_Reclaim(t *testing.T) {
 		t.Fatalf("failed to verify ownership for account B (re-claim): %v", err)
 	}
 
-	// User A should now be reset: verified_at = nil, is_public_showcase = false
-	gotAAfter, err := repo.GetByID(ctx, accountA.ID)
+	// In the 1 UID = 1 GameAccount model, the existing account row is transferred to User B
+	gotTransferred, err := repo.GetByID(ctx, accountA.ID)
 	if err != nil {
 		t.Fatalf("failed to get account A after reclaim: %v", err)
 	}
-	if gotAAfter.VerifiedAt != nil {
-		t.Errorf("expected account A verified_at to be reset to nil, got %v", gotAAfter.VerifiedAt)
+	if gotTransferred.UserID != userB.ID {
+		t.Errorf("expected account to be transferred to user B %s, got %s", userB.ID, gotTransferred.UserID)
 	}
-	if gotAAfter.IsPublicShowcase {
-		t.Error("expected account A is_public_showcase to be reset to false")
+	if gotTransferred.VerifiedAt == nil || !gotTransferred.IsPublicRoster || !gotTransferred.IsPublicTeams {
+		t.Errorf("expected transferred account to be verified with public roster and teams, got %+v", gotTransferred)
 	}
-
-	// User B should now be verified with public showcase
-	gotB, err := repo.GetByID(ctx, accountB.ID)
-	if err != nil {
-		t.Fatalf("failed to get account B: %v", err)
-	}
-	if gotB.VerifiedAt == nil || !gotB.IsPublicShowcase {
-		t.Fatalf("expected account B to be verified and have public showcase, got %+v", gotB)
-	}
-	if gotB.Nickname == nil || *gotB.Nickname != nickB {
-		t.Errorf("expected nickname %q, got %v", nickB, gotB.Nickname)
+	if gotTransferred.Nickname == nil || *gotTransferred.Nickname != nickB {
+		t.Errorf("expected nickname %q, got %v", nickB, gotTransferred.Nickname)
 	}
 
 	// 3. Not found for non-existent account
 	if err := repo.VerifyOwnership(ctx, uuid.New(), uid, time.Now(), nil, nil); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for non-existent account, got %v", err)
+	}
+}
+
+func TestAccountRepo_ClaimVerifiedUID_DirectAndReclaimWithBuilds(t *testing.T) {
+	db := newMigratedTestDB(t)
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	builds := NewBuildRepo(db)
+	teams := NewTeamRepo(db)
+	ctx := context.Background()
+
+	userA := seedUser(t, ctx, users, "707070707070707071")
+	userB := seedUser(t, ctx, users, "707070707070707072")
+	uid := "1504687095"
+
+	// 1. Scenario A: Claim verified UID directly without prior unverified record
+	nowA := time.Now().Truncate(time.Millisecond)
+	nickA := "PlayerOne"
+	acc, err := accounts.ClaimVerifiedUID(ctx, userA.ID, uid, domain.RegionEurope, nowA, &nickA, nil)
+	if err != nil {
+		t.Fatalf("ClaimVerifiedUID scenario A failed: %v", err)
+	}
+	if acc.UserID != userA.ID || acc.UID != uid || acc.VerifiedAt == nil || !acc.IsPublicRoster || !acc.IsPublicTeams {
+		t.Fatalf("unexpected new verified account: %+v", acc)
+	}
+
+	// Seed builds and team on acc
+	build := makeDomainBuild(userA.ID, acc.ID, "Aria DPS", 1511)
+	if err := builds.Create(ctx, build); err != nil {
+		t.Fatalf("failed to create build: %v", err)
+	}
+	team := &domain.Team{
+		UserID:        userA.ID,
+		GameAccountID: acc.ID,
+		Name:          "Team Alpha",
+		IsPublic:      true,
+	}
+	members := []domain.TeamMember{
+		{SlotNumber: 1, BuildID: build.ID},
+	}
+	if err := teams.Create(ctx, team, members); err != nil {
+		t.Fatalf("failed to create team: %v", err)
+	}
+
+	// 2. Scenario B: Re-claim by User B transfers account, builds, and teams to User B
+	nowB := nowA.Add(10 * time.Minute)
+	nickB := "PlayerTwo"
+	reclaimedAcc, err := accounts.ClaimVerifiedUID(ctx, userB.ID, uid, domain.RegionEurope, nowB, &nickB, nil)
+	if err != nil {
+		t.Fatalf("ClaimVerifiedUID scenario B failed: %v", err)
+	}
+	if reclaimedAcc.ID != acc.ID {
+		t.Errorf("expected same account ID %s, got %s", acc.ID, reclaimedAcc.ID)
+	}
+	if reclaimedAcc.UserID != userB.ID {
+		t.Errorf("expected account user_id to be %s, got %s", userB.ID, reclaimedAcc.UserID)
+	}
+
+	// Verify builds transferred to userB
+	gotBuild, err := builds.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("failed to get build after reclaim: %v", err)
+	}
+	if gotBuild.UserID != userB.ID {
+		t.Errorf("expected build user_id to be transferred to %s, got %s", userB.ID, gotBuild.UserID)
+	}
+
+	// Verify teams transferred to userB
+	gotTeam, err := teams.GetByID(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("failed to get team after reclaim: %v", err)
+	}
+	if gotTeam.UserID != userB.ID {
+		t.Errorf("expected team user_id to be transferred to %s, got %s", userB.ID, gotTeam.UserID)
+	}
+}
+
+func TestAccountRepo_ClaimVerifiedUID_ReclaimWithDuplicateAndBuilds(t *testing.T) {
+	db := newMigratedTestDB(t)
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	builds := NewBuildRepo(db)
+	teams := NewTeamRepo(db)
+	ctx := context.Background()
+
+	userA := seedUser(t, ctx, users, "707070707070707081")
+	userB := seedUser(t, ctx, users, "707070707070707082")
+	userC := seedUser(t, ctx, users, "707070707070707083")
+	uid := "1504687099"
+
+	// 1. User A verified account with builds, team, and show_discord = true
+	nowA := time.Now().Truncate(time.Millisecond)
+	accA, err := accounts.ClaimVerifiedUID(ctx, userA.ID, uid, domain.RegionEurope, nowA, nil, nil)
+	if err != nil {
+		t.Fatalf("ClaimVerifiedUID for userA failed: %v", err)
+	}
+	if err := accounts.UpdateSettings(ctx, accA.ID, true, true, true); err != nil {
+		t.Fatalf("failed to enable show_discord for userA: %v", err)
+	}
+
+	buildA := makeDomainBuild(userA.ID, accA.ID, "UserA Build", 1511)
+	if err := builds.Create(ctx, buildA); err != nil {
+		t.Fatalf("failed to create buildA: %v", err)
+	}
+	teamA := &domain.Team{
+		UserID:        userA.ID,
+		GameAccountID: accA.ID,
+		Name:          "UserA Team",
+		IsPublic:      true,
+	}
+	if err := teams.Create(ctx, teamA, []domain.TeamMember{{SlotNumber: 1, BuildID: buildA.ID}}); err != nil {
+		t.Fatalf("failed to create teamA: %v", err)
+	}
+
+	// 2. User B had an unverified duplicate account for the same UID with their own build and team
+	accB := &domain.GameAccount{
+		UserID: userB.ID,
+		UID:    uid,
+		Region: domain.RegionEurope,
+	}
+	if err := accounts.Create(ctx, accB); err != nil {
+		t.Fatalf("failed to create accB: %v", err)
+	}
+	buildB := makeDomainBuild(userB.ID, accB.ID, "UserB Build", 1512)
+	if err := builds.Create(ctx, buildB); err != nil {
+		t.Fatalf("failed to create buildB: %v", err)
+	}
+	teamB := &domain.Team{
+		UserID:        userB.ID,
+		GameAccountID: accB.ID,
+		Name:          "UserB Team",
+		IsPublic:      true,
+	}
+	if err := teams.Create(ctx, teamB, []domain.TeamMember{{SlotNumber: 1, BuildID: buildB.ID}}); err != nil {
+		t.Fatalf("failed to create teamB: %v", err)
+	}
+
+	// 3. User C had another unverified duplicate account for the same UID
+	accC := &domain.GameAccount{
+		UserID: userC.ID,
+		UID:    uid,
+		Region: domain.RegionEurope,
+	}
+	if err := accounts.Create(ctx, accC); err != nil {
+		t.Fatalf("failed to create accC: %v", err)
+	}
+
+	// 4. User B verifies UID -> Re-claim
+	nowB := nowA.Add(5 * time.Minute)
+	nickB := "RealOwnerB"
+	reclaimed, err := accounts.ClaimVerifiedUID(ctx, userB.ID, uid, domain.RegionEurope, nowB, &nickB, nil)
+	if err != nil {
+		t.Fatalf("ClaimVerifiedUID for userB failed: %v", err)
+	}
+
+	// Reclaimed account should be accA (primary), now owned by User B
+	if reclaimed.ID != accA.ID {
+		t.Errorf("expected reclaimed account ID %s, got %s", accA.ID, reclaimed.ID)
+	}
+	if reclaimed.UserID != userB.ID {
+		t.Errorf("expected reclaimed user_id %s, got %s", userB.ID, reclaimed.UserID)
+	}
+	// show_discord must be reset to false for new owner privacy
+	if reclaimed.ShowDiscord {
+		t.Errorf("expected show_discord to be reset to false on re-claim")
+	}
+
+	// Duplicate account accB (owned by userB) must be merged and deleted
+	if _, err := accounts.GetByID(ctx, accB.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected accB to be deleted, got %v", err)
+	}
+	// Unverified account accC (owned by userC) remains unverified until userC re-claims
+	if gotC, err := accounts.GetByID(ctx, accC.ID); err != nil || gotC.VerifiedAt != nil {
+		t.Errorf("expected accC to remain unverified, got %+v (err %v)", gotC, err)
+	}
+
+	// Both buildA and buildB must exist, belong to accA and userB!
+	gotBuildA, err := builds.GetByID(ctx, buildA.ID)
+	if err != nil {
+		t.Fatalf("buildA not found: %v", err)
+	}
+	if gotBuildA.UserID != userB.ID || gotBuildA.GameAccountID != accA.ID {
+		t.Errorf("buildA mismatch: %+v", gotBuildA)
+	}
+
+	gotBuildB, err := builds.GetByID(ctx, buildB.ID)
+	if err != nil {
+		t.Fatalf("buildB was deleted/not found after merge: %v", err)
+	}
+	if gotBuildB.UserID != userB.ID || gotBuildB.GameAccountID != accA.ID {
+		t.Errorf("buildB mismatch: %+v", gotBuildB)
+	}
+
+	// Both teams must exist, belong to accA and userB!
+	gotTeamA, err := teams.GetByID(ctx, teamA.ID)
+	if err != nil {
+		t.Fatalf("teamA not found: %v", err)
+	}
+	if gotTeamA.UserID != userB.ID || gotTeamA.GameAccountID != accA.ID {
+		t.Errorf("teamA mismatch: %+v", gotTeamA)
+	}
+
+	gotTeamB, err := teams.GetByID(ctx, teamB.ID)
+	if err != nil {
+		t.Fatalf("teamB not found: %v", err)
+	}
+	if gotTeamB.UserID != userB.ID || gotTeamB.GameAccountID != accA.ID {
+		t.Errorf("teamB mismatch: %+v", gotTeamB)
 	}
 }
 
@@ -432,15 +626,12 @@ func TestAccountRepo_GetVerifiedByUID(t *testing.T) {
 	if gotAcc.ID != account.ID || gotAcc.UID != uid {
 		t.Errorf("account mismatch: %+v", gotAcc)
 	}
-	if !owner.IsVerified {
-		t.Error("expected owner.IsVerified == true")
-	}
 	if owner.DiscordUsername != nil || owner.DiscordAvatarURL != nil {
 		t.Errorf("expected masked discord fields when ShowDiscord=false, got username=%v, avatar=%v", owner.DiscordUsername, owner.DiscordAvatarURL)
 	}
 
 	// 4. Update ShowDiscord = true -> Discord fields revealed
-	if err := repo.UpdateSettings(ctx, account.ID, true, true); err != nil {
+	if err := repo.UpdateSettings(ctx, account.ID, true, true, true); err != nil {
 		t.Fatalf("failed to enable show_discord: %v", err)
 	}
 	_, ownerDiscord, err := repo.GetVerifiedByUID(ctx, uid)

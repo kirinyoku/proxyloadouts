@@ -6,6 +6,7 @@ package accountsvc
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -73,7 +74,8 @@ type AccountStore interface {
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]*domain.GameAccount, error)
 	CountByUser(ctx context.Context, userID uuid.UUID) (int, error)
 	UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error
-	UpdateSettings(ctx context.Context, id uuid.UUID, isPublicShowcase, showDiscord bool) error
+	UpdateSettings(ctx context.Context, id uuid.UUID, isPublicRoster, isPublicTeams, showDiscord bool) error
+	ClaimVerifiedUID(ctx context.Context, userID uuid.UUID, uid, region string, verifiedAt time.Time, nickname, avatarURL *string) (*domain.GameAccount, error)
 	VerifyOwnership(ctx context.Context, accountID uuid.UUID, uid string, verifiedAt time.Time, nickname, avatarURL *string) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -270,26 +272,60 @@ func (s *Service) Delete(ctx context.Context, userID, accountID uuid.UUID) error
 	return s.accounts.Delete(ctx, accountID)
 }
 
-// StartVerification initiates an ownership verification challenge for the given game account.
-// If an unexpired challenge already exists for the account, it is returned without regenerating.
-func (s *Service) StartVerification(ctx context.Context, userID, accountID uuid.UUID) (*VerificationChallenge, error) {
-	if userID == uuid.Nil || accountID == uuid.Nil {
-		return nil, fmt.Errorf("%w: user and account ids are required", domain.ErrInvalidInput)
+// StartVerification initiates an ownership verification challenge for a UID.
+// Challenge code is keyed by (userID, cleanUID). If an unexpired challenge already exists,
+// it is returned without regenerating.
+func (s *Service) StartVerification(ctx context.Context, userID uuid.UUID, uid, region string) (*VerificationChallenge, error) {
+	if userID == uuid.Nil {
+		return nil, fmt.Errorf("%w: user id is required", domain.ErrInvalidInput)
 	}
 
-	account, err := s.accounts.GetByID(ctx, accountID)
-	if err != nil {
+	cleanUID := strings.TrimSpace(uid)
+	if err := domain.ValidateUID(cleanUID); err != nil {
+		return nil, fmt.Errorf("%w: %w", domain.ErrInvalidInput, err)
+	}
+
+	cleanRegion := strings.TrimSpace(region)
+	if cleanRegion == "" {
+		if matched, ok := domain.RegionFromUID(cleanUID); ok {
+			cleanRegion = matched
+		} else {
+			cleanRegion = domain.DefaultRegion
+		}
+	}
+	if !domain.IsValidRegion(cleanRegion) {
+		return nil, fmt.Errorf("%w: invalid region %q", domain.ErrInvalidInput, cleanRegion)
+	}
+
+	maxAccounts := domain.MaxAccountsPerUser
+	if s.users != nil {
+		if u, err := s.users.GetByID(ctx, userID); err == nil && u != nil {
+			maxAccounts = u.EffectiveMaxAccounts()
+		}
+	}
+
+	existing, err := s.accounts.GetByUserAndUID(ctx, userID, cleanUID)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return nil, err
 	}
-	if account.UserID != userID {
-		return nil, fmt.Errorf("%w: you do not own this account", domain.ErrForbidden)
+	if existing != nil && existing.IsVerified() {
+		return nil, fmt.Errorf("%w: uid %s is already verified for this user", domain.ErrConflict, cleanUID)
+	}
+	if existing == nil {
+		count, err := s.accounts.CountByUser(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if count >= maxAccounts {
+			return nil, fmt.Errorf("%w: limit of %d game accounts reached", domain.ErrConflict, maxAccounts)
+		}
 	}
 
 	s.challenges.mu.Lock()
 	defer s.challenges.mu.Unlock()
 
 	now := s.now()
-	key := accountID.String()
+	key := userID.String() + ":" + cleanUID
 
 	if entry, ok := s.challenges.challenges[key]; ok && now.Before(entry.expiresAt) {
 		return &VerificationChallenge{
@@ -325,9 +361,8 @@ func (s *Service) StartVerification(ctx context.Context, userID, accountID uuid.
 	}, nil
 }
 
-// ConfirmVerification verifies account ownership by checking that the player's
-// in-game profile signature contains the active verification challenge code.
-func (s *Service) ConfirmVerification(ctx context.Context, userID, accountID uuid.UUID) (*domain.GameAccount, error) {
+// StartVerificationForAccount initiates an ownership verification challenge for an existing game account.
+func (s *Service) StartVerificationForAccount(ctx context.Context, userID, accountID uuid.UUID) (*VerificationChallenge, error) {
 	if userID == uuid.Nil || accountID == uuid.Nil {
 		return nil, fmt.Errorf("%w: user and account ids are required", domain.ErrInvalidInput)
 	}
@@ -340,8 +375,57 @@ func (s *Service) ConfirmVerification(ctx context.Context, userID, accountID uui
 		return nil, fmt.Errorf("%w: you do not own this account", domain.ErrForbidden)
 	}
 
-	key := accountID.String()
+	return s.StartVerification(ctx, userID, account.UID, account.Region)
+}
+
+// ConfirmVerification verifies account ownership by checking that the player's
+// in-game profile signature contains the active verification challenge code.
+// On success, the UID is claimed as a verified GameAccount.
+func (s *Service) ConfirmVerification(ctx context.Context, userID uuid.UUID, uid, region string) (*domain.GameAccount, error) {
+	if userID == uuid.Nil {
+		return nil, fmt.Errorf("%w: user id is required", domain.ErrInvalidInput)
+	}
+
+	cleanUID := strings.TrimSpace(uid)
+	if err := domain.ValidateUID(cleanUID); err != nil {
+		return nil, fmt.Errorf("%w: %w", domain.ErrInvalidInput, err)
+	}
+
+	cleanRegion := strings.TrimSpace(region)
+	if cleanRegion == "" {
+		if matched, ok := domain.RegionFromUID(cleanUID); ok {
+			cleanRegion = matched
+		} else {
+			cleanRegion = domain.DefaultRegion
+		}
+	}
+	if !domain.IsValidRegion(cleanRegion) {
+		return nil, fmt.Errorf("%w: invalid region %q", domain.ErrInvalidInput, cleanRegion)
+	}
+
+	key := userID.String() + ":" + cleanUID
 	now := s.now()
+
+	maxAccounts := domain.MaxAccountsPerUser
+	if s.users != nil {
+		if u, err := s.users.GetByID(ctx, userID); err == nil && u != nil {
+			maxAccounts = u.EffectiveMaxAccounts()
+		}
+	}
+
+	existing, err := s.accounts.GetByUserAndUID(ctx, userID, cleanUID)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return nil, err
+	}
+	if existing == nil {
+		count, err := s.accounts.CountByUser(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if count >= maxAccounts {
+			return nil, fmt.Errorf("%w: limit of %d game accounts reached", domain.ErrConflict, maxAccounts)
+		}
+	}
 
 	s.challenges.mu.Lock()
 	entry, ok := s.challenges.challenges[key]
@@ -364,7 +448,7 @@ func (s *Service) ConfirmVerification(ctx context.Context, userID, accountID uui
 		return nil, fmt.Errorf("%w: profile verifier is not configured", domain.ErrSourceUnavailable)
 	}
 
-	profile, err := s.verifier.FetchFreshProfile(ctx, account.UID)
+	profile, err := s.verifier.FetchFreshProfile(ctx, cleanUID)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +469,8 @@ func (s *Service) ConfirmVerification(ctx context.Context, userID, accountID uui
 		avatarPtr = &profile.AvatarURL
 	}
 
-	if err := s.accounts.VerifyOwnership(ctx, account.ID, account.UID, now, nicknamePtr, avatarPtr); err != nil {
+	account, err := s.accounts.ClaimVerifiedUID(ctx, userID, cleanUID, cleanRegion, now, nicknamePtr, avatarPtr)
+	if err != nil {
 		return nil, err
 	}
 
@@ -393,12 +478,11 @@ func (s *Service) ConfirmVerification(ctx context.Context, userID, accountID uui
 	delete(s.challenges.challenges, key)
 	s.challenges.mu.Unlock()
 
-	return s.accounts.GetByID(ctx, account.ID)
+	return account, nil
 }
 
-// UpdateSettings updates the public showcase visibility and discord visibility of a game account.
-// Attempting to enable public showcase on an unverified account returns domain.ErrConflict.
-func (s *Service) UpdateSettings(ctx context.Context, userID, accountID uuid.UUID, isPublicShowcase, showDiscord *bool) (*domain.GameAccount, error) {
+// ConfirmVerificationForAccount verifies account ownership for an existing game account ID.
+func (s *Service) ConfirmVerificationForAccount(ctx context.Context, userID, accountID uuid.UUID) (*domain.GameAccount, error) {
 	if userID == uuid.Nil || accountID == uuid.Nil {
 		return nil, fmt.Errorf("%w: user and account ids are required", domain.ErrInvalidInput)
 	}
@@ -411,9 +495,36 @@ func (s *Service) UpdateSettings(ctx context.Context, userID, accountID uuid.UUI
 		return nil, fmt.Errorf("%w: you do not own this account", domain.ErrForbidden)
 	}
 
-	targetPublicShowcase := account.IsPublicShowcase
-	if isPublicShowcase != nil {
-		targetPublicShowcase = *isPublicShowcase
+	return s.ConfirmVerification(ctx, userID, account.UID, account.Region)
+}
+
+// UpdateSettings updates the public showcase visibility and discord visibility of a game account.
+// Attempting to enable public roster or teams on an unverified account returns domain.ErrConflict.
+func (s *Service) UpdateSettings(
+	ctx context.Context,
+	userID, accountID uuid.UUID,
+	isPublicRoster, isPublicTeams, showDiscord *bool,
+) (*domain.GameAccount, error) {
+	if userID == uuid.Nil || accountID == uuid.Nil {
+		return nil, fmt.Errorf("%w: user and account ids are required", domain.ErrInvalidInput)
+	}
+
+	account, err := s.accounts.GetByID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if account.UserID != userID {
+		return nil, fmt.Errorf("%w: you do not own this account", domain.ErrForbidden)
+	}
+
+	targetPublicRoster := account.IsPublicRoster
+	if isPublicRoster != nil {
+		targetPublicRoster = *isPublicRoster
+	}
+
+	targetPublicTeams := account.IsPublicTeams
+	if isPublicTeams != nil {
+		targetPublicTeams = *isPublicTeams
 	}
 
 	targetShowDiscord := account.ShowDiscord
@@ -421,11 +532,11 @@ func (s *Service) UpdateSettings(ctx context.Context, userID, accountID uuid.UUI
 		targetShowDiscord = *showDiscord
 	}
 
-	if targetPublicShowcase && !account.IsVerified() {
+	if (targetPublicRoster || targetPublicTeams) && !account.IsVerified() {
 		return nil, fmt.Errorf("%w: cannot enable public showcase on an unverified account", domain.ErrConflict)
 	}
 
-	if err := s.accounts.UpdateSettings(ctx, accountID, targetPublicShowcase, targetShowDiscord); err != nil {
+	if err := s.accounts.UpdateSettings(ctx, accountID, targetPublicRoster, targetPublicTeams, targetShowDiscord); err != nil {
 		return nil, err
 	}
 

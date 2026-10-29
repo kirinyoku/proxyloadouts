@@ -78,12 +78,13 @@ func (m *mockAccountStore) UpdateProfileMetadata(_ context.Context, id uuid.UUID
 	return nil
 }
 
-func (m *mockAccountStore) UpdateSettings(_ context.Context, id uuid.UUID, isPublicShowcase, showDiscord bool) error {
+func (m *mockAccountStore) UpdateSettings(_ context.Context, id uuid.UUID, isPublicRoster, isPublicTeams, showDiscord bool) error {
 	acc, ok := m.accounts[id]
 	if !ok {
 		return domain.ErrNotFound
 	}
-	acc.IsPublicShowcase = isPublicShowcase
+	acc.IsPublicRoster = isPublicRoster
+	acc.IsPublicTeams = isPublicTeams
 	acc.ShowDiscord = showDiscord
 	return nil
 }
@@ -96,11 +97,13 @@ func (m *mockAccountStore) VerifyOwnership(_ context.Context, accountID uuid.UUI
 	for _, a := range m.accounts {
 		if a.UID == uid && a.ID != accountID && a.VerifiedAt != nil {
 			a.VerifiedAt = nil
-			a.IsPublicShowcase = false
+			a.IsPublicRoster = false
+			a.IsPublicTeams = false
 		}
 	}
 	acc.VerifiedAt = &verifiedAt
-	acc.IsPublicShowcase = true
+	acc.IsPublicRoster = true
+	acc.IsPublicTeams = true
 	if nickname != nil {
 		acc.Nickname = nickname
 	}
@@ -110,15 +113,47 @@ func (m *mockAccountStore) VerifyOwnership(_ context.Context, accountID uuid.UUI
 	return nil
 }
 
+func (m *mockAccountStore) ClaimVerifiedUID(_ context.Context, userID uuid.UUID, uid, region string, verifiedAt time.Time, nickname, avatarURL *string) (*domain.GameAccount, error) {
+	for _, a := range m.accounts {
+		if a.UID == uid {
+			a.UserID = userID
+			a.Region = region
+			a.VerifiedAt = &verifiedAt
+			a.IsPublicRoster = true
+			a.IsPublicTeams = true
+			if nickname != nil {
+				a.Nickname = nickname
+			}
+			if avatarURL != nil {
+				a.AvatarURL = avatarURL
+			}
+			return a, nil
+		}
+	}
+	acc := &domain.GameAccount{
+		ID:             uuid.New(),
+		UserID:         userID,
+		UID:            uid,
+		Region:         region,
+		Nickname:       nickname,
+		AvatarURL:      avatarURL,
+		VerifiedAt:     &verifiedAt,
+		IsPublicRoster: true,
+		IsPublicTeams:  true,
+		CreatedAt:      verifiedAt,
+	}
+	m.accounts[acc.ID] = acc
+	return acc, nil
+}
+
 func (m *mockAccountStore) GetVerifiedByUID(_ context.Context, uid string) (*domain.GameAccount, *domain.PublicOwnerInfo, error) {
 	for _, a := range m.accounts {
 		if a.UID == uid && a.VerifiedAt != nil {
 			return a, &domain.PublicOwnerInfo{
-				UID:        a.UID,
-				Region:     a.Region,
-				Nickname:   a.Nickname,
-				AvatarURL:  a.AvatarURL,
-				IsVerified: true,
+				UID:       a.UID,
+				Region:    a.Region,
+				Nickname:  a.Nickname,
+				AvatarURL: a.AvatarURL,
 			}, nil
 		}
 	}
@@ -131,11 +166,10 @@ func (m *mockAccountStore) GetPublicOwnerInfoByAccountID(_ context.Context, acco
 		return nil, domain.ErrNotFound
 	}
 	return &domain.PublicOwnerInfo{
-		UID:        a.UID,
-		Region:     a.Region,
-		Nickname:   a.Nickname,
-		AvatarURL:  a.AvatarURL,
-		IsVerified: a.IsVerified(),
+		UID:       a.UID,
+		Region:    a.Region,
+		Nickname:  a.Nickname,
+		AvatarURL: a.AvatarURL,
 	}, nil
 }
 
@@ -425,7 +459,7 @@ func TestAccountService_StartVerification_GenerationAndTTL(t *testing.T) {
 	}
 
 	// 1. Generation format check
-	challenge1, err := svc.StartVerification(context.Background(), userID, account.ID)
+	challenge1, err := svc.StartVerification(context.Background(), userID, account.UID, account.Region)
 	if err != nil {
 		t.Fatalf("StartVerification failed: %v", err)
 	}
@@ -444,7 +478,7 @@ func TestAccountService_StartVerification_GenerationAndTTL(t *testing.T) {
 
 	// 2. Idempotency before TTL expiration (e.g. 10 minutes later)
 	currTime = currTime.Add(10 * time.Minute)
-	challenge2, err := svc.StartVerification(context.Background(), userID, account.ID)
+	challenge2, err := svc.StartVerification(context.Background(), userID, account.UID, account.Region)
 	if err != nil {
 		t.Fatalf("second StartVerification failed: %v", err)
 	}
@@ -455,9 +489,18 @@ func TestAccountService_StartVerification_GenerationAndTTL(t *testing.T) {
 		t.Errorf("expected same expiresAt %v, got %v", challenge1.ExpiresAt, challenge2.ExpiresAt)
 	}
 
+	// Also check StartVerificationForAccount backward compatibility wrapper
+	challengeForAccount, err := svc.StartVerificationForAccount(context.Background(), userID, account.ID)
+	if err != nil {
+		t.Fatalf("StartVerificationForAccount failed: %v", err)
+	}
+	if challengeForAccount.Code != challenge1.Code {
+		t.Errorf("expected same challenge code from StartVerificationForAccount, got %q", challengeForAccount.Code)
+	}
+
 	// 3. Regeneration after TTL expiration (> 30 min)
 	currTime = currTime.Add(25 * time.Minute) // 35 minutes since first start
-	challenge3, err := svc.StartVerification(context.Background(), userID, account.ID)
+	challenge3, err := svc.StartVerification(context.Background(), userID, account.UID, account.Region)
 	if err != nil {
 		t.Fatalf("third StartVerification failed: %v", err)
 	}
@@ -493,33 +536,33 @@ func TestAccountService_ConfirmVerification_CooldownRateLimited(t *testing.T) {
 		t.Fatalf("create failed: %v", err)
 	}
 
-	challenge, err := svc.StartVerification(context.Background(), userID, account.ID)
+	challenge, err := svc.StartVerification(context.Background(), userID, account.UID, account.Region)
 	if err != nil {
 		t.Fatalf("StartVerification failed: %v", err)
 	}
 
 	// First attempt: signature does not contain code -> ErrConflict
-	_, err = svc.ConfirmVerification(context.Background(), userID, account.ID)
+	_, err = svc.ConfirmVerification(context.Background(), userID, account.UID, account.Region)
 	if !errors.Is(err, domain.ErrConflict) {
 		t.Fatalf("expected ErrConflict on first mismatch attempt, got %v", err)
 	}
 
 	// Immediate second attempt (0 seconds later) -> ErrRateLimited
-	_, err = svc.ConfirmVerification(context.Background(), userID, account.ID)
+	_, err = svc.ConfirmVerification(context.Background(), userID, account.UID, account.Region)
 	if !errors.Is(err, domain.ErrRateLimited) {
 		t.Fatalf("expected ErrRateLimited on immediate second attempt, got %v", err)
 	}
 
 	// 15 seconds later (< 30s) -> still ErrRateLimited
 	currTime = currTime.Add(15 * time.Second)
-	_, err = svc.ConfirmVerification(context.Background(), userID, account.ID)
+	_, err = svc.ConfirmVerification(context.Background(), userID, account.UID, account.Region)
 	if !errors.Is(err, domain.ErrRateLimited) {
 		t.Fatalf("expected ErrRateLimited after 15 seconds, got %v", err)
 	}
 
 	// 31 seconds later (> 30s) -> allowed to retry, returns ErrConflict again
 	currTime = currTime.Add(16 * time.Second)
-	_, err = svc.ConfirmVerification(context.Background(), userID, account.ID)
+	_, err = svc.ConfirmVerification(context.Background(), userID, account.UID, account.Region)
 	if !errors.Is(err, domain.ErrConflict) {
 		t.Fatalf("expected ErrConflict after cooldown elapses, got %v", err)
 	}
@@ -527,7 +570,7 @@ func TestAccountService_ConfirmVerification_CooldownRateLimited(t *testing.T) {
 	// Now set signature to match code and advance 31 seconds
 	currTime = currTime.Add(31 * time.Second)
 	verifier.profile.Signature = fmt.Sprintf("My signature with %s included", challenge.Code)
-	verified, err := svc.ConfirmVerification(context.Background(), userID, account.ID)
+	verified, err := svc.ConfirmVerification(context.Background(), userID, account.UID, account.Region)
 	if err != nil {
 		t.Fatalf("expected successful verification after cooldown, got %v", err)
 	}
@@ -559,12 +602,12 @@ func TestAccountService_ConfirmVerification_ConflictWhenSignatureMissing(t *test
 		t.Fatalf("create failed: %v", err)
 	}
 
-	challenge, err := svc.StartVerification(context.Background(), userID, account.ID)
+	challenge, err := svc.StartVerification(context.Background(), userID, account.UID, account.Region)
 	if err != nil {
 		t.Fatalf("StartVerification failed: %v", err)
 	}
 
-	_, err = svc.ConfirmVerification(context.Background(), userID, account.ID)
+	_, err = svc.ConfirmVerification(context.Background(), userID, account.UID, account.Region)
 	if !errors.Is(err, domain.ErrConflict) {
 		t.Fatalf("expected ErrConflict (409), got %v", err)
 	}
@@ -579,8 +622,8 @@ func TestAccountService_ConfirmVerification_ConflictWhenSignatureMissing(t *test
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
-	if acc.VerifiedAt != nil || acc.IsPublicShowcase {
-		t.Errorf("account must remain unverified, got VerifiedAt=%v, IsPublicShowcase=%v", acc.VerifiedAt, acc.IsPublicShowcase)
+	if acc.VerifiedAt != nil || acc.IsPublicShowcase() {
+		t.Errorf("account must remain unverified, got VerifiedAt=%v, IsPublicShowcase=%v", acc.VerifiedAt, acc.IsPublicShowcase())
 	}
 }
 
@@ -611,17 +654,17 @@ func TestAccountService_ConfirmVerification_SuccessAndReclaim(t *testing.T) {
 		t.Fatalf("user A create failed: %v", err)
 	}
 
-	challengeA, err := svc.StartVerification(context.Background(), userA, accA.ID)
+	challengeA, err := svc.StartVerification(context.Background(), userA, accA.UID, accA.Region)
 	if err != nil {
 		t.Fatalf("user A start failed: %v", err)
 	}
 
 	verifier.profile.Signature = "User A bio " + challengeA.Code
-	verifiedA, err := svc.ConfirmVerification(context.Background(), userA, accA.ID)
+	verifiedA, err := svc.ConfirmVerification(context.Background(), userA, accA.UID, accA.Region)
 	if err != nil {
 		t.Fatalf("user A confirm failed: %v", err)
 	}
-	if verifiedA.VerifiedAt == nil || !verifiedA.IsPublicShowcase {
+	if verifiedA.VerifiedAt == nil || !verifiedA.IsPublicShowcase() {
 		t.Fatalf("expected user A account to be verified with public showcase, got %+v", verifiedA)
 	}
 	if verifiedA.Nickname == nil || *verifiedA.Nickname != "UserANick" {
@@ -630,18 +673,13 @@ func TestAccountService_ConfirmVerification_SuccessAndReclaim(t *testing.T) {
 
 	// Verification code consumed: repeated confirm should fail with ErrNotFound
 	currTime = currTime.Add(31 * time.Second)
-	if _, err := svc.ConfirmVerification(context.Background(), userA, accA.ID); !errors.Is(err, domain.ErrNotFound) {
+	if _, err := svc.ConfirmVerification(context.Background(), userA, accA.UID, accA.Region); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound for consumed challenge code, got %v", err)
 	}
 
-	// 2. User B links the SAME UID and verifies it (Re-claim scenario)
-	accB, err := svc.Create(context.Background(), userB, uid, "Europe")
-	if err != nil {
-		t.Fatalf("user B create failed: %v", err)
-	}
-
+	// 2. User B verifies the SAME UID without needing to create first (Re-claim scenario)
 	currTime = currTime.Add(5 * time.Minute)
-	challengeB, err := svc.StartVerification(context.Background(), userB, accB.ID)
+	challengeB, err := svc.StartVerification(context.Background(), userB, uid, "Europe")
 	if err != nil {
 		t.Fatalf("user B start failed: %v", err)
 	}
@@ -650,31 +688,27 @@ func TestAccountService_ConfirmVerification_SuccessAndReclaim(t *testing.T) {
 	verifier.profile.AvatarURL = "https://example.com/avatarB.png"
 	verifier.profile.Signature = "User B bio " + challengeB.Code
 
-	verifiedB, err := svc.ConfirmVerification(context.Background(), userB, accB.ID)
+	verifiedB, err := svc.ConfirmVerification(context.Background(), userB, uid, "Europe")
 	if err != nil {
 		t.Fatalf("user B confirm (re-claim) failed: %v", err)
 	}
-	if verifiedB.VerifiedAt == nil || !verifiedB.IsPublicShowcase {
+	if verifiedB.VerifiedAt == nil || !verifiedB.IsPublicShowcase() {
 		t.Fatalf("expected user B account to be verified, got %+v", verifiedB)
 	}
 	if verifiedB.Nickname == nil || *verifiedB.Nickname != "UserBNick" {
 		t.Errorf("expected user B nickname UserBNick, got %v", verifiedB.Nickname)
 	}
+	if verifiedB.UserID != userB {
+		t.Errorf("expected verified account to belong to user B, got %v", verifiedB.UserID)
+	}
 
-	// Check that User A's account has been reset: verified_at = nil, is_public_showcase = false
-	// but the account still exists in store for User A (preserving User A's private builds)
-	accAReset, err := store.GetByID(context.Background(), accA.ID)
+	// User A's account has been transferred to User B
+	accTransferred, err := store.GetByID(context.Background(), accA.ID)
 	if err != nil {
-		t.Fatalf("failed to retrieve User A account: %v", err)
+		t.Fatalf("failed to retrieve account: %v", err)
 	}
-	if accAReset.VerifiedAt != nil {
-		t.Errorf("expected User A verified_at to be reset to nil, got %v", accAReset.VerifiedAt)
-	}
-	if accAReset.IsPublicShowcase {
-		t.Errorf("expected User A is_public_showcase to be reset to false")
-	}
-	if accAReset.UserID != userA {
-		t.Errorf("expected User A account to remain owned by user A, got %v", accAReset.UserID)
+	if accTransferred.UserID != userB {
+		t.Errorf("expected account to be transferred to user B, got %v", accTransferred.UserID)
 	}
 }
 
@@ -693,39 +727,39 @@ func TestAccountService_UpdateSettings(t *testing.T) {
 	trueVal := true
 	falseVal := false
 
-	// 1. Unverified account cannot enable public showcase -> ErrConflict
-	_, err = svc.UpdateSettings(context.Background(), userA, acc.ID, &trueVal, nil)
+	// 1. Unverified account cannot enable public roster or teams -> ErrConflict
+	_, err = svc.UpdateSettings(context.Background(), userA, acc.ID, &trueVal, &falseVal, nil)
 	if !errors.Is(err, domain.ErrConflict) {
 		t.Fatalf("expected ErrConflict when enabling showcase on unverified account, got %v", err)
 	}
 
 	// 2. Unverified account CAN toggle showDiscord
-	updated, err := svc.UpdateSettings(context.Background(), userA, acc.ID, &falseVal, &trueVal)
+	updated, err := svc.UpdateSettings(context.Background(), userA, acc.ID, &falseVal, &falseVal, &trueVal)
 	if err != nil {
 		t.Fatalf("UpdateSettings failed: %v", err)
 	}
-	if updated.ShowDiscord != true || updated.IsPublicShowcase != false {
-		t.Fatalf("unexpected settings: ShowDiscord=%v, IsPublicShowcase=%v", updated.ShowDiscord, updated.IsPublicShowcase)
+	if updated.ShowDiscord != true || updated.IsPublicShowcase() != false {
+		t.Fatalf("unexpected settings: ShowDiscord=%v, IsPublicShowcase=%v", updated.ShowDiscord, updated.IsPublicShowcase())
 	}
 
 	// 3. User B cannot modify User A's settings -> ErrForbidden
-	_, err = svc.UpdateSettings(context.Background(), userB, acc.ID, &falseVal, &falseVal)
+	_, err = svc.UpdateSettings(context.Background(), userB, acc.ID, &falseVal, &falseVal, &falseVal)
 	if !errors.Is(err, domain.ErrForbidden) {
 		t.Fatalf("expected ErrForbidden for foreign user, got %v", err)
 	}
 
-	// 4. Once verified, can toggle isPublicShowcase freely
+	// 4. Once verified, can toggle isPublicRoster and isPublicTeams freely
 	now := time.Now()
 	acc.VerifiedAt = &now
 	_ = store.VerifyOwnership(context.Background(), acc.ID, acc.UID, now, nil, nil)
 
-	updatedVerified, err := svc.UpdateSettings(context.Background(), userA, acc.ID, &trueVal, &falseVal)
+	updatedVerified, err := svc.UpdateSettings(context.Background(), userA, acc.ID, &trueVal, &trueVal, &falseVal)
 	if err != nil {
 		t.Fatalf("UpdateSettings failed for verified account: %v", err)
 	}
-	if !updatedVerified.IsPublicShowcase || updatedVerified.ShowDiscord {
+	if !updatedVerified.IsPublicShowcase() || updatedVerified.ShowDiscord {
 		t.Fatalf("unexpected settings for verified account: IsPublicShowcase=%v, ShowDiscord=%v",
-			updatedVerified.IsPublicShowcase, updatedVerified.ShowDiscord)
+			updatedVerified.IsPublicShowcase(), updatedVerified.ShowDiscord)
 	}
 }
 
@@ -742,25 +776,58 @@ func TestAccountService_Verification_ValidationAndForbidden(t *testing.T) {
 	}
 
 	// Missing inputs
-	if _, err := svc.StartVerification(context.Background(), uuid.Nil, acc.ID); !errors.Is(err, domain.ErrInvalidInput) {
+	if _, err := svc.StartVerification(context.Background(), uuid.Nil, acc.UID, acc.Region); !errors.Is(err, domain.ErrInvalidInput) {
 		t.Errorf("expected ErrInvalidInput for nil user, got %v", err)
 	}
-	if _, err := svc.StartVerification(context.Background(), userA, uuid.Nil); !errors.Is(err, domain.ErrInvalidInput) {
-		t.Errorf("expected ErrInvalidInput for nil account, got %v", err)
+	if _, err := svc.StartVerification(context.Background(), userA, "invalid", acc.Region); !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput for invalid UID, got %v", err)
 	}
 
-	// Foreign user StartVerification -> ErrForbidden
-	if _, err := svc.StartVerification(context.Background(), userB, acc.ID); !errors.Is(err, domain.ErrForbidden) {
+	// Foreign user StartVerificationForAccount -> ErrForbidden
+	if _, err := svc.StartVerificationForAccount(context.Background(), userB, acc.ID); !errors.Is(err, domain.ErrForbidden) {
 		t.Errorf("expected ErrForbidden when foreign user starts verification, got %v", err)
 	}
 
-	// Foreign user ConfirmVerification -> ErrForbidden
-	if _, err := svc.ConfirmVerification(context.Background(), userB, acc.ID); !errors.Is(err, domain.ErrForbidden) {
+	// Foreign user ConfirmVerificationForAccount -> ErrForbidden
+	if _, err := svc.ConfirmVerificationForAccount(context.Background(), userB, acc.ID); !errors.Is(err, domain.ErrForbidden) {
 		t.Errorf("expected ErrForbidden when foreign user confirms verification, got %v", err)
 	}
 
 	// Missing challenge -> ErrNotFound
-	if _, err := svc.ConfirmVerification(context.Background(), userA, acc.ID); !errors.Is(err, domain.ErrNotFound) {
+	if _, err := svc.ConfirmVerification(context.Background(), userA, acc.UID, acc.Region); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound when confirming without active challenge, got %v", err)
+	}
+}
+
+func TestAccountService_ConfirmVerification_QuotaEnforcement(t *testing.T) {
+	store := newMockAccountStore()
+	verifier := &mockVerifier{
+		profile: &scannersvc.FreshVerificationProfile{
+			UID:       "1504687059",
+			Signature: "Testing PXL-MOCK",
+		},
+	}
+	svc := New(store, WithVerifier(verifier))
+
+	userID := uuid.New()
+	// Fill quota: max accounts is 3
+	for i := 1; i <= 3; i++ {
+		_, err := svc.Create(context.Background(), userID, fmt.Sprintf("150468705%d", i), "Europe")
+		if err != nil {
+			t.Fatalf("failed to seed account %d: %v", i, err)
+		}
+	}
+
+	// Seed challenge in store for a 4th UID
+	targetUID := "1504687059"
+	svc.challenges.challenges[userID.String()+":"+targetUID] = challengeEntry{
+		code:      "PXL-MOCK",
+		expiresAt: time.Now().Add(10 * time.Minute),
+	}
+
+	// ConfirmVerification must reject because count (3) >= maxAccounts (3)
+	_, err := svc.ConfirmVerification(context.Background(), userID, targetUID, "Europe")
+	if !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("expected ErrConflict when account quota reached, got: %v", err)
 	}
 }

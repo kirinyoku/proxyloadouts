@@ -34,7 +34,8 @@ type AccountRepository interface {
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]*GameAccount, error)
 	CountByUser(ctx context.Context, userID uuid.UUID) (int, error)
 	UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error
-	UpdateSettings(ctx context.Context, id uuid.UUID, isPublicShowcase, showDiscord bool) error
+	UpdateSettings(ctx context.Context, id uuid.UUID, isPublicRoster, isPublicTeams, showDiscord bool) error
+	ClaimVerifiedUID(ctx context.Context, userID uuid.UUID, uid, region string, verifiedAt time.Time, nickname, avatarURL *string) (*GameAccount, error)
 	VerifyOwnership(ctx context.Context, accountID uuid.UUID, uid string, verifiedAt time.Time, nickname, avatarURL *string) error
 	GetVerifiedByUID(ctx context.Context, uid string) (*GameAccount, *PublicOwnerInfo, error)
 	GetPublicOwnerInfoByAccountID(ctx context.Context, accountID uuid.UUID) (*PublicOwnerInfo, error)
@@ -67,6 +68,7 @@ type TeamRepository interface {
 	Create(ctx context.Context, team *Team, members []TeamMember) error
 	// Update atomically updates team metadata and replaces all member slots.
 	Update(ctx context.Context, team *Team, members []TeamMember) error
+	UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Team, error)
 	GetPublicByID(ctx context.Context, id uuid.UUID) (*Team, *PublicOwnerInfo, error)
 	GetMembers(ctx context.Context, teamID uuid.UUID) ([]TeamMember, error)

@@ -167,6 +167,8 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 			private.Post("/accounts", accountHandler.handleCreate)
 			private.Patch("/accounts/{accountID}", accountHandler.handleUpdate)
 			private.Delete("/accounts/{accountID}", accountHandler.handleDelete)
+			private.Post("/accounts/verify/challenge", accountHandler.handleVerifyChallengeByUID)
+			private.Post("/accounts/verify/confirm", accountHandler.handleVerifyConfirmByUID)
 			private.Post("/accounts/{accountID}/verify/challenge", accountHandler.handleVerifyChallenge)
 			private.Post("/accounts/{accountID}/verify/confirm", accountHandler.handleVerifyConfirm)
 
@@ -184,6 +186,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 			private.Get("/teams/count", teamHandler.handleCount)
 			private.Get("/teams/{teamID}", teamHandler.handleGet)
 			private.Put("/teams/{teamID}", teamHandler.handleUpdate)
+			private.Patch("/teams/{teamID}", teamHandler.handlePatch)
 			private.Delete("/teams/{teamID}", teamHandler.handleDelete)
 		})
 	})

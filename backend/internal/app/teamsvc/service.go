@@ -164,7 +164,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.Team, 
 		return nil, &ValidationError{Report: report}
 	}
 
-	var isPublic bool
+	isPublic := true
 	if input.IsPublic != nil {
 		isPublic = *input.IsPublic
 	}
@@ -492,18 +492,120 @@ func (s *Service) Delete(ctx context.Context, userID, teamID uuid.UUID) error {
 	return s.teams.Delete(ctx, teamID)
 }
 
-// SetVisibility updates the public visibility flag of an owned team without modifying its roster.
-func (s *Service) SetVisibility(ctx context.Context, userID, teamID uuid.UUID, isPublic bool) error {
+// SetVisibility updates the public visibility flag of an owned team without modifying its roster
+// or touching its updated_at timestamp.
+func (s *Service) SetVisibility(ctx context.Context, userID, teamID uuid.UUID, isPublic bool) (*domain.Team, error) {
 	team, err := s.ownedTeam(ctx, userID, teamID)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	if err := s.teams.UpdateVisibility(ctx, teamID, isPublic); err != nil {
+		return nil, err
 	}
 	team.IsPublic = isPublic
+	return team, nil
+}
+
+// PatchInput describes partial updates to an owned team.
+type PatchInput struct {
+	TeamID      uuid.UUID
+	UserID      uuid.UUID
+	Name        *string
+	Description *string
+	IsPublic    *bool
+}
+
+// Patch updates name, description, and/or visibility of an owned team.
+func (s *Service) Patch(ctx context.Context, input PatchInput, lang ...string) (*TeamSummary, error) {
+	team, err := s.ownedTeam(ctx, input.UserID, input.TeamID)
+	if err != nil {
+		return nil, err
+	}
+
+	nameToSet := team.Name
+	if input.Name != nil {
+		trimmed := strings.TrimSpace(*input.Name)
+		if trimmed == "" {
+			return nil, fmt.Errorf("%w: team name must not be empty", domain.ErrInvalidInput)
+		}
+		if utf8.RuneCountInString(trimmed) > domain.MaxTeamNameLength {
+			return nil, fmt.Errorf("%w: team name must not exceed %d characters", domain.ErrInvalidInput, domain.MaxTeamNameLength)
+		}
+		nameToSet = trimmed
+	}
+
+	descToSet := team.Description
+	if input.Description != nil {
+		trimmed := strings.TrimSpace(*input.Description)
+		if trimmed != "" {
+			if utf8.RuneCountInString(trimmed) > domain.MaxTeamDescriptionLength {
+				return nil, fmt.Errorf("%w: team description must not exceed %d characters", domain.ErrInvalidInput, domain.MaxTeamDescriptionLength)
+			}
+			descToSet = &trimmed
+		} else {
+			descToSet = nil
+		}
+	}
+
+	if input.Name != nil || input.Description != nil {
+		members, err := s.teams.GetMembers(ctx, team.ID)
+		if err != nil {
+			return nil, err
+		}
+		team.Name = nameToSet
+		team.Description = descToSet
+		if input.IsPublic != nil {
+			team.IsPublic = *input.IsPublic
+		}
+		if err := s.teams.Update(ctx, team, members); err != nil {
+			return nil, err
+		}
+	} else if input.IsPublic != nil {
+		if err := s.teams.UpdateVisibility(ctx, team.ID, *input.IsPublic); err != nil {
+			return nil, err
+		}
+	}
+
+	return s.GetSummary(ctx, input.UserID, input.TeamID, lang...)
+}
+
+// GetSummary returns an owned team with its conflict report and loaded builds,
+// localized when lang is specified.
+func (s *Service) GetSummary(ctx context.Context, userID, teamID uuid.UUID, lang ...string) (*TeamSummary, error) {
+	team, err := s.ownedTeam(ctx, userID, teamID)
+	if err != nil {
+		return nil, err
+	}
+
 	members, err := s.teams.GetMembers(ctx, teamID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.teams.Update(ctx, team, members)
+
+	requestedLang := ""
+	if len(lang) > 0 {
+		requestedLang = lang[0]
+	}
+
+	buildsList := make([]*domain.AgentBuild, 0, len(members))
+	detailMembers := make([]MemberDetail, 0, len(members))
+	for _, member := range members {
+		build, err := s.builds.GetByID(ctx, member.BuildID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load build %s of team %s: %w", member.BuildID, teamID, err)
+		}
+		s.enrichBuildWithLang(ctx, build, requestedLang)
+		buildsList = append(buildsList, build)
+		detailMembers = append(detailMembers, MemberDetail{Member: member, Build: build})
+	}
+
+	report := conflicts.Validate(buildsList)
+
+	return &TeamSummary{
+		Team:    team,
+		Report:  report,
+		Members: detailMembers,
+	}, nil
 }
 
 // PublicTeamDetail pairs a publicly accessible team with its conflict report, member builds, and owner info.

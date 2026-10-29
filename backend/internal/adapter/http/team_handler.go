@@ -298,3 +298,52 @@ func (h *TeamHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+type patchTeamRequest struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	IsPublic    *bool   `json:"is_public"`
+}
+
+// handlePatch partially updates team metadata or visibility.
+func (h *TeamHandler) handlePatch(w http.ResponseWriter, r *http.Request) {
+	user := MustUserFromContext(r.Context())
+
+	teamID, err := uuid.Parse(chi.URLParam(r, "teamID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid team id")
+		return
+	}
+
+	var req patchTeamRequest
+	if err := decodeJSON(r, &req); err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+
+	lang := extractLang(r)
+	summary, err := h.teams.Patch(r.Context(), teamsvc.PatchInput{
+		TeamID:      teamID,
+		UserID:      user.ID,
+		Name:        req.Name,
+		Description: req.Description,
+		IsPublic:    req.IsPublic,
+	}, lang)
+	if err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+
+	members := make([]teamMemberResponse, 0, len(summary.Members))
+	for _, m := range summary.Members {
+		members = append(members, teamMemberResponse{
+			SlotNumber: m.Member.SlotNumber,
+			Build:      newBuildResponse(m.Build),
+		})
+	}
+	respondJSON(w, http.StatusOK, teamSummaryResponse{
+		Team:    newTeamResponse(summary.Team),
+		Report:  summary.Report,
+		Members: members,
+	})
+}

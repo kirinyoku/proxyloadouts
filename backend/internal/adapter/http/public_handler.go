@@ -30,7 +30,6 @@ type publicOwnerInfoResponse struct {
 	Region           string  `json:"region"`
 	Nickname         *string `json:"nickname"`
 	AvatarURL        *string `json:"avatar_url"`
-	IsVerified       bool    `json:"is_verified"`
 	DiscordUsername  *string `json:"discord_username,omitempty"`
 	DiscordAvatarURL *string `json:"discord_avatar_url,omitempty"`
 }
@@ -44,7 +43,6 @@ func newPublicOwnerInfoResponse(o *domain.PublicOwnerInfo) publicOwnerInfoRespon
 		Region:           o.Region,
 		Nickname:         o.Nickname,
 		AvatarURL:        o.AvatarURL,
-		IsVerified:       o.IsVerified,
 		DiscordUsername:  o.DiscordUsername,
 		DiscordAvatarURL: o.DiscordAvatarURL,
 	}

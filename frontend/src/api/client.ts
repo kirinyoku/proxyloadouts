@@ -6,6 +6,7 @@ import type {
   CreateTeamRequest,
   GameAccount,
   MeResponse,
+  PatchTeamRequest,
   PublicBuildResponse,
   PublicShowcaseRosterResponse,
   PublicTeamResponse,
@@ -17,7 +18,9 @@ import type {
   UpdateAccountRequest,
   UpdateBuildRequest,
   UpdateTeamRequest,
+  VerificationChallengeRequest,
   VerificationChallengeResponse,
+  VerificationConfirmRequest,
 } from '@/types'
 
 import { getCurrentLanguage } from '@/i18n'
@@ -164,9 +167,27 @@ export function startAccountVerification(id: string): Promise<VerificationChalle
   })
 }
 
+export function startVerificationByUID(
+  body: VerificationChallengeRequest,
+): Promise<VerificationChallengeResponse> {
+  return request<VerificationChallengeResponse>('/accounts/verify/challenge', {
+    method: 'POST',
+    body,
+  })
+}
+
 export function confirmAccountVerification(id: string): Promise<GameAccount> {
   return request<GameAccount>(`/accounts/${encodeURIComponent(id)}/verify/confirm`, {
     method: 'POST',
+  })
+}
+
+export function confirmVerificationByUID(
+  body: VerificationConfirmRequest,
+): Promise<GameAccount> {
+  return request<GameAccount>('/accounts/verify/confirm', {
+    method: 'POST',
+    body,
   })
 }
 
@@ -306,6 +327,19 @@ export function createTeam(body: CreateTeamRequest): Promise<Team> {
 export function updateTeam(body: UpdateTeamRequest): Promise<Team> {
   const { id, ...rest } = body
   return request<Team>(`/teams/${encodeURIComponent(id)}`, { method: 'PUT', body: rest })
+}
+
+export function patchTeam(
+  id: string,
+  body: PatchTeamRequest,
+  lang?: string,
+): Promise<TeamSummary> {
+  const activeLang = lang || getCurrentLanguage()
+  const query = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
+  return request<TeamSummary>(`/teams/${encodeURIComponent(id)}${query}`, {
+    method: 'PATCH',
+    body,
+  })
 }
 
 export function deleteTeam(id: string): Promise<void> {

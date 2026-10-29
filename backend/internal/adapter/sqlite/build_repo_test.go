@@ -234,9 +234,7 @@ func TestBuildRepo_UpdateVisibility(t *testing.T) {
 	if !got.IsPublic {
 		t.Error("expected build.IsPublic == true after update")
 	}
-	if !got.UpdatedAt.After(build.UpdatedAt) {
-		t.Errorf("expected updated_at to advance, before=%v, after=%v", build.UpdatedAt, got.UpdatedAt)
-	}
+	assertTimeEqual(t, build.UpdatedAt, got.UpdatedAt)
 
 	if err := repo.UpdateVisibility(ctx, build.ID, false); err != nil {
 		t.Fatalf("failed to update visibility to false: %v", err)
@@ -272,13 +270,14 @@ func TestBuildRepo_GetPublicByID(t *testing.T) {
 	now := time.Now()
 	nick := "ProxyMaster"
 	account := &domain.GameAccount{
-		UserID:           user.ID,
-		UID:              "1504687067",
-		Region:           domain.RegionEurope,
-		Nickname:         &nick,
-		VerifiedAt:       &now,
-		IsPublicShowcase: true,
-		ShowDiscord:      true,
+		UserID:         user.ID,
+		UID:            "1504687067",
+		Region:         domain.RegionEurope,
+		Nickname:       &nick,
+		VerifiedAt:     &now,
+		IsPublicRoster: true,
+		IsPublicTeams:  true,
+		ShowDiscord:    true,
 	}
 	if err := accounts.Create(ctx, account); err != nil {
 		t.Fatalf("failed to create account: %v", err)
@@ -298,7 +297,7 @@ func TestBuildRepo_GetPublicByID(t *testing.T) {
 	if gotBuild.ID != build.ID || gotBuild.Name != "Public Ice Preset" || !gotBuild.IsPublic {
 		t.Errorf("build data mismatch: %+v", gotBuild)
 	}
-	if owner.UID != "1504687067" || owner.Region != domain.RegionEurope || !owner.IsVerified {
+	if owner.UID != "1504687067" || owner.Region != domain.RegionEurope {
 		t.Errorf("owner mismatch: %+v", owner)
 	}
 	if owner.DiscordUsername == nil || *owner.DiscordUsername != "PhaethonProxy" {

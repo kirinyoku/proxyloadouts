@@ -140,6 +140,21 @@ func (r *SQLiteTeamRepo) Update(ctx context.Context, team *domain.Team, members 
 	return nil
 }
 
+// UpdateVisibility updates the is_public flag of a team without modifying updated_at.
+func (r *SQLiteTeamRepo) UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE teams SET is_public = ? WHERE id = ?;`,
+		boolToInt(isPublic), id.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update team visibility %s: %w", id, err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("%w: team %s", domain.ErrNotFound, id)
+	}
+	return nil
+}
+
 const teamSelect = `SELECT id, user_id, game_account_id, name, description, is_public, created_at, updated_at FROM teams`
 
 // GetByID returns the team with the given ID or domain.ErrNotFound.
@@ -156,8 +171,8 @@ func (r *SQLiteTeamRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Tea
 func (r *SQLiteTeamRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*domain.Team, *domain.PublicOwnerInfo, error) {
 	row := r.db.QueryRowContext(ctx,
 		`SELECT t.id, t.user_id, t.game_account_id, t.name, t.description, t.is_public, t.created_at, t.updated_at,
-		        ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.verified_at, ga.show_discord,
-		        u.username, u.avatar_url
+		        ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.show_discord,
+		        u.discord_id, u.username, u.avatar_url
 		 FROM teams t
 		 JOIN game_accounts ga ON ga.id = t.game_account_id
 		 JOIN users u ON u.id = t.user_id
@@ -178,16 +193,16 @@ func (r *SQLiteTeamRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*doma
 		ownerRegion      string
 		ownerNickname    sql.NullString
 		ownerAvatarURL   sql.NullString
-		ownerVerifiedAt  sql.NullString
 		ownerShowDiscord int
+		discordID        string
 		discordUsername  string
 		discordAvatarURL sql.NullString
 	)
 
 	if err := row.Scan(
 		&teamID, &userID, &accountID, &name, &desc, &isPublic, &createdAt, &updatedAt,
-		&ownerUID, &ownerRegion, &ownerNickname, &ownerAvatarURL, &ownerVerifiedAt, &ownerShowDiscord,
-		&discordUsername, &discordAvatarURL,
+		&ownerUID, &ownerRegion, &ownerNickname, &ownerAvatarURL, &ownerShowDiscord,
+		&discordID, &discordUsername, &discordAvatarURL,
 	); err != nil {
 		return nil, nil, notFound("team", err)
 	}
@@ -197,7 +212,7 @@ func (r *SQLiteTeamRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*doma
 		return nil, nil, err
 	}
 
-	owner := scanPublicOwnerInfo(ownerUID, ownerRegion, ownerNickname, ownerAvatarURL, ownerVerifiedAt, ownerShowDiscord, discordUsername, discordAvatarURL)
+	owner := scanPublicOwnerInfo(ownerUID, ownerRegion, ownerNickname, ownerAvatarURL, ownerShowDiscord, discordID, discordUsername, discordAvatarURL)
 	return team, owner, nil
 }
 

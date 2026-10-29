@@ -832,11 +832,13 @@ func TestService_GetPublic_PrivateBuildReturnsNotFound(t *testing.T) {
 	env := newFixture(t)
 	ctx := context.Background()
 
-	// Build is private by default
+	// Create private build
+	isPrivate := false
 	build, err := env.svc.Create(ctx, CreateInput{
 		UserID:          env.ownerID,
 		GameAccountID:   env.accountID,
 		Name:            "Private Miyabi",
+		IsPublic:        &isPrivate,
 		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
 		RawData:         sampleRawAvatar(1511),
 	})
@@ -848,6 +850,25 @@ func TestService_GetPublic_PrivateBuildReturnsNotFound(t *testing.T) {
 	_, err = env.svc.GetPublic(ctx, build.ID)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound reading private build via GetPublic, got %v", err)
+	}
+}
+
+func TestService_Create_DefaultIsPublicTrue(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	build, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Default Public Miyabi",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if !build.IsPublic {
+		t.Errorf("expected build to default to is_public = true, got %v", build.IsPublic)
 	}
 }
 
@@ -1028,10 +1049,12 @@ func TestService_ListPublicByAccount(t *testing.T) {
 	}
 
 	// 2. Create private build
+	isPrivate := false
 	b1, err := env.svc.Create(ctx, CreateInput{
 		UserID:          env.ownerID,
 		GameAccountID:   env.accountID,
 		Name:            "Private Miyabi",
+		IsPublic:        &isPrivate,
 		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
 		RawData:         sampleRawAvatar(1511),
 	})

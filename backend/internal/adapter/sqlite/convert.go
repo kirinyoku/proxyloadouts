@@ -100,22 +100,21 @@ func parseNullableTime(n sql.NullString) (*time.Time, error) {
 }
 
 // scanPublicOwnerInfo maps public owner query columns into a *domain.PublicOwnerInfo,
-// masking Discord fields if showDiscord is 0.
+// masking Discord fields if showDiscord is 0 or if discordID is empty.
 func scanPublicOwnerInfo(
 	uid, region string,
-	nickname, avatarURL, verifiedAt sql.NullString,
+	nickname, avatarURL sql.NullString,
 	showDiscord int,
-	discordUsername string,
+	discordID, discordUsername string,
 	discordAvatarURL sql.NullString,
 ) *domain.PublicOwnerInfo {
 	owner := &domain.PublicOwnerInfo{
-		UID:        uid,
-		Region:     region,
-		Nickname:   nullStringPointer(nickname),
-		AvatarURL:  nullStringPointer(avatarURL),
-		IsVerified: verifiedAt.Valid && verifiedAt.String != "",
+		UID:       uid,
+		Region:    region,
+		Nickname:  nullStringPointer(nickname),
+		AvatarURL: nullStringPointer(avatarURL),
 	}
-	if showDiscord != 0 {
+	if showDiscord != 0 && discordID != "" && discordUsername != "" {
 		owner.DiscordUsername = &discordUsername
 		owner.DiscordAvatarURL = nullStringPointer(discordAvatarURL)
 	}

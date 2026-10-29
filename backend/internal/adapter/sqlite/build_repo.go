@@ -217,11 +217,11 @@ func (r *SQLiteBuildRepo) UpdateName(ctx context.Context, id uuid.UUID, name str
 	return nil
 }
 
-// UpdateVisibility updates the is_public flag of an agent build and refreshes updated_at.
+// UpdateVisibility updates the is_public flag of an agent build without modifying updated_at.
 func (r *SQLiteBuildRepo) UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE agent_builds SET is_public = ?, updated_at = ? WHERE id = ?;`,
-		boolToInt(isPublic), formatTime(time.Now()), id.String(),
+		`UPDATE agent_builds SET is_public = ? WHERE id = ?;`,
+		boolToInt(isPublic), id.String(),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update agent build visibility %s: %w", id, err)
@@ -238,8 +238,8 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 	row := r.db.QueryRowContext(ctx,
 		`SELECT b.id, b.user_id, b.game_account_id, b.agent_id, b.agent_name, b.name, b.description,
 		        b.weapon_uid, b.weapon_id, b.disc_uids, b.disc_slots, b.raw_data, b.is_public, b.created_at, b.updated_at,
-		        ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.verified_at, ga.show_discord,
-		        u.username, u.avatar_url
+		        ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.show_discord,
+		        u.discord_id, u.username, u.avatar_url
 		 FROM agent_builds b
 		 JOIN game_accounts ga ON ga.id = b.game_account_id
 		 JOIN users u ON u.id = b.user_id
@@ -267,8 +267,8 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 		ownerRegion      string
 		ownerNickname    sql.NullString
 		ownerAvatarURL   sql.NullString
-		ownerVerifiedAt  sql.NullString
 		ownerShowDiscord int
+		discordID        string
 		discordUsername  string
 		discordAvatarURL sql.NullString
 	)
@@ -276,8 +276,8 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 	if err := row.Scan(
 		&buildID, &userID, &accountID, &agentID, &agentName, &name, &description,
 		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &createdAt, &updatedAt,
-		&ownerUID, &ownerRegion, &ownerNickname, &ownerAvatarURL, &ownerVerifiedAt, &ownerShowDiscord,
-		&discordUsername, &discordAvatarURL,
+		&ownerUID, &ownerRegion, &ownerNickname, &ownerAvatarURL, &ownerShowDiscord,
+		&discordID, &discordUsername, &discordAvatarURL,
 	); err != nil {
 		return nil, nil, notFound("agent build", err)
 	}
@@ -288,7 +288,7 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 		return nil, nil, err
 	}
 
-	owner := scanPublicOwnerInfo(ownerUID, ownerRegion, ownerNickname, ownerAvatarURL, ownerVerifiedAt, ownerShowDiscord, discordUsername, discordAvatarURL)
+	owner := scanPublicOwnerInfo(ownerUID, ownerRegion, ownerNickname, ownerAvatarURL, ownerShowDiscord, discordID, discordUsername, discordAvatarURL)
 	return build, owner, nil
 }
 

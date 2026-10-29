@@ -45,6 +45,8 @@ type showcaseHTTPResponse struct {
 
 type publicShowcaseRosterResponse struct {
 	Owner            publicOwnerInfoResponse `json:"owner"`
+	IsPublicRoster   bool                    `json:"is_public_roster"`
+	IsPublicTeams    bool                    `json:"is_public_teams"`
 	IsPublicShowcase bool                    `json:"is_public_showcase"`
 	Builds           []buildResponse         `json:"builds"`
 	Teams            []teamSummaryResponse   `json:"teams"`
@@ -76,9 +78,11 @@ func (h *ShowcaseHandler) handle(w http.ResponseWriter, r *http.Request) {
 	if h.accounts != nil {
 		account, owner, err := h.accounts.GetVerifiedByUID(r.Context(), uid)
 		if err == nil && account != nil && owner != nil {
-			ownerResp := newPublicOwnerInfoResponse(owner)
-			resp.VerifiedOwner = &ownerResp
-			resp.HasPublicRoster = account.IsPublicShowcase
+			resp.HasPublicRoster = account.IsPublicShowcase()
+			if account.IsPublicShowcase() || (owner.DiscordUsername != nil && *owner.DiscordUsername != "") {
+				ownerResp := newPublicOwnerInfoResponse(owner)
+				resp.VerifiedOwner = &ownerResp
+			}
 
 			// Asynchronously synchronize nickname and avatar_url if upstream data has updates
 			var nickPtr *string
@@ -138,9 +142,11 @@ func (h *ShowcaseHandler) handleRoster(w http.ResponseWriter, r *http.Request) {
 
 	ownerResp := newPublicOwnerInfoResponse(owner)
 
-	if !account.IsPublicShowcase {
+	if !account.IsPublicRoster && !account.IsPublicTeams {
 		respondJSON(w, http.StatusOK, publicShowcaseRosterResponse{
 			Owner:            ownerResp,
+			IsPublicRoster:   false,
+			IsPublicTeams:    false,
 			IsPublicShowcase: false,
 			Builds:           []buildResponse{},
 			Teams:            []teamSummaryResponse{},
@@ -150,22 +156,32 @@ func (h *ShowcaseHandler) handleRoster(w http.ResponseWriter, r *http.Request) {
 
 	lang := extractLang(r)
 
-	builds, err := h.builds.ListPublicByAccount(r.Context(), account.ID, lang)
-	if err != nil {
-		respondDomainError(w, r, err)
-		return
+	var buildsList []*domain.AgentBuild
+	if account.IsPublicRoster {
+		var err error
+		buildsList, err = h.builds.ListPublicByAccount(r.Context(), account.ID, lang)
+		if err != nil {
+			respondDomainError(w, r, err)
+			return
+		}
 	}
 
-	teams, err := h.teams.ListPublicByAccount(r.Context(), account.ID, lang)
-	if err != nil {
-		respondDomainError(w, r, err)
-		return
+	var teamsList []*teamsvc.TeamSummary
+	if account.IsPublicTeams {
+		var err error
+		teamsList, err = h.teams.ListPublicByAccount(r.Context(), account.ID, lang)
+		if err != nil {
+			respondDomainError(w, r, err)
+			return
+		}
 	}
 
 	respondJSON(w, http.StatusOK, publicShowcaseRosterResponse{
 		Owner:            ownerResp,
-		IsPublicShowcase: true,
-		Builds:           newBuildListResponse(builds),
-		Teams:            newTeamSummaryListResponse(teams),
+		IsPublicRoster:   account.IsPublicRoster,
+		IsPublicTeams:    account.IsPublicTeams,
+		IsPublicShowcase: account.IsPublicShowcase(),
+		Builds:           newBuildListResponse(buildsList),
+		Teams:            newTeamSummaryListResponse(teamsList),
 	})
 }

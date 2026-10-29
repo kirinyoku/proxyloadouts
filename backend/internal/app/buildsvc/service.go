@@ -237,7 +237,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 		return nil, fmt.Errorf("%w: raw avatar data is required to save a build", domain.ErrInvalidInput)
 	}
 
-	var isPublic bool
+	isPublic := true
 	if input.IsPublic != nil {
 		isPublic = *input.IsPublic
 	}

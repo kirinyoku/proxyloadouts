@@ -44,6 +44,7 @@ func TestPublic_BuildEndpoint(t *testing.T) {
 		"drive_discs": map[string]any{"slots": []any{map[string]any{"uid": "32700_disc_1", "slot": 1}}},
 	}
 	buildID := saveBuildViaAPI(t, f, session, accountIDStr, payload)
+	f.do(t, http.MethodPatch, "/api/v1/builds/"+buildID, map[string]any{"is_public": false}, session)
 
 	// 1. Private build returns 404 on public endpoint
 	recPriv := f.do(t, http.MethodGet, "/api/v1/public/builds/"+buildID, nil)
@@ -150,6 +151,10 @@ func TestPublic_TeamEndpoint_ImplicitMemberRead(t *testing.T) {
 		"id": 1513, "name": "Lycaon", "level": 60,
 		"w_engine": map[string]any{"id": 15130, "uid": "1513_eng", "name": "Restrained"},
 	})
+
+	for _, b := range []string{b1, b2, b3} {
+		f.do(t, http.MethodPatch, "/api/v1/builds/"+b, map[string]any{"is_public": false}, session)
+	}
 
 	// Create public team referencing private builds
 	isPublic := true

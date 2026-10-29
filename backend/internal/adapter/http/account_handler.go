@@ -28,6 +28,8 @@ type accountResponse struct {
 	Nickname         *string `json:"nickname"`
 	AvatarURL        *string `json:"avatar_url"`
 	VerifiedAt       *string `json:"verified_at"`
+	IsPublicRoster   bool    `json:"is_public_roster"`
+	IsPublicTeams    bool    `json:"is_public_teams"`
 	IsPublicShowcase bool    `json:"is_public_showcase"`
 	ShowDiscord      bool    `json:"show_discord"`
 	CreatedAt        string  `json:"created_at"`
@@ -46,7 +48,9 @@ func newAccountResponse(a *domain.GameAccount) accountResponse {
 		Nickname:         a.Nickname,
 		AvatarURL:        a.AvatarURL,
 		VerifiedAt:       verifiedAt,
-		IsPublicShowcase: a.IsPublicShowcase,
+		IsPublicRoster:   a.IsPublicRoster,
+		IsPublicTeams:    a.IsPublicTeams,
+		IsPublicShowcase: a.IsPublicShowcase(),
 		ShowDiscord:      a.ShowDiscord,
 		CreatedAt:        a.CreatedAt.UTC().Format(time.RFC3339),
 	}
@@ -66,6 +70,8 @@ type createAccountRequest struct {
 }
 
 type updateAccountRequest struct {
+	IsPublicRoster   *bool `json:"is_public_roster"`
+	IsPublicTeams    *bool `json:"is_public_teams"`
 	IsPublicShowcase *bool `json:"is_public_showcase"`
 	ShowDiscord      *bool `json:"show_discord"`
 }
@@ -139,7 +145,14 @@ func (h *AccountHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account, err := h.accounts.UpdateSettings(r.Context(), user.ID, accountID, req.IsPublicShowcase, req.ShowDiscord)
+	isPublicRoster := req.IsPublicRoster
+	isPublicTeams := req.IsPublicTeams
+	if req.IsPublicShowcase != nil && isPublicRoster == nil && isPublicTeams == nil {
+		isPublicRoster = req.IsPublicShowcase
+		isPublicTeams = req.IsPublicShowcase
+	}
+
+	account, err := h.accounts.UpdateSettings(r.Context(), user.ID, accountID, isPublicRoster, isPublicTeams, req.ShowDiscord)
 	if err != nil {
 		respondDomainError(w, r, err)
 		return
@@ -157,7 +170,7 @@ func (h *AccountHandler) handleVerifyChallenge(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	challenge, err := h.accounts.StartVerification(r.Context(), user.ID, accountID)
+	challenge, err := h.accounts.StartVerificationForAccount(r.Context(), user.ID, accountID)
 	if err != nil {
 		respondDomainError(w, r, err)
 		return
@@ -179,7 +192,52 @@ func (h *AccountHandler) handleVerifyConfirm(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	account, err := h.accounts.ConfirmVerification(r.Context(), user.ID, accountID)
+	account, err := h.accounts.ConfirmVerificationForAccount(r.Context(), user.ID, accountID)
+	if err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, newAccountResponse(account))
+}
+
+type verificationByUIDRequest struct {
+	UID    string `json:"uid"`
+	Region string `json:"region"`
+}
+
+// handleVerifyChallengeByUID generates or returns an active challenge code by UID and region.
+func (h *AccountHandler) handleVerifyChallengeByUID(w http.ResponseWriter, r *http.Request) {
+	user := MustUserFromContext(r.Context())
+
+	var req verificationByUIDRequest
+	if err := decodeJSON(r, &req); err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+
+	challenge, err := h.accounts.StartVerification(r.Context(), user.ID, req.UID, req.Region)
+	if err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, verificationChallengeResponse{
+		Code:            challenge.Code,
+		ExpiresAt:       challenge.ExpiresAt.UTC().Format(time.RFC3339),
+		CooldownSeconds: challenge.CooldownSeconds,
+	})
+}
+
+// handleVerifyConfirmByUID validates the in-game signature and atomically claims the verified UID.
+func (h *AccountHandler) handleVerifyConfirmByUID(w http.ResponseWriter, r *http.Request) {
+	user := MustUserFromContext(r.Context())
+
+	var req verificationByUIDRequest
+	if err := decodeJSON(r, &req); err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+
+	account, err := h.accounts.ConfirmVerification(r.Context(), user.ID, req.UID, req.Region)
 	if err != nil {
 		respondDomainError(w, r, err)
 		return

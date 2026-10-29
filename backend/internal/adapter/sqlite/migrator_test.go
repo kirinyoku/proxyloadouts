@@ -282,3 +282,100 @@ func TestMigrate_VerifiedUIDUniqueConstraint(t *testing.T) {
 		t.Fatalf("expected verifying second account to succeed after un-verifying first, got: %v", err)
 	}
 }
+
+func TestMigrate_SocialSharingV2ColumnsAndDefaults(t *testing.T) {
+	db := newMigratedTestDB(t)
+
+	// Verify columns exist on game_accounts
+	var isPubRoster, isPubTeams int
+	err := db.QueryRow(`
+		INSERT INTO users (id, discord_id, username) VALUES ('u1', 'discord-1', 'user1');
+		INSERT INTO game_accounts (id, user_id, uid) VALUES ('g1', 'u1', '1504687050');
+		SELECT is_public_roster, is_public_teams FROM game_accounts WHERE id = 'g1';
+	`).Scan(&isPubRoster, &isPubTeams)
+	if err != nil {
+		t.Fatalf("failed to query is_public_roster and is_public_teams: %v", err)
+	}
+	if isPubRoster != 1 || isPubTeams != 1 {
+		t.Errorf("expected default is_public_roster=1 and is_public_teams=1, got %d, %d", isPubRoster, isPubTeams)
+	}
+}
+
+func TestMigrate_SocialSharingV2_DataMigration(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open memory db: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	if _, err := db.ExecContext(ctx, `
+		CREATE TABLE schema_migrations (
+			version    TEXT PRIMARY KEY,
+			applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);
+	`); err != nil {
+		t.Fatalf("failed to create schema_migrations table: %v", err)
+	}
+
+	for _, v := range []string{"001_init.sql", "002_user_limits.sql", "003_user_moderation.sql", "004_user_custom_accounts.sql", "005_social_sharing.sql"} {
+		if err := applyMigration(ctx, db, v); err != nil {
+			t.Fatalf("failed to apply %s: %v", v, err)
+		}
+	}
+
+	// Insert user, accounts with different is_public_showcase, builds and teams with is_public=0
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO users (id, discord_id, username) VALUES ('u1', 'discord-1', 'user1');
+		INSERT INTO game_accounts (id, user_id, uid, is_public_showcase) VALUES
+			('g1', 'u1', '1504687051', 1),
+			('g2', 'u1', '1504687052', 0);
+		INSERT INTO agent_builds (id, user_id, game_account_id, agent_id, agent_name, name, weapon_uid, weapon_id, disc_uids, raw_data, is_public) VALUES
+			('b1', 'u1', 'g1', 1511, 'Miyabi', 'Preset 1', '1511_w', 14109, '[]', '{}', 0);
+		INSERT INTO teams (id, user_id, game_account_id, name, is_public) VALUES
+			('t1', 'u1', 'g1', 'Team 1', 0);
+	`); err != nil {
+		t.Fatalf("failed to seed pre-006 data: %v", err)
+	}
+
+	// Apply migration 006
+	if err := applyMigration(ctx, db, "006_social_sharing_v2.sql"); err != nil {
+		t.Fatalf("failed to apply 006_social_sharing_v2.sql: %v", err)
+	}
+
+	// Verify g1 (was showcase=1) -> is_public_roster=1, is_public_teams=1
+	var g1Roster, g1Teams int
+	if err := db.QueryRowContext(ctx, `SELECT is_public_roster, is_public_teams FROM game_accounts WHERE id = 'g1';`).Scan(&g1Roster, &g1Teams); err != nil {
+		t.Fatalf("failed to scan g1: %v", err)
+	}
+	if g1Roster != 1 || g1Teams != 1 {
+		t.Errorf("expected g1 to have is_public_roster=1, is_public_teams=1, got %d, %d", g1Roster, g1Teams)
+	}
+
+	// Verify g2 (was showcase=0) -> is_public_roster=0, is_public_teams=0
+	var g2Roster, g2Teams int
+	if err := db.QueryRowContext(ctx, `SELECT is_public_roster, is_public_teams FROM game_accounts WHERE id = 'g2';`).Scan(&g2Roster, &g2Teams); err != nil {
+		t.Fatalf("failed to scan g2: %v", err)
+	}
+	if g2Roster != 0 || g2Teams != 0 {
+		t.Errorf("expected g2 to have is_public_roster=0, is_public_teams=0, got %d, %d", g2Roster, g2Teams)
+	}
+
+	// Verify b1 (was is_public=0) -> is_public=1
+	var b1Public int
+	if err := db.QueryRowContext(ctx, `SELECT is_public FROM agent_builds WHERE id = 'b1';`).Scan(&b1Public); err != nil {
+		t.Fatalf("failed to scan b1: %v", err)
+	}
+	if b1Public != 1 {
+		t.Errorf("expected b1 is_public=1, got %d", b1Public)
+	}
+
+	// Verify t1 (was is_public=0) -> is_public=1
+	var t1Public int
+	if err := db.QueryRowContext(ctx, `SELECT is_public FROM teams WHERE id = 't1';`).Scan(&t1Public); err != nil {
+		t.Fatalf("failed to scan t1: %v", err)
+	}
+	if t1Public != 1 {
+		t.Errorf("expected t1 is_public=1, got %d", t1Public)
+	}
+}
