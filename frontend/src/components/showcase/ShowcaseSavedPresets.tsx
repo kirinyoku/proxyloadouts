@@ -1,26 +1,16 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Layers, Share2 } from 'lucide-react'
+import { useDeferredValue, useMemo, useRef, useState } from 'react'
+import { Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useMe } from '@/api/hooks'
 import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
-import { MindscapeBadge } from '@/components/ui/MindscapeBadge'
 import { RosterToolbar } from '@/components/roster/RosterToolbar'
-import { toast } from '@/components/ui/sonner'
-import { getAttributeLabel, getSpecialtyLabel } from '@/lib/design-tokens'
+import { RosterBuildToolbar } from '@/components/roster/RosterBuildToolbar'
 import { groupByAgent } from '@/lib/builds'
-import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Attribute, Build, Specialty } from '@/types'
 
@@ -77,8 +67,8 @@ export interface ShowcaseSavedPresetsProps {
 }
 
 export function ShowcaseSavedPresets({ builds }: ShowcaseSavedPresetsProps) {
-  const { t, i18n } = useTranslation()
-  const currentLang = i18n.language
+  const { t } = useTranslation()
+  const { data: me } = useMe()
 
   const [search, setSearch] = useState('')
   const [selectedAttribute, setSelectedAttribute] = useState<Attribute | null>(null)
@@ -166,9 +156,7 @@ export function ShowcaseSavedPresets({ builds }: ShowcaseSavedPresetsProps) {
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(() => allGroups[0]?.agentId ?? null)
   const [selectedBuildIdMap, setSelectedBuildIdMap] = useState<Record<number, string>>({})
   const [mobileSection, setMobileSection] = useState<MobileSection>('discs')
-  const [copiedBuildId, setCopiedBuildId] = useState<string | null>(null)
 
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const agentRailRef = useRef<HTMLDivElement>(null)
 
   // Default agent if current selection is invalid
@@ -185,11 +173,29 @@ export function ShowcaseSavedPresets({ builds }: ShowcaseSavedPresetsProps) {
   const activeBuild = activeAgentBuilds.find((b) => b.id === activeBuildId) ?? activeAgentBuilds[0] ?? null
   const agent = activeBuild?.build_data ?? null
 
-  useEffect(() => {
-    return () => {
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
-    }
-  }, [])
+  const maxBuilds = me?.limits?.max_builds_per_agent ?? 10
+  const buildsAtLimit = activeAgentBuilds.length >= maxBuilds
+  const capacityTitle = buildsAtLimit
+    ? t('roster.buildsLimitMax', { count: activeAgentBuilds.length, max: maxBuilds })
+    : t('roster.buildsLimitTitle', { count: activeAgentBuilds.length, max: maxBuilds })
+
+  const capacityChip = (
+    <span
+      className={cn(
+        'inline-flex h-8 items-center gap-1 rounded-xl border px-2 font-mono text-[11px] font-semibold select-none shadow-xs',
+        buildsAtLimit
+          ? 'border-amber-400/40 bg-amber-400/10 text-amber-300 font-bold'
+          : 'border-white/10 bg-white/[0.04] text-neutral-300',
+      )}
+      title={capacityTitle}
+      aria-label={capacityTitle}
+    >
+      <Layers className="size-3 text-primary stroke-[2.5] shrink-0" />
+      <span className="whitespace-nowrap">
+        {activeAgentBuilds.length}/{maxBuilds}
+      </span>
+    </span>
+  )
 
   if (allGroups.length === 0) {
     return (
@@ -199,22 +205,6 @@ export function ShowcaseSavedPresets({ builds }: ShowcaseSavedPresetsProps) {
         description=""
       />
     )
-  }
-
-  const attributeLabel = agent?.attribute ? getAttributeLabel(agent.attribute, currentLang) : agent?.attribute_name
-  const specialtyLabel = agent?.specialty ? getSpecialtyLabel(agent.specialty, currentLang) : agent?.specialty_name
-
-  async function handleCopyLink(buildId: string) {
-    const url = `${window.location.origin}/b/${buildId}`
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopiedBuildId(buildId)
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
-      copyTimerRef.current = setTimeout(() => setCopiedBuildId(null), 2000)
-      toast.success(t('showcase.presetLinkCopied'))
-    } catch {
-      // clipboard unavailable
-    }
   }
 
   function handleSelectAgent(agentId: number) {
@@ -296,121 +286,54 @@ export function ShowcaseSavedPresets({ builds }: ShowcaseSavedPresetsProps) {
           <div className="min-w-0 flex-1 w-full space-y-3">
             <div className="relative rounded-3xl border border-white/[0.08] bg-card/96 p-3 shadow-xl backdrop-blur-sm md:p-4">
               <div className="space-y-3">
-                {/* Upper Header: Agent name, attributes, build select/chip, note & Share link */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] pb-2.5">
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                    {/* Agent name */}
-                    <h2 className="truncate font-heading text-base sm:text-lg font-bold text-foreground">
-                      {agent.name}
-                    </h2>
+                <RosterBuildToolbar
+                  agentName={activeGroup.agentName}
+                  builds={activeAgentBuilds}
+                  selectedBuildId={activeBuild.id}
+                  onSelectBuildId={handleSelectBuild}
+                  meta={capacityChip}
+                  readOnly
+                />
 
-                    {/* Badges: Attribute, Specialty, Mindscape */}
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {agent.attribute && <AttributeBadge attribute={agent.attribute} label={attributeLabel} />}
-                      {agent.specialty && <SpecialtyBadge specialty={agent.specialty} label={specialtyLabel} />}
-                      {agent.mindscape_cinema > 0 && (
-                        <MindscapeBadge level={agent.mindscape_cinema} size="sm" variant="inline" />
-                      )}
-                    </div>
-
-                    {/* Build dropdown if >1 preset; otherwise mono chip */}
-                    {activeAgentBuilds.length > 1 ? (
-                      <Select value={activeBuild.id} onValueChange={handleSelectBuild}>
-                        <SelectTrigger
-                          size="sm"
-                          className="h-7.5 w-auto max-w-[200px] gap-1.5 font-mono text-xs bg-white/[0.05] border-white/10"
-                        >
-                          <SelectValue>{activeBuild.name}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent align="start">
-                          {activeAgentBuilds.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="font-mono text-xs">{b.name}</span>
-                                <span className="font-mono text-[10px] text-muted-foreground">
-                                  {formatDateTime(b.updated_at || b.created_at)}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <span className="font-mono text-xs font-bold text-primary px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20">
-                        {activeBuild.name}
-                      </span>
-                    )}
-
-                    {/* Note if present */}
-                    {activeBuild.description?.trim() && (
-                      <span className="truncate text-xs text-muted-foreground font-mono">
-                        <span className="text-primary/70 mr-1">//</span>
-                        {activeBuild.description.trim()}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Share button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopyLink(activeBuild.id)}
-                    title={t('showcase.copyPresetLink')}
-                    className="h-8 gap-1.5 rounded-xl border-white/10 text-xs font-medium hover:border-primary/40 hover:bg-primary/10 hover:text-primary transition-all shrink-0"
-                  >
-                    {copiedBuildId === activeBuild.id ? (
-                      <>
-                        <Check className="size-3.5 stroke-[2.5] text-primary" />
-                        <span>{t('sharing.linkCopied')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Share2 className="size-3.5" />
-                        <span>{t('sharing.share')}</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-            {/* Mobile WEngine card */}
-            <div className="lg:hidden">
-              <WEngineCard wEngine={agent.w_engine} />
-            </div>
-
-            {/* Mobile Section Tabs */}
-            <MobileSectionTabs activeSection={mobileSection} onChange={setMobileSection} />
-
-            <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[270px_minmax(0,1fr)]">
-              {/* Left Column (Desktop) / Stats & Engine (Mobile Stats) */}
-              <div className={cn('space-y-3', mobileSection === 'discs' && 'hidden lg:block')}>
-                <div className="hidden lg:block">
+                {/* Mobile WEngine card */}
+                <div className="lg:hidden">
                   <WEngineCard wEngine={agent.w_engine} />
                 </div>
 
-                <AgentStatsPanel
-                  uiStats={agent.ui_stats}
-                  specialty={agent.specialty}
-                  agentId={agent.id}
-                  highlightProps={agent.highlight_props}
-                />
-              </div>
+                {/* Mobile Section Tabs */}
+                <MobileSectionTabs activeSection={mobileSection} onChange={setMobileSection} />
 
-              {/* Right Column (Desktop) / Discs Section (Mobile Discs) */}
-              <div className={cn('min-w-0 space-y-3', mobileSection !== 'discs' && 'hidden lg:block')}>
-                <DriveDiscGrid
-                  driveDiscs={agent.drive_discs}
-                  wEngine={agent.w_engine}
-                  agentId={agent.id}
-                  recommendedSubStats={agent.recommended_sub_stats}
-                  highlightProps={agent.highlight_props}
-                />
+                <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[270px_minmax(0,1fr)]">
+                  {/* Left Column (Desktop) / Stats & Engine (Mobile Stats) */}
+                  <div className={cn('space-y-3', mobileSection === 'discs' && 'hidden lg:block')}>
+                    <div className="hidden lg:block">
+                      <WEngineCard wEngine={agent.w_engine} />
+                    </div>
+
+                    <AgentStatsPanel
+                      uiStats={agent.ui_stats}
+                      specialty={agent.specialty}
+                      agentId={agent.id}
+                      highlightProps={agent.highlight_props}
+                    />
+                  </div>
+
+                  {/* Right Column (Desktop) / Discs Section (Mobile Discs) */}
+                  <div className={cn('min-w-0 space-y-3', mobileSection !== 'discs' && 'hidden lg:block')}>
+                    <DriveDiscGrid
+                      driveDiscs={agent.drive_discs}
+                      wEngine={agent.w_engine}
+                      agentId={agent.id}
+                      recommendedSubStats={agent.recommended_sub_stats}
+                      highlightProps={agent.highlight_props}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
-  )}
-</div>
   )
 }

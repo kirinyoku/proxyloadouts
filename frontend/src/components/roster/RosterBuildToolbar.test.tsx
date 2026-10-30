@@ -222,4 +222,76 @@ describe('RosterBuildToolbar', () => {
     // Contains lock icon since mockBuilds[0].is_public is false
     expect(html).toContain('lucide-lock')
   })
+
+  describe('readOnly mode', () => {
+    it('renders single build chip instead of select combobox when builds.length <= 1', () => {
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={mockBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).toContain('Основной билд')
+      expect(html).not.toContain('role="combobox"')
+    })
+
+    it('renders select combobox when builds.length > 1', () => {
+      const multiBuilds = [
+        ...mockBuilds,
+        { ...mockBuilds[0]!, id: 'build-2', name: 'Второй билд' },
+      ]
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={multiBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).toContain('role="combobox"')
+      expect(html).toContain('Основной билд')
+    })
+
+    it('does NOT render rename, delete, or visibility toggle buttons', () => {
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={mockBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).not.toContain('Удалить')
+      expect(html).not.toContain('lucide-trash-2')
+      expect(html).not.toContain('Переименовать пресет')
+      expect(html).not.toContain('lucide-lock')
+      expect(html).not.toContain('lucide-globe')
+      // Still renders share button
+      expect(html).toContain('lucide-share-2')
+    })
+
+    it('renders note display without edit buttons in readOnly mode', () => {
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={mockBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).toContain('Заметка')
+      expect(html).toContain('Тактическая заметка с крит уроном')
+      expect(html).not.toContain('Добавить заметку')
+    })
+  })
 })

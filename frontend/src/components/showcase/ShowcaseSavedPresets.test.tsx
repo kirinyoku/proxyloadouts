@@ -53,6 +53,13 @@ vi.mock('react-router-dom', () => ({
   ),
 }))
 
+vi.mock('@/api/hooks', () => ({
+  useMe: () => ({ data: null }),
+  useRenameBuild: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteBuild: () => ({ mutate: vi.fn(), isPending: false }),
+  useToggleBuildVisibility: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+
 const mockAgentAnby: Agent = {
   id: 1011,
   name: 'Anby Demara',

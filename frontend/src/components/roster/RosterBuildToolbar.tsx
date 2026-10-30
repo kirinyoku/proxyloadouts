@@ -39,6 +39,7 @@ interface RosterBuildToolbarProps {
   onSelectBuildId: (id: string) => void
   /** Saved-builds capacity chip merged into the toolbar. */
   meta?: ReactNode
+  readOnly?: boolean
 }
 
 /**
@@ -53,6 +54,7 @@ export function RosterBuildToolbar({
   selectedBuildId,
   onSelectBuildId,
   meta,
+  readOnly = false,
 }: RosterBuildToolbarProps) {
   const { t } = useTranslation()
   const currentBuild = builds.find((b) => b.id === selectedBuildId) ?? builds[0]
@@ -80,6 +82,11 @@ export function RosterBuildToolbar({
       await navigator.clipboard.writeText(url)
     } catch {
       // ignore
+    }
+
+    if (readOnly) {
+      toast.success(t('sharing.linkCopied'))
+      return
     }
 
     if (!currentBuild.is_public) {
@@ -220,57 +227,83 @@ export function RosterBuildToolbar({
             </div>
           ) : (
             <>
-              <Select
-                value={currentBuild.id}
-                onValueChange={onSelectBuildId}
-                disabled={isPending}
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="h-7.5 w-auto max-w-[180px] shrink justify-start gap-1.5 rounded-[calc(var(--radius-xl)-2px)] border-0 bg-white/[0.05] text-xs font-mono text-foreground shadow-none hover:border-0 hover:bg-white/[0.1] md:max-w-[240px]"
+              {readOnly && builds.length <= 1 ? (
+                <span
+                  className="h-7.5 w-auto max-w-[180px] shrink inline-flex items-center gap-1.5 rounded-[calc(var(--radius-xl)-2px)] border-0 bg-white/[0.05] px-2.5 text-xs font-mono text-foreground md:max-w-[240px]"
                   title={`${currentBuild.name} (${formatDateTime(currentBuild.updated_at || currentBuild.created_at)})`}
                 >
-                  <SelectValue placeholder={t('roster.buildSelectPlaceholder')}>
-                    {currentBuild.name}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent align="start" className="max-w-[90vw] sm:max-w-md">
-                  {builds.map((build) => (
-                    <SelectItem key={build.id} value={build.id} title={build.name}>
-                      <div className="flex w-full items-center justify-between gap-3">
-                        <span className="truncate flex items-center gap-1.5 min-w-0">
-                          {!build.is_public && (
-                            <Lock className="size-3.5 text-muted-foreground shrink-0" />
-                          )}
-                          <span className="truncate">{build.name}</span>
-                        </span>
-                        <span className="shrink-0 font-mono text-[10px] text-muted-foreground/90">
-                          {formatDateTime(build.updated_at || build.created_at)}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <span className="truncate">{currentBuild.name}</span>
+                </span>
+              ) : (
+                <Select
+                  value={currentBuild.id}
+                  onValueChange={onSelectBuildId}
+                  disabled={isPending}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    className="h-7.5 w-auto max-w-[180px] shrink justify-start gap-1.5 rounded-[calc(var(--radius-xl)-2px)] border-0 bg-white/[0.05] text-xs font-mono text-foreground shadow-none hover:border-0 hover:bg-white/[0.1] md:max-w-[240px]"
+                    title={`${currentBuild.name} (${formatDateTime(currentBuild.updated_at || currentBuild.created_at)})`}
+                  >
+                    <SelectValue placeholder={t('roster.buildSelectPlaceholder')}>
+                      {currentBuild.name}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent align="start" className="max-w-[90vw] sm:max-w-md">
+                    {builds.map((build) => (
+                      <SelectItem key={build.id} value={build.id} title={build.name}>
+                        <div className="flex w-full items-center justify-between gap-3">
+                          <span className="truncate flex items-center gap-1.5 min-w-0">
+                            {!build.is_public && (
+                              <Lock className="size-3.5 text-muted-foreground shrink-0" />
+                            )}
+                            <span className="truncate">{build.name}</span>
+                          </span>
+                          <span className="shrink-0 font-mono text-[10px] text-muted-foreground/90">
+                            {formatDateTime(build.updated_at || build.created_at)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
-              <button
-                type="button"
-                onClick={handleStartRename}
-                disabled={isPending}
-                className="flex size-7.5 shrink-0 items-center justify-center rounded-[calc(var(--radius-xl)-2px)] text-neutral-300 transition-colors hover:bg-white/[0.07] hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
-                title={t('roster.renameBuild')}
-              >
-                <Pencil className="size-3" />
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={handleStartRename}
+                  disabled={isPending}
+                  className="flex size-7.5 shrink-0 items-center justify-center rounded-[calc(var(--radius-xl)-2px)] text-neutral-300 transition-colors hover:bg-white/[0.07] hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
+                  title={t('roster.renameBuild')}
+                >
+                  <Pencil className="size-3" />
+                </button>
+              )}
             </>
           )}
 
           {/* Segment separator between the build picker and the note field */}
-          <div className="mx-0.5 h-5 w-px shrink-0 bg-white/[0.1]" aria-hidden="true" />
+          {(hasDescription || !readOnly) && (
+            <div className="mx-0.5 h-5 w-px shrink-0 bg-white/[0.1]" aria-hidden="true" />
+          )}
 
-          {/* Note segment — compact w-fit when short, stretches up to maximum row length, truncates with ellipsis */}
-
-          {editingNote ? (
+          {/* Note segment */}
+          {readOnly ? (
+            hasDescription && (
+              <div
+                className="flex h-full min-w-0 w-fit max-w-full shrink select-none items-center gap-1.5 rounded-[calc(var(--radius-xl)-2px)] pl-2 pr-2.5 text-xs"
+                title={currentBuild.description ?? ''}
+              >
+                <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
+                  {t('roster.addNote')}
+                </span>
+                <span className="min-w-0 truncate text-neutral-200">
+                  {currentBuild.description}
+                </span>
+              </div>
+            )
+          ) : editingNote ? (
             <div className="flex h-full min-w-0 w-56 sm:w-80 md:w-96 max-w-full items-center gap-1 px-0.5">
               <input
                 value={noteDraft}
@@ -343,31 +376,33 @@ export function RosterBuildToolbar({
 
         {/* Zone 3: actions (visibility toggle, share, delete) */}
         <div className="flex shrink-0 items-center gap-1.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => handleToggleVisibility(!currentBuild.is_public)}
-                disabled={isPending}
-                aria-label={currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
-                className={cn(
-                  'flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all cursor-pointer select-none',
-                  currentBuild.is_public
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                    : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
-                )}
-              >
-                {currentBuild.is_public ? (
-                  <Globe className="size-3.5" />
-                ) : (
-                  <Lock className="size-3.5" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              {currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
-            </TooltipContent>
-          </Tooltip>
+          {!readOnly && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleToggleVisibility(!currentBuild.is_public)}
+                  disabled={isPending}
+                  aria-label={currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
+                  className={cn(
+                    'flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all cursor-pointer select-none',
+                    currentBuild.is_public
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                      : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
+                  )}
+                >
+                  {currentBuild.is_public ? (
+                    <Globe className="size-3.5" />
+                  ) : (
+                    <Lock className="size-3.5" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           <Button
             variant="secondary"
@@ -382,41 +417,43 @@ export function RosterBuildToolbar({
             <span className="hidden md:inline">{t('sharing.share')}</span>
           </Button>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={isPending}
-                className="h-8 px-3 text-xs font-semibold cursor-pointer"
-                title={t('roster.deleteBuildTitle')}
-                aria-label={t('roster.deleteBuildTitle')}
-              >
-                <span>{t('roster.deleteBuildButton')}</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="bg-popover border border-white/[0.12] rounded-2xl shadow-2xl backdrop-blur-xl">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="font-heading text-lg break-words">
-                  {t('roster.deleteDialogTitle', { name: currentBuild.name })}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-muted-foreground text-sm">
-                  {t('roster.deleteDialogDesc', { agent: agentName })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="font-bold rounded-xl border-white/10 hover:bg-white/5">
-                  {t('roster.deleteDialogCancel')}
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold rounded-xl shadow-lg"
+          {!readOnly && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isPending}
+                  className="h-8 px-3 text-xs font-semibold cursor-pointer"
+                  title={t('roster.deleteBuildTitle')}
+                  aria-label={t('roster.deleteBuildTitle')}
                 >
-                  {t('roster.deleteDialogConfirm')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <span>{t('roster.deleteBuildButton')}</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-popover border border-white/[0.12] rounded-2xl shadow-2xl backdrop-blur-xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="font-heading text-lg break-words">
+                    {t('roster.deleteDialogTitle', { name: currentBuild.name })}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-muted-foreground text-sm">
+                    {t('roster.deleteDialogDesc', { agent: agentName })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="font-bold rounded-xl border-white/10 hover:bg-white/5">
+                    {t('roster.deleteDialogCancel')}
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold rounded-xl shadow-lg"
+                  >
+                    {t('roster.deleteDialogConfirm')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 
@@ -425,7 +462,7 @@ export function RosterBuildToolbar({
         {/* Row 1: Capacity indicator (if provided) + Select build (flex-1) + Rename + Delete (icon only) */}
         <div className="flex items-center gap-1.5">
           {meta && <div className="shrink-0 flex items-center">{meta}</div>}
-          {editingName ? (
+          {!readOnly && editingName ? (
             <div className="flex items-center gap-1 shrink-0 flex-1 max-w-full min-w-0">
               <input
                 value={nameDraft}
@@ -460,70 +497,83 @@ export function RosterBuildToolbar({
             </div>
           ) : (
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <Select
-                value={currentBuild.id}
-                onValueChange={onSelectBuildId}
-                disabled={isPending}
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="h-8 flex-1 min-w-0 text-xs font-mono border-white/15 bg-card hover:border-white/30 text-foreground"
+              {readOnly && builds.length <= 1 ? (
+                <span
+                  className="h-8 flex-1 min-w-0 inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-card px-2.5 text-xs font-mono text-foreground"
                   title={`${currentBuild.name} (${formatDateTime(currentBuild.updated_at || currentBuild.created_at)})`}
                 >
-                  <SelectValue placeholder={t('roster.buildSelectPlaceholder')}>
-                    {currentBuild.name}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent align="start" className="max-w-[90vw]">
-                  {builds.map((build) => (
-                    <SelectItem
-                      key={build.id}
-                      value={build.id}
-                      title={`${build.name} (${formatDateTime(build.updated_at || build.created_at)})`}
-                    >
-                      <span className="truncate flex items-center gap-1.5 min-w-0">
-                        {!build.is_public && (
-                          <Lock className="size-3.5 text-muted-foreground shrink-0" />
-                        )}
-                        <span className="truncate">{build.name}</span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <span className="truncate">{currentBuild.name}</span>
+                </span>
+              ) : (
+                <Select
+                  value={currentBuild.id}
+                  onValueChange={onSelectBuildId}
+                  disabled={isPending}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    className="h-8 flex-1 min-w-0 text-xs font-mono border-white/15 bg-card hover:border-white/30 text-foreground"
+                    title={`${currentBuild.name} (${formatDateTime(currentBuild.updated_at || currentBuild.created_at)})`}
+                  >
+                    <SelectValue placeholder={t('roster.buildSelectPlaceholder')}>
+                      {currentBuild.name}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent align="start" className="max-w-[90vw]">
+                    {builds.map((build) => (
+                      <SelectItem
+                        key={build.id}
+                        value={build.id}
+                        title={`${build.name} (${formatDateTime(build.updated_at || build.created_at)})`}
+                      >
+                        <span className="truncate flex items-center gap-1.5 min-w-0">
+                          {!build.is_public && (
+                            <Lock className="size-3.5 text-muted-foreground shrink-0" />
+                          )}
+                          <span className="truncate">{build.name}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
-              <button
-                type="button"
-                onClick={handleStartRename}
-                disabled={isPending}
-                className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-card text-neutral-300 shadow-xs transition-all hover:border-primary/50 hover:bg-elevated hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
-                title={t('roster.renameBuild')}
-              >
-                <Pencil className="size-3" />
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={handleStartRename}
+                  disabled={isPending}
+                  className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-card text-neutral-300 shadow-xs transition-all hover:border-primary/50 hover:bg-elevated hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 cursor-pointer"
+                  title={t('roster.renameBuild')}
+                >
+                  <Pencil className="size-3" />
+                </button>
+              )}
             </div>
           )}
 
           {/* Visibility toggle button on mobile */}
-          <button
-            type="button"
-            onClick={() => handleToggleVisibility(!currentBuild.is_public)}
-            disabled={isPending}
-            aria-label={currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
-            title={currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
-            className={cn(
-              'flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all cursor-pointer select-none',
-              currentBuild.is_public
-                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
-            )}
-          >
-            {currentBuild.is_public ? (
-              <Globe className="size-3.5" />
-            ) : (
-              <Lock className="size-3.5" />
-            )}
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => handleToggleVisibility(!currentBuild.is_public)}
+              disabled={isPending}
+              aria-label={currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
+              title={currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
+              className={cn(
+                'flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all cursor-pointer select-none',
+                currentBuild.is_public
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                  : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
+              )}
+            >
+              {currentBuild.is_public ? (
+                <Globe className="size-3.5" />
+              ) : (
+                <Lock className="size-3.5" />
+              )}
+            </button>
+          )}
 
           {/* Share button on mobile */}
           <Button
@@ -539,114 +589,131 @@ export function RosterBuildToolbar({
           </Button>
 
           {/* Delete button on mobile with icon only */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                size="icon"
-                disabled={isPending}
-                className="size-8 shrink-0 cursor-pointer"
-                title={t('roster.deleteBuildTitle')}
-                aria-label={t('roster.deleteBuildTitle')}
-              >
-                <Trash2 className="size-3.5 shrink-0" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="bg-popover border border-white/[0.12] rounded-2xl shadow-2xl backdrop-blur-xl">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="font-heading text-lg break-words">
-                  {t('roster.deleteDialogTitle', { name: currentBuild.name })}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-muted-foreground text-sm">
-                  {t('roster.deleteDialogDesc', { agent: agentName })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="font-bold rounded-xl border-white/10 hover:bg-white/5">
-                  {t('roster.deleteDialogCancel')}
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold rounded-xl shadow-lg"
+          {!readOnly && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  disabled={isPending}
+                  className="size-8 shrink-0 cursor-pointer"
+                  title={t('roster.deleteBuildTitle')}
+                  aria-label={t('roster.deleteBuildTitle')}
                 >
-                  {t('roster.deleteDialogConfirm')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <Trash2 className="size-3.5 shrink-0" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-popover border border-white/[0.12] rounded-2xl shadow-2xl backdrop-blur-xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="font-heading text-lg break-words">
+                    {t('roster.deleteDialogTitle', { name: currentBuild.name })}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-muted-foreground text-sm">
+                    {t('roster.deleteDialogDesc', { agent: agentName })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="font-bold rounded-xl border-white/10 hover:bg-white/5">
+                    {t('roster.deleteDialogCancel')}
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold rounded-xl shadow-lg"
+                  >
+                    {t('roster.deleteDialogConfirm')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         {/* Row 2: Note */}
-        <div className="flex items-center gap-1.5">
-          {editingNote ? (
-            <div className="flex items-center gap-1.5 flex-1 min-w-0 max-w-full">
-              <input
-                value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
-                placeholder={t('roster.noteInputPlaceholder')}
-                className="h-7.5 text-xs bg-black/60 border border-white/20 focus:border-primary/60 focus:ring-0 text-foreground placeholder:text-muted-foreground/50 rounded-[8px_8px_0_8px] px-2.5 outline-none flex-1 transition-colors"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveNote()
-                  if (e.key === 'Escape') setEditingNote(false)
-                }}
-                maxLength={250}
-              />
-              <Button
-                size="sm"
-                onClick={handleSaveNote}
-                disabled={isPending}
-                className="h-7.5 px-2 text-xs font-semibold rounded-[6px_6px_0_6px] bg-primary text-black hover:bg-primary/90 cursor-pointer shrink-0 transition-all"
-                title={t('roster.renameSave')}
-              >
-                <Check className="size-3" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setEditingNote(false)}
-                className="h-7.5 px-1.5 text-xs rounded-[6px_6px_0_6px] hover:bg-white/10 text-muted-foreground cursor-pointer shrink-0"
-                title={t('roster.renameCancel')}
-              >
-                <X className="size-3" />
-              </Button>
-            </div>
-          ) : hasDescription ? (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={handleStartNoteEdit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleStartNoteEdit()
-                }
-              }}
-              className="group/note flex h-7.5 flex-1 min-w-0 items-center justify-between gap-1.5 rounded-xl border border-white/[0.1] bg-card/80 px-2.5 text-xs transition-all hover:border-white/25 hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none shadow-xs"
-              title={t('roster.noteEditTitle', { desc: currentBuild.description ?? '' })}
-            >
-              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        {readOnly ? (
+          hasDescription && (
+            <div className="flex items-center gap-1.5">
+              <div className="flex h-7.5 flex-1 min-w-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-card/80 px-2.5 text-xs shadow-xs">
                 <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
                   {t('roster.addNote')}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-neutral-200 transition-colors group-hover/note:text-white">
+                <span className="min-w-0 flex-1 truncate text-neutral-200">
                   {currentBuild.description}
                 </span>
               </div>
-              <Pencil className="ml-1 size-2.5 shrink-0 text-neutral-400 opacity-60 transition-all group-hover/note:opacity-100 group-hover/note:text-primary" />
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleStartNoteEdit}
-              className="inline-flex h-7.5 flex-1 items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/[0.2] bg-white/[0.03] hover:border-primary/50 hover:bg-white/[0.08] hover:text-primary px-2.5 text-xs text-neutral-300 transition-all active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none min-w-0"
-              title={t('roster.addNoteTitle')}
-            >
-              <Plus className="size-3 shrink-0" />
-              <span className="truncate">{t('roster.addNote')}</span>
-            </button>
-          )}
-        </div>
+          )
+        ) : (
+          <div className="flex items-center gap-1.5">
+            {editingNote ? (
+              <div className="flex items-center gap-1.5 flex-1 min-w-0 max-w-full">
+                <input
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder={t('roster.noteInputPlaceholder')}
+                  className="h-7.5 text-xs bg-black/60 border border-white/20 focus:border-primary/60 focus:ring-0 text-foreground placeholder:text-muted-foreground/50 rounded-[8px_8px_0_8px] px-2.5 outline-none flex-1 transition-colors"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveNote()
+                    if (e.key === 'Escape') setEditingNote(false)
+                  }}
+                  maxLength={250}
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSaveNote}
+                  disabled={isPending}
+                  className="h-7.5 px-2 text-xs font-semibold rounded-[6px_6px_0_6px] bg-primary text-black hover:bg-primary/90 cursor-pointer shrink-0 transition-all"
+                  title={t('roster.renameSave')}
+                >
+                  <Check className="size-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditingNote(false)}
+                  className="h-7.5 px-1.5 text-xs rounded-[6px_6px_0_6px] hover:bg-white/10 text-muted-foreground cursor-pointer shrink-0"
+                  title={t('roster.renameCancel')}
+                >
+                  <X className="size-3" />
+                </Button>
+              </div>
+            ) : hasDescription ? (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={handleStartNoteEdit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleStartNoteEdit()
+                  }
+                }}
+                className="group/note flex h-7.5 flex-1 min-w-0 items-center justify-between gap-1.5 rounded-xl border border-white/[0.1] bg-card/80 px-2.5 text-xs transition-all hover:border-white/25 hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none shadow-xs"
+                title={t('roster.noteEditTitle', { desc: currentBuild.description ?? '' })}
+              >
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
+                    {t('roster.addNote')}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-neutral-200 transition-colors group-hover/note:text-white">
+                    {currentBuild.description}
+                  </span>
+                </div>
+                <Pencil className="ml-1 size-2.5 shrink-0 text-neutral-400 opacity-60 transition-all group-hover/note:opacity-100 group-hover/note:text-primary" />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleStartNoteEdit}
+                className="inline-flex h-7.5 flex-1 items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/[0.2] bg-white/[0.03] hover:border-primary/50 hover:bg-white/[0.08] hover:text-primary px-2.5 text-xs text-neutral-300 transition-all active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none min-w-0"
+                title={t('roster.addNoteTitle')}
+              >
+                <Plus className="size-3 shrink-0" />
+                <span className="truncate">{t('roster.addNote')}</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

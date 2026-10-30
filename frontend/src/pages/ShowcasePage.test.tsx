@@ -66,6 +66,9 @@ vi.mock('@/api/hooks', async (importOriginal) => {
     useShowcase: () => mockUseShowcase(),
     useShowcaseRoster: () => mockUseShowcaseRoster(),
     useBuilds: () => mockUseBuilds(),
+    useRenameBuild: () => ({ mutate: vi.fn(), isPending: false }),
+    useDeleteBuild: () => ({ mutate: vi.fn(), isPending: false }),
+    useToggleBuildVisibility: () => ({ mutate: vi.fn(), isPending: false }),
   }
 })
 
