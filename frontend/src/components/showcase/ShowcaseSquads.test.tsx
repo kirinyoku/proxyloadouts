@@ -33,6 +33,7 @@ vi.mock('react-i18next', async (importOriginal) => {
         }
         return dict[key] ?? key
       },
+      i18n: { language: 'ru' },
     }),
   }
 })
@@ -49,6 +50,24 @@ vi.mock('react-router-dom', () => ({
   Link: ({ children, to, ...props }: { children: React.ReactNode; to: string }) => (
     <a href={to} {...props}>{children}</a>
   ),
+}))
+
+// Mock @tanstack/react-query
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    setQueryData: vi.fn(),
+  }),
+}))
+
+// Mock @/api/hooks
+vi.mock('@/api/hooks', () => ({
+  useDeleteTeam: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateTeam: () => ({ mutate: vi.fn(), isPending: false }),
+  usePatchTeam: () => ({ mutate: vi.fn(), isPending: false }),
+  useBuilds: () => ({ data: [] }),
+  queryKeys: {
+    team: (id: string, lang: string) => ['teams', 'detail', id, lang],
+  },
 }))
 
 const mockAgent1: Agent = {
@@ -241,7 +260,7 @@ describe('ShowcaseSquads', () => {
     ]
     const html = renderToString(<ShowcaseSquads teams={teams} />)
     expect(html).toContain('Название отряда или агенты…')
-    expect(html).toContain('3 / 3')
+    expect(html).not.toContain('3 / 3')
   })
 
   it('renders conflict badge and accent when a squad has conflict', () => {
@@ -253,5 +272,16 @@ describe('ShowcaseSquads', () => {
     expect(html).toContain('Conflict Squad')
     expect(html).toContain('Конфликт')
     expect(html).toContain('via-destructive')
+  })
+
+  it('does not render via-primary accent when squads do not have conflict', () => {
+    const teams = [
+      createTeamSummary('team-valid', 'Valid Squad', '', [mockMember1]),
+    ]
+    const html = renderToString(<ShowcaseSquads teams={teams} />)
+
+    expect(html).toContain('Valid Squad')
+    expect(html).not.toContain('via-primary')
+    expect(html).not.toContain('via-destructive')
   })
 })

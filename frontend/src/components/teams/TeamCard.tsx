@@ -42,9 +42,13 @@ const BuildInspectorDialog = lazy(() =>
 
 export interface TeamCardProps {
   summary: TeamSummary
+  readOnly?: boolean
 }
 
-export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
+export const TeamCard = memo(function TeamCard({
+  summary,
+  readOnly = false,
+}: TeamCardProps) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const deleteMutation = useDeleteTeam()
@@ -62,7 +66,9 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
   )
   const hasConflict = Boolean(report && !report.is_valid)
 
-  const buildsQuery = useBuilds(team.game_account_id, { enabled: activePickerSlot !== null })
+  const buildsQuery = useBuilds(team.game_account_id, {
+    enabled: !readOnly && activePickerSlot !== null,
+  })
   const builds = buildsQuery.data ?? []
 
   const usedBuildIds = useMemo(() => {
@@ -133,6 +139,11 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
       // ignore
     }
 
+    if (readOnly) {
+      toast.success(t('sharing.linkCopied'))
+      return
+    }
+
     if (!team.is_public) {
       patchMutation.mutate(
         {
@@ -177,15 +188,13 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
         hasConflict && 'bg-[color-mix(in_oklch,var(--card),var(--destructive)_7%)]',
       )}
     >
-      {/* Top rim accent sitting on the ink border (same idea as .glow-top, but
-          inset from the rounded corners so the card does not need overflow-hidden) */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          'pointer-events-none absolute inset-x-8 -top-0.5 h-0.5 bg-linear-to-r from-transparent to-transparent',
-          hasConflict ? 'via-destructive' : 'via-primary/60',
-        )}
-      />
+      {/* Top rim accent sitting on the ink border */}
+      {hasConflict && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-8 -top-0.5 h-0.5 bg-linear-to-r from-transparent via-destructive to-transparent"
+        />
+      )}
 
       {/* Top Header: Single compact row on all screens */}
       <div className="flex items-center justify-between gap-2 min-w-0">
@@ -218,39 +227,41 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Visibility toggle / indicator */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => handleToggleTeamVisibility(!team.is_public)}
-                disabled={updateMutation.isPending || patchMutation.isPending}
-                aria-label={team.is_public ? t('sharing.teamPublicTooltip') : t('sharing.teamPrivateTooltip')}
-                className={cn(
-                  'flex size-8 shrink-0 items-center justify-center rounded-(--radius-input) border-2 border-black transition-all cursor-pointer select-none',
-                  team.is_public
-                    ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-                    : 'bg-elevated text-muted-foreground hover:bg-accent hover:text-foreground',
-                )}
-              >
-                {team.is_public ? (
-                  <Globe className="size-3.5" />
-                ) : (
-                  <Lock className="size-3.5" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              {team.is_public ? t('sharing.teamPublicTooltip') : t('sharing.teamPrivateTooltip')}
-            </TooltipContent>
-          </Tooltip>
+          {!readOnly && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleToggleTeamVisibility(!team.is_public)}
+                  disabled={updateMutation.isPending || patchMutation.isPending}
+                  aria-label={team.is_public ? t('sharing.teamPublicTooltip') : t('sharing.teamPrivateTooltip')}
+                  className={cn(
+                    'flex size-8 shrink-0 items-center justify-center rounded-(--radius-input) border-2 border-black transition-all cursor-pointer select-none',
+                    team.is_public
+                      ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                      : 'bg-elevated text-muted-foreground hover:bg-accent hover:text-foreground',
+                  )}
+                >
+                  {team.is_public ? (
+                    <Globe className="size-3.5" />
+                  ) : (
+                    <Lock className="size-3.5" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {team.is_public ? t('sharing.teamPublicTooltip') : t('sharing.teamPrivateTooltip')}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Share button */}
           <Button
             variant="secondary"
             size="sm"
             onClick={handleShareTeam}
-            disabled={updateMutation.isPending || patchMutation.isPending}
-            className="size-8 p-0 sm:w-auto sm:px-3 gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated text-xs text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-accent hover:text-primary active:translate-y-px"
+            disabled={!readOnly && (updateMutation.isPending || patchMutation.isPending)}
+            className="size-8 p-0 sm:w-auto sm:px-3 gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated text-xs text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-accent hover:text-primary active:translate-y-px cursor-pointer"
             title={t('sharing.share')}
             aria-label={t('sharing.share')}
           >
@@ -258,59 +269,63 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
             <span className="hidden sm:inline">{t('sharing.share')}</span>
           </Button>
 
-          <Button
-            variant="secondary"
-            size="sm"
-            className="size-8 p-0 sm:w-auto sm:px-3 gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated text-xs text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-accent hover:text-primary active:translate-y-px"
-            asChild
-          >
-            <Link
-              to={`/teams/${team.id}/edit`}
-              onClick={handleEdit}
-              aria-label={t('teams.editTeamAria', { name: team.name })}
-              title={t('teams.editTeam')}
-            >
-              <Pencil className="size-3.5" />
-              <span className="hidden sm:inline">{t('teams.editTeam')}</span>
-            </Link>
-          </Button>
-
-          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-            <AlertDialogTrigger asChild>
+          {!readOnly && (
+            <>
               <Button
-                variant="destructive"
-                size="icon"
-                aria-label={t('teams.deleteTeam')}
-                title={t('teams.deleteTeam')}
-                disabled={deleteMutation.isPending}
+                variant="secondary"
+                size="sm"
+                className="size-8 p-0 sm:w-auto sm:px-3 gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated text-xs text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-accent hover:text-primary active:translate-y-px"
+                asChild
               >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t('teams.deleteDialogTitle', { name: team.name })}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t('teams.deleteDialogDesc')}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t('teams.deleteDialogCancel')}</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  disabled={deleteMutation.isPending}
-                  onClick={() =>
-                    deleteMutation.mutate({
-                      id: team.id,
-                      gameAccountId: team.game_account_id,
-                    })
-                  }
+                <Link
+                  to={`/teams/${team.id}/edit`}
+                  onClick={handleEdit}
+                  aria-label={t('teams.editTeamAria', { name: team.name })}
+                  title={t('teams.editTeam')}
                 >
-                  {deleteMutation.isPending ? t('teams.deleteDialogDeleting') : t('teams.deleteDialogConfirm')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <Pencil className="size-3.5" />
+                  <span className="hidden sm:inline">{t('teams.editTeam')}</span>
+                </Link>
+              </Button>
+
+              <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    aria-label={t('teams.deleteTeam')}
+                    title={t('teams.deleteTeam')}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('teams.deleteDialogTitle', { name: team.name })}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('teams.deleteDialogDesc')}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('teams.deleteDialogCancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      disabled={deleteMutation.isPending}
+                      onClick={() =>
+                        deleteMutation.mutate({
+                          id: team.id,
+                          gameAccountId: team.game_account_id,
+                        })
+                      }
+                    >
+                      {deleteMutation.isPending ? t('teams.deleteDialogDeleting') : t('teams.deleteDialogConfirm')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
         </div>
       </div>
 
@@ -318,13 +333,14 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
       <div className="flex flex-col gap-2 sm:gap-2.5">
         {[1, 2, 3].map((slotNumber) => {
           const member = sortedMembers.find((m) => m.slot_number === slotNumber)
+          if (readOnly && !member) return null
           return (
             <TeamMemberPreview
               key={slotNumber}
               member={member}
               slotNumber={slotNumber}
               teamId={team.id}
-              onAddClick={() => setActivePickerSlot(slotNumber)}
+              onAddClick={readOnly ? undefined : () => setActivePickerSlot(slotNumber)}
               onInspectClick={(b) => setInspectBuild(b)}
               isUpdating={updatingSlot === slotNumber}
             />
@@ -332,7 +348,7 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
         })}
       </div>
 
-      {activePickerSlot !== null && (
+      {!readOnly && activePickerSlot !== null && (
         <Suspense fallback={null}>
           <BuildPickerDialog
             open={activePickerSlot !== null}
@@ -357,6 +373,8 @@ export const TeamCard = memo(function TeamCard({ summary }: TeamCardProps) {
               if (!open) setInspectBuild(null)
             }}
             teamName={team.name}
+            publicMode={readOnly}
+            isPublicView={readOnly}
           />
         </Suspense>
       )}
