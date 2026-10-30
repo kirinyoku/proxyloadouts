@@ -75,6 +75,71 @@ describe('ShowcaseProfileHeader', () => {
     expect(html).toContain('1504687050')
   })
 
+  it('renders nickname with title attribute and responsive truncation classes', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={{ ...mockShowcase, nickname: 'VERYLONGLOWLEVELNICKNAME' }}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+
+    expect(html).toContain('title="VERYLONGLOWLEVELNICKNAME"')
+    expect(html).toContain('VERYLONGLOWLEVELNICKNAME')
+    expect(html).toContain('truncate')
+    expect(html).toContain('max-w-[130px]')
+  })
+
+  it('renders discord badge with title attribute and truncation when owner has discord handle', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={{
+          ...mockShowcase,
+          verified_owner: {
+            uid: '1504687050',
+            region: 'Europe',
+            nickname: 'LOWLEVEL',
+            avatar_url: null,
+            is_verified: true,
+            discord_username: 'very_long_discord_username_that_should_truncate#0001',
+          },
+        }}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+
+    expect(html).toContain('title="Discord: very_long_discord_username_that_should_truncate#0001"')
+    expect(html).toContain('very_long_discord_username_that_should_truncate#0001')
+    expect(html).toContain('max-w-[130px]')
+  })
+
+  it('renders avatar with size-11 and UID chip with tabular-nums', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={mockShowcase}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+
+    expect(html).toContain('size-11')
+    expect(html).toContain('1504687050')
+    expect(html).toContain('tabular-nums')
+  })
+
   it('renders cached status pill with countdown and refresh button', () => {
     const html = renderToString(
       <ShowcaseProfileHeader
@@ -88,8 +153,7 @@ describe('ShowcaseProfileHeader', () => {
       />
     )
 
-    expect(html).toContain('кэш')
-    expect(html).toContain('hidden min-[420px]:inline')
+    expect(html).not.toContain('кэш')
     expect(html).toContain('45с')
   })
 
@@ -112,6 +176,7 @@ describe('ShowcaseProfileHeader', () => {
     )
 
     expect(html).toContain('Обновить сейчас')
+    expect(html).toContain('sr-only')
     expect(html).not.toContain('45с')
   })
 
@@ -129,6 +194,7 @@ describe('ShowcaseProfileHeader', () => {
     )
 
     expect(html).toContain('Обновление…')
+    expect(html).toContain('sr-only')
   })
 
   it('renders clear button when uidInput is non-empty', () => {
@@ -201,5 +267,22 @@ describe('ShowcaseProfileHeader', () => {
 
     expect(html).not.toMatch(/IL\s*(<!-- -->)?\s*0/)
     expect(html).not.toContain('IL')
+  })
+
+  it('applies custom className to outer container', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={mockShowcase}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+        className="custom-showcase-class"
+      />,
+    )
+
+    expect(html).toContain('custom-showcase-class')
   })
 })

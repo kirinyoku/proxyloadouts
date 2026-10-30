@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, Check, Layers, RefreshCw, Sparkles, Users } from 'lucide-react'
+import { AlertCircle, Check, Layers, RefreshCw, ScanLine, Users } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useBuilds, useMe, useShowcase, useShowcaseRoster } from '@/api/hooks'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
@@ -12,7 +12,6 @@ import { ShowcaseSavedPresets } from '@/components/showcase/ShowcaseSavedPresets
 import { ShowcaseSquads } from '@/components/showcase/ShowcaseSquads'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
-import { SegmentedControl, type SegmentedOption } from '@/components/settings/SegmentedControl'
 import { cn } from '@/lib/utils'
 import { AgentAvatarListSkeleton } from '@/components/showcase/AgentAvatarListSkeleton'
 import { AgentBuildInspectorSkeleton } from '@/components/showcase/AgentBuildInspectorSkeleton'
@@ -35,7 +34,9 @@ const SaveBuildDialog = lazy(() =>
 function ShowcasePageSkeleton() {
   return (
     <div className="space-y-3" aria-busy="true">
-      <ShowcaseProfileHeaderSkeleton />
+      <div className="flex flex-col lg:flex-row lg:items-stretch gap-3">
+        <ShowcaseProfileHeaderSkeleton className="flex-1 min-w-0 w-full" />
+      </div>
       <div className="flex flex-col md:flex-row md:items-stretch gap-3">
         <AgentAvatarListSkeleton count={6} />
         <div className="min-w-0 flex-1 w-full">
@@ -202,7 +203,7 @@ function AgentShowcaseSection({
 }
 
 export function ShowcasePage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { data: me } = useMe()
   const isAuthed = Boolean(me)
@@ -482,13 +483,21 @@ export function ShowcasePage() {
     )
   }
 
-  const modeOptions: readonly SegmentedOption<ShowcaseMode>[] = [
+  interface ModeOption {
+    value: ShowcaseMode
+    fullLabel: string
+    compactLabel: string
+    glyph: React.ReactNode
+  }
+
+  const modeOptions: readonly ModeOption[] = [
     ...(!showcaseQuery.isError
       ? [
           {
             value: 'live' as const,
-            label: `${t('showcase.liveShowcase')} (${showcase?.agents.length ?? 0})`,
-            glyph: <Sparkles className="size-3.5" />,
+            fullLabel: `${t('showcase.liveShowcase')} (${showcase?.agents.length ?? 0})`,
+            compactLabel: `${i18n.language.startsWith('ru') ? 'Витрина' : 'Showcase'} (${showcase?.agents.length ?? 0})`,
+            glyph: <ScanLine className="size-3.5" />,
           },
         ]
       : []),
@@ -496,7 +505,8 @@ export function ShowcasePage() {
       ? [
           {
             value: 'presets' as const,
-            label: `${t('showcase.savedPresets')} (${rosterQuery.data?.builds.length ?? 0})`,
+            fullLabel: `${t('showcase.savedPresets')} (${rosterQuery.data?.builds.length ?? 0})`,
+            compactLabel: `${i18n.language.startsWith('ru') ? 'Пресеты' : 'Presets'} (${rosterQuery.data?.builds.length ?? 0})`,
             glyph: <Layers className="size-3.5" />,
           },
         ]
@@ -505,7 +515,8 @@ export function ShowcasePage() {
       ? [
           {
             value: 'squads' as const,
-            label: `${t('showcase.squads')} (${rosterQuery.data?.teams.length ?? 0})`,
+            fullLabel: `${t('showcase.squads')} (${rosterQuery.data?.teams.length ?? 0})`,
+            compactLabel: `${t('showcase.squads')} (${rosterQuery.data?.teams.length ?? 0})`,
             glyph: <Users className="size-3.5" />,
           },
         ]
@@ -524,19 +535,52 @@ export function ShowcasePage() {
 
       {showcase && (
         <div className="space-y-3">
-          <ShowcaseProfileHeader
-            showcase={showcase}
-            verifiedOwner={rosterQuery.data?.owner ?? showcase.verified_owner}
-            uidInput={uidInput}
-            isUidValid={isInputValid}
-            isRefetching={showcaseQuery.isRefetching}
-            onScan={scan}
-            onUidInputChange={setUidInput}
-            onRefresh={() => {
-              void showcaseQuery.refetch()
-              void rosterQuery.refetch()
-            }}
-          />
+          <div className="flex flex-col lg:flex-row lg:items-stretch gap-3">
+            <ShowcaseProfileHeader
+              showcase={showcase}
+              verifiedOwner={rosterQuery.data?.owner ?? showcase.verified_owner}
+              uidInput={uidInput}
+              isUidValid={isInputValid}
+              isRefetching={showcaseQuery.isRefetching}
+              onScan={scan}
+              onUidInputChange={setUidInput}
+              onRefresh={() => {
+                void showcaseQuery.refetch()
+                void rosterQuery.refetch()
+              }}
+              className="flex-1 min-w-0 w-full"
+            />
+
+            {showModeSwitcher && (
+              <div
+                role="tablist"
+                aria-label={t('showcase.liveShowcase')}
+                className="w-full lg:w-auto lg:shrink-0 rounded-2xl border border-white/[0.08] bg-card/96 p-2 sm:px-2.5 shadow-lg backdrop-blur-sm flex items-center"
+              >
+                <div className="grid w-full auto-cols-fr grid-flow-col gap-1.5 sm:gap-2 lg:flex lg:w-auto">
+                  {modeOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="tab"
+                      aria-selected={effectiveMode === opt.value}
+                      onClick={() => handleModeChange(opt.value)}
+                      className={cn(
+                        'flex h-8 sm:h-8.5 items-center justify-center gap-1.5 rounded-lg px-2.5 sm:px-3 lg:px-3.5 whitespace-nowrap text-xs font-semibold transition-all select-none',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
+                        effectiveMode === opt.value
+                          ? 'border border-primary/40 bg-primary/10 text-primary shadow-xs font-bold'
+                          : 'border border-white/10 bg-white/[0.04] text-muted-foreground hover:border-white/20 hover:bg-white/[0.07] hover:text-foreground',
+                      )}
+                    >
+                      {opt.glyph}
+                      <span className="truncate">{opt.fullLabel}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {isEnkaDownWithRosterFallback && (
             <div
@@ -545,17 +589,6 @@ export function ShowcasePage() {
             >
               <AlertCircle className="size-4 shrink-0 text-amber-400" />
               <span>{t('showcase.enkaUnavailableNotice')}</span>
-            </div>
-          )}
-
-          {showModeSwitcher && (
-            <div className="flex justify-start pt-1">
-              <SegmentedControl
-                options={modeOptions}
-                value={effectiveMode}
-                onValueChange={handleModeChange}
-                ariaLabel={t('showcase.liveShowcase')}
-              />
             </div>
           )}
 
