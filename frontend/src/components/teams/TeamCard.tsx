@@ -373,8 +373,6 @@ export const TeamCard = memo(function TeamCard({
               if (!open) setInspectBuild(null)
             }}
             teamName={team.name}
-            publicMode={readOnly}
-            isPublicView={readOnly}
           />
         </Suspense>
       )}

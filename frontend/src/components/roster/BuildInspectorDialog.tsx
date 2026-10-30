@@ -41,7 +41,7 @@ function MobileSectionTabs({
   ]
 
   return (
-    <div className="sticky top-0 z-30 -mx-3.5 sm:-mx-5 border-b border-white/[0.06] bg-popover/95 px-3.5 sm:px-5 py-1 backdrop-blur-md lg:hidden">
+    <div className="sticky top-0 z-30 -mx-3.5 sm:-mx-5 border-b border-white/[0.06] bg-card/96 px-3.5 sm:px-5 py-1 backdrop-blur-md lg:hidden">
       <div
         role="tablist"
         aria-label={t('showcase.agentSectionsAria')}
@@ -114,7 +114,7 @@ export function BuildInspectorDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-[calc(100vw-1.5rem)] sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden border border-white/10 bg-popover/95 p-3.5 sm:p-4 md:p-5 shadow-2xl backdrop-blur-2xl rounded-3xl"
+        className="max-w-[calc(100vw-1.5rem)] sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden border border-white/[0.08] bg-card/96 p-3.5 sm:p-4 md:p-5 shadow-2xl backdrop-blur-2xl rounded-3xl"
       >
         <div className="space-y-3 min-w-0">
           {/* Header */}

@@ -3,6 +3,32 @@ import { renderToString } from 'react-dom/server'
 import { TeamCard } from './TeamCard'
 import type { Agent, Build, ConflictReport, Team, TeamMember, TeamSummary } from '@/types'
 
+let testInspectBuild: Build | null = null
+let useStateCallIndex = 0
+
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>()
+  return {
+    ...actual,
+    lazy: () => {
+      return (props: Record<string, unknown>) => (
+        <div
+          data-testid="inspector-dialog"
+          data-public-mode={props.publicMode !== undefined ? String(props.publicMode) : undefined}
+          data-public-view={props.isPublicView !== undefined ? String(props.isPublicView) : undefined}
+        />
+      )
+    },
+    useState: <T,>(initial: T) => {
+      useStateCallIndex++
+      if (testInspectBuild !== null && useStateCallIndex === 4) {
+        return [testInspectBuild, vi.fn()]
+      }
+      return actual.useState(initial)
+    },
+  }
+})
+
 vi.mock('react-i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-i18next')>()
   return {
@@ -149,6 +175,8 @@ function createSummary(options?: {
 describe('TeamCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    testInspectBuild = null
+    useStateCallIndex = 0
   })
 
   it('renders edit, delete, visibility, and share buttons in normal mode', () => {
@@ -194,5 +222,16 @@ describe('TeamCard', () => {
     expect(html).toContain('via-destructive')
     expect(html).toContain('Конфликт')
     expect(html).not.toContain('via-primary')
+  })
+
+  it('renders BuildInspectorDialog without public mode flags when inspecting in readOnly mode', () => {
+    testInspectBuild = mockBuild
+    useStateCallIndex = 0
+    const summary = createSummary({ isPublic: true })
+    const html = renderToString(<TeamCard summary={summary} readOnly />)
+
+    expect(html).toContain('data-testid="inspector-dialog"')
+    expect(html).not.toContain('data-public-mode')
+    expect(html).not.toContain('data-public-view')
   })
 })
