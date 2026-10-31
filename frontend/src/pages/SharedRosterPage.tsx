@@ -23,7 +23,7 @@ export default function SharedRosterPage() {
   if (isError || !data) return <EmptyState icon={Layers} title={t('sharing.rosterNotFound')} />
 
   return (
-    <div className="mx-auto max-w-7xl px-3 py-6 sm:px-4">
+    <div className="mx-auto w-full min-w-0 max-w-7xl px-3 py-6 sm:px-4">
       <ShowcaseSavedPresets
         builds={data.builds}
         profile={
