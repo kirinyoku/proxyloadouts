@@ -116,7 +116,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 	teamHandler := NewTeamHandler(deps.Teams)
 	publicHandler := NewPublicHandler(deps.Builds, deps.Teams)
 	shareStore, _ := deps.DB.(shareDB)
-	shareHandler := &shareHandler{db: shareStore, accounts: deps.Accounts, builds: deps.Builds}
+	shareHandler := &shareHandler{db: shareStore, accounts: deps.Accounts, builds: deps.Builds, teams: deps.Teams}
 	telemetryHandler := NewTelemetryHandler(deps.Alerts)
 
 	showcaseLimiter := opts.ShowcaseRateLimiter
@@ -155,8 +155,10 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 
 		api.With(publicLimiter.Handler).Get("/public/builds/{buildID}", publicHandler.handleGetBuild)
 		api.With(publicLimiter.Handler).Get("/public/teams/{teamID}", publicHandler.handleGetTeam)
-		api.With(publicLimiter.Handler).Get("/shared/builds/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, true) })
-		api.With(publicLimiter.Handler).Get("/shared/rosters/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, false) })
+		api.With(publicLimiter.Handler).Get("/shared/builds/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, shareTargetBuild) })
+		api.With(publicLimiter.Handler).Get("/shared/rosters/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, shareTargetRoster) })
+		api.With(publicLimiter.Handler).Get("/shared/teams/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, shareTargetTeam) })
+		api.With(publicLimiter.Handler).Get("/shared/squads/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, shareTargetSquads) })
 
 		api.With(requireAuth).Get("/auth/me", authHandler.handleMe)
 
@@ -171,9 +173,12 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 			private.Post("/accounts", accountHandler.handleCreate)
 			private.Patch("/accounts/{accountID}", accountHandler.handleUpdate)
 			private.Delete("/accounts/{accountID}", accountHandler.handleDelete)
-			private.Post("/accounts/{accountID}/roster-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, false) })
-			private.Get("/accounts/{accountID}/roster-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, false) })
-			private.Delete("/accounts/{accountID}/roster-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, false) })
+			private.Post("/accounts/{accountID}/roster-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, shareTargetRoster) })
+			private.Get("/accounts/{accountID}/roster-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, shareTargetRoster) })
+			private.Delete("/accounts/{accountID}/roster-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, shareTargetRoster) })
+			private.Post("/accounts/{accountID}/teams-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, shareTargetSquads) })
+			private.Get("/accounts/{accountID}/teams-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, shareTargetSquads) })
+			private.Delete("/accounts/{accountID}/teams-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, shareTargetSquads) })
 			private.Post("/accounts/verify/challenge", accountHandler.handleVerifyChallengeByUID)
 			private.Post("/accounts/verify/confirm", accountHandler.handleVerifyConfirmByUID)
 			private.Post("/accounts/{accountID}/verify/challenge", accountHandler.handleVerifyChallenge)
@@ -184,9 +189,9 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 			private.Get("/builds/{buildID}", buildHandler.handleGet)
 			private.Patch("/builds/{buildID}", buildHandler.handleUpdate)
 			private.Delete("/builds/{buildID}", buildHandler.handleDelete)
-			private.Post("/builds/{buildID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, true) })
-			private.Get("/builds/{buildID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, true) })
-			private.Delete("/builds/{buildID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, true) })
+			private.Post("/builds/{buildID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, shareTargetBuild) })
+			private.Get("/builds/{buildID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, shareTargetBuild) })
+			private.Delete("/builds/{buildID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, shareTargetBuild) })
 
 			private.Get("/teams", teamHandler.handleList)
 			private.Get("/teams/validate", teamHandler.handleValidate)
@@ -198,6 +203,9 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 			private.Put("/teams/{teamID}", teamHandler.handleUpdate)
 			private.Patch("/teams/{teamID}", teamHandler.handlePatch)
 			private.Delete("/teams/{teamID}", teamHandler.handleDelete)
+			private.Post("/teams/{teamID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, shareTargetTeam) })
+			private.Get("/teams/{teamID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, shareTargetTeam) })
+			private.Delete("/teams/{teamID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, shareTargetTeam) })
 		})
 	})
 

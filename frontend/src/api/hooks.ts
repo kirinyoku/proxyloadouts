@@ -227,18 +227,21 @@ export function usePublicBuild(id: string | undefined, token?: string) {
   })
 }
 
-export function usePublicTeam(id: string | undefined) {
+export function usePublicTeam(id: string | undefined, token?: string) {
   const { i18n: i18nInstance } = useTranslation()
   const langKey = i18nInstance.language?.slice(0, 2) === 'en' ? 'en' : 'ru'
 
   return useQuery({
-    queryKey: queryKeys.publicTeam(id ?? '', langKey),
+    queryKey: token ? ['shared-team', token, langKey] : queryKeys.publicTeam(id ?? '', langKey),
     queryFn: ({ signal }) =>
-      id
-        ? api.fetchPublicTeam(id, langKey, signal)
-        : Promise.reject(new Error('team id is required')),
-    enabled: Boolean(id),
-    staleTime: COLLECTION_STALE_TIME,
+      token
+        ? api.fetchSharedTeam(token, langKey, signal)
+        : id
+          ? api.fetchPublicTeam(id, langKey, signal)
+          : Promise.reject(new Error('team id is required')),
+    enabled: Boolean(id || token),
+    staleTime: token ? 0 : COLLECTION_STALE_TIME,
+    gcTime: token ? 0 : undefined,
   })
 }
 

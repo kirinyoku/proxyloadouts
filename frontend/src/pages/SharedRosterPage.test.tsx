@@ -11,6 +11,7 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ token: 'roster-token-123' }),
+  useLocation: () => ({ pathname: '/shared/roster/roster-token-123' }),
   Link: ({ children, to, ...props }: { children: React.ReactNode; to: string }) => (
     <a href={to} {...props}>{children}</a>
   ),

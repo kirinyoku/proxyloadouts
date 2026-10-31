@@ -46,6 +46,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/accounts/{accountID}/teams-share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        /** Check whether an account has active squad sharing links */
+        get: operations["getTeamsShareStatus"];
+        put?: never;
+        /** Create a private squad sharing link */
+        post: operations["createTeamsShare"];
+        /** Revoke all private squad links for an account */
+        delete: operations["revokeTeamsShares"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{teamID}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        /** Check whether a team has active sharing links */
+        get: operations["getTeamShareStatus"];
+        put?: never;
+        /** Create a private team sharing link */
+        post: operations["createTeamShare"];
+        /** Revoke all private links for a team */
+        delete: operations["revokeTeamShares"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shared/builds/{token}": {
         parameters: {
             query?: never;
@@ -72,6 +114,40 @@ export interface paths {
         };
         /** Get public builds in a roster using its secret link token */
         get: operations["getSharedRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared/teams/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a team using its secret link token */
+        get: operations["getSharedTeam"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared/squads/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get shared squad presets using secret link token */
+        get: operations["getSharedSquads"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1411,6 +1487,138 @@ export interface operations {
             };
         };
     };
+    getTeamsShareStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Link access status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareStatus"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    createTeamsShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secret token for a new link */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareToken"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    revokeTeamsShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Links revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTeamShareStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Link access status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareStatus"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    createTeamShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secret token for a new link */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareToken"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    revokeTeamShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Links revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getSharedBuild: {
         parameters: {
             query?: {
@@ -1450,6 +1658,56 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Shared roster */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicShowcaseRosterResponse"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    getSharedTeam: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared team */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicTeamResponse"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    getSharedSquads: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared squads */
             200: {
                 headers: {
                     [name: string]: unknown;

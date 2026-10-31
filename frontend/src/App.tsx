@@ -96,7 +96,9 @@ function App() {
                     <Route path="/b/:buildId" element={<PublicBuildPage />} />
                     <Route path="/shared/build/:token" element={<PublicBuildPage />} />
                     <Route path="/shared/roster/:token" element={<SharedRosterPage />} />
+                    <Route path="/shared/squads/:token" element={<SharedRosterPage />} />
                     <Route path="/t/:teamId" element={<PublicTeamPage />} />
+                    <Route path="/shared/team/:token" element={<PublicTeamPage />} />
                     <Route element={<ProtectedRoute />}>
                       <Route path="/roster" element={<RosterPage />} />
                       <Route path="/builds/:buildId" element={<BuildRouteRedirect />} />

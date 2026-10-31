@@ -39,7 +39,17 @@ vi.mock('react-i18next', async (importOriginal) => {
           'teams.conflictBadge': 'Конфликт',
           'teams.conflictTooltip': 'В отряде обнаружен конфликт экипировки',
           'sharing.share': 'Поделиться',
+          'sharing.shareTeam': 'Поделиться отрядом',
+          'sharing.isPublic': 'Публичная',
+          'sharing.isPrivate': 'Приватная',
           'sharing.linkCopied': 'Скопировано',
+          'sharing.linkStatus_loading': 'Проверка ссылок…',
+          'sharing.linkStatus_active': 'Ссылки активны',
+          'sharing.linkStatus_inactive': 'Активных ссылок нет',
+          'sharing.linkStatus_error': 'Ошибка',
+          'sharing.revokeLink': 'Отозвать доступ по ссылке',
+          'sharing.revokeConfirm': 'Отозвать все ранее созданные ссылки? Публичный доступ не изменится.',
+          'common.cancel': 'Отмена',
           'sharing.teamPublicTooltip': 'Публичный отряд',
           'sharing.teamPrivateTooltip': 'Приватный отряд',
           'teams.editTeam': 'Редактировать отряд',
@@ -179,7 +189,7 @@ describe('TeamCard', () => {
     useStateCallIndex = 0
   })
 
-  it('renders edit, delete, visibility, and share buttons in normal mode', () => {
+  it('renders edit, delete, and share dropdown trigger in normal mode', () => {
     const summary = createSummary({ isPublic: true })
     const html = renderToString(<TeamCard summary={summary} />)
 
@@ -187,23 +197,32 @@ describe('TeamCard', () => {
     expect(html).toContain('/teams/team-1/edit')
     expect(html).toContain('Редактировать отряд')
     expect(html).toContain('Удалить отряд')
-    expect(html).toContain('Публичный отряд')
-    expect(html).toContain('Поделиться')
+    expect(html).toContain('aria-haspopup="menu"')
+    expect(html).toContain('Поделиться отряд')
+    expect(html).toContain('rounded-full bg-primary')
     expect(html).toContain('Выбрать агента')
   })
 
-  it('renders only share button in readOnly mode, hiding edit, delete, and visibility', () => {
+  it('renders direct share button without dropdown in readOnly mode, hiding edit, delete, and picker', () => {
     const summary = createSummary({ isPublic: true })
     const html = renderToString(<TeamCard summary={summary} readOnly />)
 
     expect(html).toContain('Thunder Squad')
-    expect(html).toContain('Поделиться')
+    expect(html).toContain('Поделиться отряд')
+    expect(html).not.toContain('aria-haspopup="menu"')
     expect(html).not.toContain('/teams/team-1/edit')
     expect(html).not.toContain('Редактировать отряд')
     expect(html).not.toContain('Удалить отряд')
-    expect(html).not.toContain('Публичный отряд')
-    expect(html).not.toContain('Приватный отряд')
     expect(html).not.toContain('Выбрать агента')
+  })
+
+  it('does not render public green dot indicator when team is private', () => {
+    const summary = createSummary({ isPublic: false })
+    const html = renderToString(<TeamCard summary={summary} />)
+
+    expect(html).toContain('Thunder Squad')
+    expect(html).toContain('Поделиться отряд')
+    expect(html).not.toContain('rounded-full bg-primary')
   })
 
   it('does not render top rim accent or via-primary when there is no conflict', () => {

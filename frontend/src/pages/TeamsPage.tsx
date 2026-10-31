@@ -88,13 +88,7 @@ export function TeamsPage() {
       <title>{t('teams.pageTitle')}</title>
       <meta name="description" content={t('teams.metaDescription')} />
       {/* Page Header */}
-      <TeamsHeader
-        totalCount={totalCount}
-        activeAccount={activeAccount}
-        isPublicTeams={isPublicTeams}
-        onTogglePublicTeams={handleTogglePublicTeams}
-        isUpdatingVisibility={updateAccountMutation.isPending}
-      />
+      <TeamsHeader totalCount={totalCount} />
 
       {/* Account / Team States */}
       {accountsPending ? (
@@ -147,6 +141,10 @@ export function TeamsPage() {
             onSortChange={setSortBy}
             totalCount={totalCount}
             maxTeams={maxTeams}
+            activeAccount={activeAccount}
+            isPublicTeams={isPublicTeams}
+            onTogglePublicTeams={handleTogglePublicTeams}
+            isUpdatingVisibility={updateAccountMutation.isPending}
           />
 
           {filteredSummaries.length === 0 ? (

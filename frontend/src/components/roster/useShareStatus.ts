@@ -3,7 +3,7 @@ import { fetchShareStatus } from '@/api/client'
 
 type ShareStatus = 'loading' | 'active' | 'inactive' | 'error'
 
-export function useShareStatus(kind: 'roster' | 'build', id: string | undefined) {
+export function useShareStatus(kind: 'roster' | 'build' | 'team' | 'teams', id: string | undefined) {
   const [state, setState] = useState<{ id: string | undefined; status: ShareStatus }>({ id, status: 'loading' })
   const revision = useRef(0)
   const currentId = useRef(id)

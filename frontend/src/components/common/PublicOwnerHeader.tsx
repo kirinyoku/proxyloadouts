@@ -15,6 +15,7 @@ export interface PublicOwnerHeaderProps {
   className?: string
   targetTab?: 'presets' | 'squads' | 'live'
   showShareButton?: boolean
+  showShowcaseButton?: boolean
 }
 
 export function PublicOwnerHeader({
@@ -23,6 +24,7 @@ export function PublicOwnerHeader({
   className,
   targetTab,
   showShareButton = true,
+  showShowcaseButton = true,
 }: PublicOwnerHeaderProps) {
   const { t } = useTranslation()
   const [uidCopied, setUidCopied] = useState(false)
@@ -138,24 +140,27 @@ export function PublicOwnerHeader({
         </div>
 
         {/* Action Buttons: Showcase link + Share button */}
-        <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t border-white/[0.06] sm:border-t-0 sm:ml-auto shrink-0">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-8 gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.09] text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs"
-            asChild
-          >
-            <Link
-              to={showcaseHref}
-              title={t('sharing.viewShowcaseTitle', { uid: owner.uid })}
-            >
-              <ExternalLink className="size-3.5" />
-              <span>{t('sharing.viewShowcase')}</span>
-            </Link>
-          </Button>
+        {(showShowcaseButton || showShareButton) && (
+          <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t border-white/[0.06] sm:border-t-0 sm:ml-auto shrink-0">
+            {showShowcaseButton && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8 gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.09] text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs"
+                asChild
+              >
+                <Link
+                  to={showcaseHref}
+                  title={t('sharing.viewShowcaseTitle', { uid: owner.uid })}
+                >
+                  <ExternalLink className="size-3.5" />
+                  <span>{t('sharing.viewShowcase')}</span>
+                </Link>
+              </Button>
+            )}
 
-          {showShareButton && (
-            <Button
+            {showShareButton && (
+              <Button
               variant="secondary"
               size="sm"
               onClick={handleShare}
@@ -176,7 +181,8 @@ export function PublicOwnerHeader({
             </Button>
           )}
         </div>
-      </div>
+      )}
     </div>
-  )
+  </div>
+)
 }

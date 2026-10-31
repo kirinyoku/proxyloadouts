@@ -1,11 +1,13 @@
-import { lazy, memo, Suspense, useMemo, useState } from 'react'
-import { AlertCircle, Globe, Lock, Pencil, Share2, Trash2 } from 'lucide-react'
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, Check, Globe, Lock, Pencil, Share2, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { toast } from '@/components/ui/sonner'
-import { ApiError } from '@/api/client'
+import { ApiError, createTeamShare, revokeTeamShare } from '@/api/client'
 import { queryKeys, useBuilds, useDeleteTeam, usePatchTeam, useUpdateTeam } from '@/api/hooks'
+import { RevokeShareDialog } from '@/components/roster/RevokeShareDialog'
+import { useShareStatus } from '@/components/roster/useShareStatus'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +20,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Tooltip,
   TooltipContent,
@@ -43,11 +52,13 @@ const BuildInspectorDialog = lazy(() =>
 export interface TeamCardProps {
   summary: TeamSummary
   readOnly?: boolean
+  shareUrl?: string
 }
 
 export const TeamCard = memo(function TeamCard({
   summary,
   readOnly = false,
+  shareUrl,
 }: TeamCardProps) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
@@ -58,6 +69,16 @@ export const TeamCard = memo(function TeamCard({
   const [activePickerSlot, setActivePickerSlot] = useState<number | null>(null)
   const [updatingSlot, setUpdatingSlot] = useState<number | null>(null)
   const [inspectBuild, setInspectBuild] = useState<Build | null>(null)
+  const [teamLinkCopied, setTeamLinkCopied] = useState(false)
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false)
+  const shareStatus = useShareStatus('team', readOnly ? undefined : summary.team.id)
+  const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (linkTimerRef.current) clearTimeout(linkTimerRef.current)
+    }
+  }, [])
 
   const { team, members, report } = summary
   const sortedMembers = useMemo(
@@ -65,6 +86,8 @@ export const TeamCard = memo(function TeamCard({
     [members],
   )
   const hasConflict = Boolean(report && !report.is_valid)
+
+  const isPending = updateMutation.isPending || patchMutation.isPending
 
   const buildsQuery = useBuilds(team.game_account_id, {
     enabled: !readOnly && activePickerSlot !== null,
@@ -132,33 +155,30 @@ export const TeamCard = memo(function TeamCard({
   }
 
   async function handleShareTeam() {
-    const url = `${window.location.origin}/t/${team.id}`
     try {
+      let url = shareUrl || `${window.location.origin}/t/${team.id}`
+      if (!readOnly) {
+        const { token } = await createTeamShare(team.id)
+        shareStatus.setActive(true)
+        url = `${window.location.origin}/shared/team/${encodeURIComponent(token)}`
+      }
       await navigator.clipboard.writeText(url)
+      setTeamLinkCopied(true)
+      if (linkTimerRef.current) clearTimeout(linkTimerRef.current)
+      linkTimerRef.current = setTimeout(() => setTeamLinkCopied(false), 2000)
+      toast.success(t('sharing.linkCopied'))
     } catch {
-      // ignore
+      toast.error(t('sharing.copyError'))
     }
+  }
 
-    if (readOnly) {
-      toast.success(t('sharing.linkCopied'))
-      return
-    }
-
-    if (!team.is_public) {
-      patchMutation.mutate(
-        {
-          id: team.id,
-          gameAccountId: team.game_account_id,
-          body: { is_public: true },
-        },
-        {
-          onSuccess: () => {
-            toast.success(t('sharing.linkCopiedPublishedTeam'))
-          },
-        },
-      )
-    } else {
-      toast.success(t('sharing.linkCopied'))
+  async function handleRevokeTeamLink() {
+    try {
+      await revokeTeamShare(team.id)
+      shareStatus.setActive(false)
+      toast.success(t('sharing.revoked'))
+    } catch {
+      toast.error(t('sharing.revokeError'))
     }
   }
 
@@ -179,6 +199,76 @@ export const TeamCard = memo(function TeamCard({
     )
   }
 
+  const shareButton = (
+    <Button
+      variant="ghost"
+      size="icon"
+      disabled={!readOnly && isPending}
+      onClick={readOnly ? handleShareTeam : undefined}
+      aria-label={t('sharing.shareTeam')}
+      title={t('sharing.shareTeam')}
+      className="relative size-8 shrink-0 rounded-xl text-muted-foreground hover:bg-white/[0.08] hover:text-foreground cursor-pointer"
+    >
+      {teamLinkCopied ? (
+        <Check className="size-3.5 text-primary stroke-[2.5]" />
+      ) : (
+        <Share2 className="size-3.5" />
+      )}
+      {team.is_public && !teamLinkCopied && (
+        <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary" />
+      )}
+    </Button>
+  )
+
+  const shareMenu = readOnly ? (
+    shareButton
+  ) : (
+    <DropdownMenu onOpenChange={(open) => { if (open) shareStatus.refresh() }}>
+      <DropdownMenuTrigger asChild>
+        {shareButton}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-2rem)] p-2">
+        <DropdownMenuItem
+          role="menuitemcheckbox"
+          aria-checked={team.is_public}
+          disabled={isPending}
+          onSelect={() => handleToggleTeamVisibility(!team.is_public)}
+          className="min-h-9 gap-2.5 px-2.5 py-1.5"
+        >
+          {team.is_public ? (
+            <Globe className="size-4 text-primary" />
+          ) : (
+            <Lock className="size-4 text-muted-foreground" />
+          )}
+          {team.is_public ? t('sharing.isPublic') : t('sharing.isPrivate')}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="min-h-9 gap-2.5 px-2.5 py-1.5"
+          disabled={isPending}
+          onSelect={handleShareTeam}
+        >
+          {teamLinkCopied ? (
+            <Check className="size-4 text-primary stroke-[2.5]" />
+          ) : (
+            <Share2 className="size-4" />
+          )}
+          {t('sharing.shareTeam')}
+        </DropdownMenuItem>
+        <DropdownMenuLabel className="mt-1 border-t border-white/10 px-2.5 pt-2 pb-1">
+          {t(`sharing.linkStatus_${shareStatus.status}`)}
+        </DropdownMenuLabel>
+        <DropdownMenuItem
+          className="min-h-9 gap-2.5 px-2.5 py-1.5"
+          disabled={isPending || shareStatus.status === 'inactive'}
+          onSelect={() => setRevokeDialogOpen(true)}
+        >
+          <Lock className="size-4" />
+          {t('sharing.revokeLink')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <article
       aria-label={t('teams.teamAria', { name: team.name })}
@@ -188,6 +278,11 @@ export const TeamCard = memo(function TeamCard({
         hasConflict && 'bg-[color-mix(in_oklch,var(--card),var(--destructive)_7%)]',
       )}
     >
+      <RevokeShareDialog
+        open={revokeDialogOpen}
+        onOpenChange={setRevokeDialogOpen}
+        onConfirm={handleRevokeTeamLink}
+      />
       {/* Top rim accent sitting on the ink border */}
       {hasConflict && (
         <span
@@ -226,48 +321,7 @@ export const TeamCard = memo(function TeamCard({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Visibility toggle / indicator */}
-          {!readOnly && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => handleToggleTeamVisibility(!team.is_public)}
-                  disabled={updateMutation.isPending || patchMutation.isPending}
-                  aria-label={team.is_public ? t('sharing.teamPublicTooltip') : t('sharing.teamPrivateTooltip')}
-                  className={cn(
-                    'flex size-8 shrink-0 items-center justify-center rounded-(--radius-input) border-2 border-black transition-all cursor-pointer select-none',
-                    team.is_public
-                      ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-                      : 'bg-elevated text-muted-foreground hover:bg-accent hover:text-foreground',
-                  )}
-                >
-                  {team.is_public ? (
-                    <Globe className="size-3.5" />
-                  ) : (
-                    <Lock className="size-3.5" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                {team.is_public ? t('sharing.teamPublicTooltip') : t('sharing.teamPrivateTooltip')}
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          {/* Share button */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleShareTeam}
-            disabled={!readOnly && (updateMutation.isPending || patchMutation.isPending)}
-            className="size-8 p-0 sm:w-auto sm:px-3 gap-1.5 rounded-(--radius-input) border-2 border-black bg-elevated text-xs text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-accent hover:text-primary active:translate-y-px cursor-pointer"
-            title={t('sharing.share')}
-            aria-label={t('sharing.share')}
-          >
-            <Share2 className="size-3.5" />
-            <span className="hidden sm:inline">{t('sharing.share')}</span>
-          </Button>
+          {shareMenu}
 
           {!readOnly && (
             <>

@@ -165,7 +165,7 @@ describe('BuildInspectorDialog', () => {
     expect(html).toContain('lg:grid-cols-[270px_minmax(0,1fr)]')
   })
 
-  it('renders link to /b/:id when isPublicView is true and build is public', () => {
+  it('does not render link to /b/:id when isPublicView is true and build is public', () => {
     const publicBuild = { ...mockBuild, is_public: true }
     const html = renderToString(
       <BuildInspectorDialog
@@ -176,12 +176,12 @@ describe('BuildInspectorDialog', () => {
       />,
     )
 
-    expect(html).toContain('/b/build-evelyn-1')
-    expect(html).toContain('Открыть страницу сборки')
+    expect(html).not.toContain('/b/build-evelyn-1')
+    expect(html).not.toContain('Открыть страницу сборки')
     expect(html).not.toContain('/roster?build=')
   })
 
-  it('renders link to /b/:id when publicMode is true and build is public', () => {
+  it('does not render link to /b/:id when publicMode is true and build is public', () => {
     const publicBuild = { ...mockBuild, is_public: true }
     const html = renderToString(
       <BuildInspectorDialog
@@ -192,12 +192,9 @@ describe('BuildInspectorDialog', () => {
       />,
     )
 
-    expect(html).toContain('/b/build-evelyn-1')
-    expect(html).toContain('Открыть страницу сборки')
+    expect(html).not.toContain('/b/build-evelyn-1')
+    expect(html).not.toContain('Открыть страницу сборки')
     expect(html).not.toContain('/roster?build=')
-    // Link to build page should only be rendered in footer, never duplicated in header
-    const occurrences = (html.match(/\/b\/build-evelyn-1/g) || []).length
-    expect(occurrences).toBe(1)
   })
 
   it('does not render link to build page or roster when publicMode is true and build is private', () => {

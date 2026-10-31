@@ -23,6 +23,7 @@ export function TeamFilterBarSkeleton({ className }: TeamFilterBarSkeletonProps)
 
       {/* Sort Select & Create Button placeholder */}
       <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+        <Skeleton className="size-9 shrink-0 rounded-lg" />
         <Skeleton className="h-9 flex-1 sm:w-[160px] sm:flex-none rounded-lg" />
         <Skeleton className="h-9 w-28 sm:w-32 shrink-0 rounded-lg" />
       </div>

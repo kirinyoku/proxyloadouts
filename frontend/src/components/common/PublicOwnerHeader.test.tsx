@@ -70,6 +70,25 @@ describe('PublicOwnerHeader', () => {
     expect(html).not.toContain('Поделиться')
   })
 
+  it('hides showcase button when showShowcaseButton is false', () => {
+    const html = renderToString(
+      <PublicOwnerHeader owner={verifiedOwner} showShowcaseButton={false} />,
+    )
+
+    expect(html).not.toContain('Открыть витрину')
+    expect(html).toContain('Поделиться')
+  })
+
+  it('hides action container completely when both buttons are false', () => {
+    const html = renderToString(
+      <PublicOwnerHeader owner={verifiedOwner} showShowcaseButton={false} showShareButton={false} />,
+    )
+
+    expect(html).not.toContain('Открыть витрину')
+    expect(html).not.toContain('Поделиться')
+    expect(html).toContain('ProxyMaster')
+  })
+
   it('renders fallback for unverified owner without discord', () => {
     const html = renderToString(<PublicOwnerHeader owner={unverifiedOwner} />)
 

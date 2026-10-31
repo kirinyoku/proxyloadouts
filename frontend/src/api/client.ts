@@ -222,9 +222,35 @@ export function createBuildShare(id: string): Promise<{ token: string }> {
   return request(`/builds/${encodeURIComponent(id)}/share`, { method: 'POST' })
 }
 
-export function fetchShareStatus(kind: 'roster' | 'build', id: string): Promise<{ active: boolean }> {
-  const path = kind === 'roster' ? `/accounts/${encodeURIComponent(id)}/roster-share` : `/builds/${encodeURIComponent(id)}/share`
-  return request(path)
+export function createTeamShare(id: string): Promise<{ token: string }> {
+  return request(`/teams/${encodeURIComponent(id)}/share`, { method: 'POST' })
+}
+
+export function createTeamsShare(id: string): Promise<{ token: string }> {
+  return request(`/accounts/${encodeURIComponent(id)}/teams-share`, { method: 'POST' })
+}
+
+export function fetchShareStatus(
+  kind: 'roster' | 'build' | 'team' | 'teams',
+  id: string,
+  signal?: AbortSignal,
+): Promise<{ active: boolean }> {
+  let path: string
+  switch (kind) {
+    case 'roster':
+      path = `/accounts/${encodeURIComponent(id)}/roster-share`
+      break
+    case 'build':
+      path = `/builds/${encodeURIComponent(id)}/share`
+      break
+    case 'team':
+      path = `/teams/${encodeURIComponent(id)}/share`
+      break
+    case 'teams':
+      path = `/accounts/${encodeURIComponent(id)}/teams-share`
+      break
+  }
+  return request(path, { signal })
 }
 
 export function revokeRosterShare(id: string): Promise<void> {
@@ -235,12 +261,28 @@ export function revokeBuildShare(id: string): Promise<void> {
   return request(`/builds/${encodeURIComponent(id)}/share`, { method: 'DELETE' })
 }
 
+export function revokeTeamShare(id: string): Promise<void> {
+  return request(`/teams/${encodeURIComponent(id)}/share`, { method: 'DELETE' })
+}
+
+export function revokeTeamsShare(id: string): Promise<void> {
+  return request(`/accounts/${encodeURIComponent(id)}/teams-share`, { method: 'DELETE' })
+}
+
 export function fetchSharedRoster(token: string, lang: string, signal?: AbortSignal): Promise<PublicShowcaseRosterResponse> {
   return request(`/shared/rosters/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
 }
 
 export function fetchSharedBuild(token: string, lang: string, signal?: AbortSignal): Promise<PublicBuildResponse> {
   return request(`/shared/builds/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
+}
+
+export function fetchSharedTeam(token: string, lang: string, signal?: AbortSignal): Promise<PublicTeamResponse> {
+  return request(`/shared/teams/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
+}
+
+export function fetchSharedSquads(token: string, lang: string, signal?: AbortSignal): Promise<PublicShowcaseRosterResponse> {
+  return request(`/shared/squads/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
 }
 
 export function fetchBuilds(

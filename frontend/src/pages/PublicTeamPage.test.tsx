@@ -5,8 +5,21 @@ import type { Agent, Build, PublicOwnerInfo, PublicTeamResponse } from '@/types'
 
 const mockUsePublicTeam = vi.fn()
 
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    setQueryData: vi.fn(),
+  }),
+}))
+
 vi.mock('@/api/hooks', () => ({
-  usePublicTeam: (id: string) => mockUsePublicTeam(id),
+  usePublicTeam: (id: string, token?: string) => mockUsePublicTeam(id, token),
+  useDeleteTeam: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateTeam: () => ({ mutate: vi.fn(), isPending: false }),
+  usePatchTeam: () => ({ mutate: vi.fn(), isPending: false }),
+  useBuilds: () => ({ data: [] }),
+  queryKeys: {
+    team: (id: string, lang: string) => ['teams', 'detail', id, lang],
+  },
 }))
 
 vi.mock('react-router-dom', () => ({
@@ -14,6 +27,12 @@ vi.mock('react-router-dom', () => ({
   Link: ({ children, to, ...props }: { children: React.ReactNode; to: string }) => (
     <a href={to} {...props}>{children}</a>
   ),
+}))
+
+vi.mock('@/components/ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('react-i18next', async (importOriginal) => {
@@ -28,7 +47,8 @@ vi.mock('react-i18next', async (importOriginal) => {
           'sharing.teamNotFoundDesc': 'Этот отряд не существует, был удален или владелец скрыл его.',
           'sharing.backToHome': 'На главную',
           'sharing.backToShowcase': 'К витрине',
-          'sharing.squadMembers': 'Участники отряда',
+          'sharing.shareTeam': 'Поделиться отрядом',
+          'sharing.linkCopied': 'Ссылка скопирована',
           'sharing.teamPageTitle': 'Отряд {{name}} — ProxyLoadouts',
           'sharing.teamPageMetaDesc': 'Публичный боевой отряд «{{name}}» игрока {{owner}} в ProxyLoadouts.',
           'teams.slotLabel': 'Слот {{slot}}',
@@ -39,8 +59,15 @@ vi.mock('react-i18next', async (importOriginal) => {
         if (key === 'sharing.teamPageMetaDesc') {
           return `Публичный боевой отряд «${options?.name ?? ''}» игрока ${options?.owner ?? ''} в ProxyLoadouts.`
         }
+        if (key === 'teams.teamAria') {
+          return `Отряд ${options?.name ?? ''}`
+        }
+        if (key === 'teams.updatedAt') {
+          return `Обновлено ${options?.date ?? ''}`
+        }
         return dict[key] ?? key
       },
+      i18n: { language: 'ru' },
     }),
   }
 })
@@ -138,11 +165,15 @@ describe('PublicTeamPage', () => {
 
     const html = renderToString(<PublicTeamPage />)
     expect(html).toContain('ProxyMaster')
-    expect(html).toContain('/showcase?uid=1504687050&amp;tab=squads')
+    expect(html).not.toContain('/showcase?uid=1504687050')
+    expect(html).not.toContain('Открыть витрину')
+    expect(html).toContain('lucide-share-2')
+    expect(html).toContain('Поделиться отрядом')
+    expect(html).toContain('rounded-full bg-primary')
     expect(html).toContain('Ледяное трио')
     expect(html).toContain('Ротация через Е-шку и свап')
-    expect(html).toContain('Участники отряда')
     expect(html).toContain('Эллен')
+    expect(html).toContain('Обновлено')
     expect(html).toContain('<title>Отряд Ледяное трио — ProxyLoadouts</title>')
     expect(html).toContain('content="Публичный боевой отряд «Ледяное трио» игрока ProxyMaster в ProxyLoadouts."')
   })

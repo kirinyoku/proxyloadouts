@@ -85,6 +85,80 @@ paths:
       security: [{ CookieAuth: [] }]
       responses:
         '204': { description: Links revoked }
+  /accounts/{accountID}/teams-share:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getTeamsShareStatus
+      summary: Check whether an account has active squad sharing links
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '200':
+          description: Link access status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareStatus' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      operationId: createTeamsShare
+      summary: Create a private squad sharing link
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '201':
+          description: Secret token for a new link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareToken' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      operationId: revokeTeamsShares
+      summary: Revoke all private squad links for an account
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '204': { description: Links revoked }
+  /teams/{teamID}/share:
+    parameters:
+      - name: teamID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getTeamShareStatus
+      summary: Check whether a team has active sharing links
+      tags: [Teams]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '200':
+          description: Link access status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareStatus' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      operationId: createTeamShare
+      summary: Create a private team sharing link
+      tags: [Teams]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '201':
+          description: Secret token for a new link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareToken' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      operationId: revokeTeamShares
+      summary: Revoke all private links for a team
+      tags: [Teams]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '204': { description: Links revoked }
   /shared/builds/{token}:
     get:
       operationId: getSharedBuild
@@ -123,6 +197,48 @@ paths:
       responses:
         '200':
           description: Shared roster
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicShowcaseRosterResponse' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+  /shared/teams/{token}:
+    get:
+      operationId: getSharedTeam
+      summary: Get a team using its secret link token
+      tags: [Teams]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lang
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Shared team
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicTeamResponse' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+  /shared/squads/{token}:
+    get:
+      operationId: getSharedSquads
+      summary: Get shared squad presets using secret link token
+      tags: [Accounts]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lang
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Shared squads
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PublicShowcaseRosterResponse' }

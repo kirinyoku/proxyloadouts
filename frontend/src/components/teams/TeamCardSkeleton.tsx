@@ -12,7 +12,7 @@ export function TeamCardSkeleton() {
           <Skeleton className="h-5 w-32 rounded-md sm:w-44" />
         </div>
         <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8 rounded-(--radius-input) sm:w-20" />
+          <Skeleton className="size-8 rounded-xl" />
           <Skeleton className="size-8 rounded-(--radius-input)" />
         </div>
       </div>
