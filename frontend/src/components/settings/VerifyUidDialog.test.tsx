@@ -8,14 +8,19 @@ vi.mock('react-i18next', async (importOriginal) => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string, options?: { seconds?: number }) => {
+      t: (key: string, options?: { seconds?: number; uid?: string }) => {
         const translations: Record<string, string> = {
           'settings.verifyDialogTitle': 'Verify UID Ownership',
           'settings.verifyDialogDesc': 'Confirm ownership via in-game profile signature',
           'settings.verifyCodeLabel': 'Verification Code',
           'settings.copyCode': 'Copy code',
-          'settings.verifyStep1': 'Paste code into signature',
-          'settings.verifyStep2': 'Exit to game menu to sync',
+          'settings.codeCopiedShort': 'Copied',
+          'common.copied': 'Copied',
+          'settings.verifyStep1': options?.uid
+            ? `Paste code into signature (UID ${options.uid})`
+            : 'Paste code into signature',
+          'settings.verifyStep1NoUid': 'Paste code into signature',
+          'settings.verifyStep2': 'Restart game or wait a minute to sync',
           'settings.verifyStep3': 'Click check button below',
           'settings.verifyCheckButton': 'Check',
           'settings.verifyCooldown': `Retry in ${options?.seconds ?? 30}s`,
@@ -81,8 +86,8 @@ describe('VerifyUidDialog', () => {
     )
 
     expect(html).toContain('Verify UID Ownership')
-    expect(html).toContain('Paste code into signature')
-    expect(html).toContain('Exit to game menu to sync')
+    expect(html).toContain('Paste code into signature (UID 1504687050)')
+    expect(html).toContain('Restart game or wait a minute to sync')
     expect(html).toContain('Click check button below')
     expect(html).toContain('Check')
   })

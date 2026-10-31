@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, ShieldCheck } from 'lucide-react'
+import { Check, Copy } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
 import { useConfirmVerification, useStartVerification } from '@/api/hooks'
@@ -138,29 +138,14 @@ export function VerifyUidDialog({
         onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="w-[calc(100vw-32px)] max-w-lg">
-        <DialogHeader>
-          <div className="flex items-center gap-2.5">
-            <span
-              aria-hidden="true"
-              className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary"
-            >
-              <ShieldCheck className="size-5" />
-            </span>
-            <div>
-              <DialogTitle className="flex flex-wrap items-center gap-2">
-                <span>{t('settings.verifyDialogTitle')}</span>
-                {targetUid && (
-                  <span className="rounded bg-primary/10 border border-primary/30 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-primary">
-                    UID {targetUid}
-                  </span>
-                )}
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                {t('settings.verifyDialogDesc')}
-              </DialogDescription>
-            </div>
-          </div>
+      <DialogContent className="w-[calc(100vw-32px)] sm:max-w-md">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="text-base font-heading">
+            {t('settings.verifyDialogTitle')}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground leading-relaxed pt-0.5">
+            {t('settings.verifyDialogDesc')}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -188,30 +173,30 @@ export function VerifyUidDialog({
           ) : (
             <>
               {/* Generated Challenge Code Card */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/10 p-4">
-                <div className="space-y-0.5 text-center sm:text-left">
-                  <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 p-3 sm:p-3.5">
+                <div className="min-w-0 space-y-0.5">
+                  <span className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
                     {t('settings.verifyCodeLabel')}
                   </span>
-                  <div className="font-mono text-3xl font-extrabold tracking-widest text-primary tabular-nums select-all">
+                  <div className="font-mono text-xl sm:text-2xl font-bold tracking-widest text-primary tabular-nums select-all whitespace-nowrap">
                     {challenge?.code || 'PXL-••••'}
                   </div>
                 </div>
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   onClick={handleCopy}
-                  className="h-9 gap-2 font-mono text-xs font-bold shrink-0"
+                  className="h-8 shrink-0 gap-1.5 border-white/15 bg-white/[0.04] font-mono text-xs font-semibold hover:border-white/25 hover:bg-white/[0.08] active:scale-95 transition-all"
                 >
                   {copied ? (
                     <>
-                      <Check className="size-4 text-primary" />
-                      <span>{t('settings.codeCopied')}</span>
+                      <Check className="size-3.5 text-primary" />
+                      <span>{t('settings.codeCopiedShort', t('common.copied'))}</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="size-4" />
+                      <Copy className="size-3.5 opacity-70" />
                       <span>{t('settings.copyCode')}</span>
                     </>
                   )}
@@ -219,26 +204,30 @@ export function VerifyUidDialog({
               </div>
 
               {/* Step-by-step Instructions */}
-              <div className="space-y-2.5 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-3.5 sm:p-4 text-xs text-muted-foreground">
-                <div className="flex items-start gap-2.5">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[11px] font-bold text-primary">
-                    1
+              <ol className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-xs text-muted-foreground">
+                <li className="flex items-baseline gap-2.5">
+                  <span className="font-mono text-[11px] font-bold leading-relaxed text-muted-foreground/60 shrink-0 select-none tabular-nums">
+                    01
                   </span>
-                  <span className="leading-relaxed">{t('settings.verifyStep1')}</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[11px] font-bold text-primary">
-                    2
+                  <span className="leading-relaxed">
+                    {targetUid
+                      ? t('settings.verifyStep1', { uid: targetUid })
+                      : t('settings.verifyStep1NoUid')}
+                  </span>
+                </li>
+                <li className="flex items-baseline gap-2.5">
+                  <span className="font-mono text-[11px] font-bold leading-relaxed text-muted-foreground/70 shrink-0 select-none tabular-nums">
+                    02
                   </span>
                   <span className="leading-relaxed">{t('settings.verifyStep2')}</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[11px] font-bold text-primary">
-                    3
+                </li>
+                <li className="flex items-baseline gap-2.5">
+                  <span className="font-mono text-[11px] font-bold leading-relaxed text-muted-foreground/70 shrink-0 select-none tabular-nums">
+                    03
                   </span>
                   <span className="leading-relaxed">{t('settings.verifyStep3')}</span>
-                </div>
-              </div>
+                </li>
+              </ol>
             </>
           )}
         </div>
@@ -247,6 +236,7 @@ export function VerifyUidDialog({
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={() => onOpenChange(false)}
             className="w-full sm:w-auto"
           >
@@ -254,20 +244,15 @@ export function VerifyUidDialog({
           </Button>
           <Button
             type="button"
+            size="sm"
             onClick={handleConfirm}
             disabled={!challenge || confirmMutation.isPending || cooldown > 0}
-            className="w-full sm:w-auto gap-2"
+            loading={confirmMutation.isPending}
+            className="w-full sm:w-auto"
           >
-            {confirmMutation.isPending ? (
-              <>
-                <Spinner size="xs" color="primary" />
-                <span>{t('settings.verifyChecking')}</span>
-              </>
-            ) : cooldown > 0 ? (
-              <span>{t('settings.verifyCooldown', { seconds: cooldown })}</span>
-            ) : (
-              <span>{t('settings.verifyCheckButton')}</span>
-            )}
+            {cooldown > 0
+              ? t('settings.verifyCooldown', { seconds: cooldown })
+              : t('settings.verifyCheckButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

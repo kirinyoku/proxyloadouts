@@ -91,7 +91,7 @@ export function LinkUidForm({
           type="submit"
           disabled={isPending}
           loading={isPending}
-          className="h-10 sm:h-9.5 w-full shrink-0 rounded-lg px-4 text-sm sm:text-xs font-semibold sm:font-medium sm:w-auto"
+          className="h-10 sm:h-9.5 w-full shrink-0 rounded-lg px-4 text-xs font-medium sm:w-auto"
         >
           {isPending ? t('settings.adding') : t('settings.addAccountButton')}
         </Button>
