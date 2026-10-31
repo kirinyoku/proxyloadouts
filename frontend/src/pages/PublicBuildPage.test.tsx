@@ -30,8 +30,10 @@ vi.mock('react-i18next', async (importOriginal) => {
           'sharing.backToShowcase': 'К витрине',
           'sharing.buildPageTitle': '{{agent}} — {{build}} — ProxyLoadouts',
           'sharing.buildPageMetaDesc': 'Публичная сборка агента {{agent}} игрока {{owner}} в ProxyLoadouts.',
+          'sharing.shareBuild': 'Поделиться сборкой',
           'showcase.mobileDiscs': 'Диски',
           'showcase.mobileStats': 'Характеристики',
+          'roster.addNote': 'Заметка',
         }
         if (key === 'sharing.buildPageTitle') {
           return `${options?.agent ?? ''} — ${options?.build ?? ''} — ProxyLoadouts`
@@ -148,7 +150,9 @@ describe('PublicBuildPage', () => {
     expect(html).toContain('/showcase?uid=1504687050&amp;tab=presets')
     expect(html).toContain('Эллен')
     expect(html).toContain('Аномальный крит')
+    expect(html).toContain('Заметка')
     expect(html).toContain('Заметка по ротации')
+    expect(html).toContain('aria-label="Поделиться сборкой"')
     expect(html).toContain('Латунный чайник')
     expect(html).toContain('text-amber-400')
     expect(html).toContain('<title>Эллен — Аномальный крит — ProxyLoadouts</title>')

@@ -690,7 +690,7 @@ const ru = {
     teamPublished: 'Отряд опубликован',
     teamMadePrivate: 'Отряд теперь приватный',
     verifiedOwner: 'VERIFIED OWNER',
-    viewShowcase: 'Витрина в игре',
+    viewShowcase: 'Открыть витрину',
     viewShowcaseTitle: 'Перейти к игровой витрине UID {{uid}}',
     discordTag: 'Discord',
     copyUid: 'Скопировать UID',

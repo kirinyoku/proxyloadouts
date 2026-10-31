@@ -14,6 +14,7 @@ export interface PublicOwnerHeaderProps {
   shareUrl?: string
   className?: string
   targetTab?: 'presets' | 'squads' | 'live'
+  showShareButton?: boolean
 }
 
 export function PublicOwnerHeader({
@@ -21,6 +22,7 @@ export function PublicOwnerHeader({
   shareUrl,
   className,
   targetTab,
+  showShareButton = true,
 }: PublicOwnerHeaderProps) {
   const { t } = useTranslation()
   const [uidCopied, setUidCopied] = useState(false)
@@ -152,25 +154,27 @@ export function PublicOwnerHeader({
             </Link>
           </Button>
 
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleShare}
-            className="h-8 gap-1.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-xs font-semibold text-primary transition-all cursor-pointer shadow-xs"
-            title={t('sharing.copyLink')}
-          >
-            {linkCopied ? (
-              <>
-                <Check className="size-3.5" />
-                <span>{t('sharing.linkCopied')}</span>
-              </>
-            ) : (
-              <>
-                <Share2 className="size-3.5" />
-                <span>{t('sharing.share')}</span>
-              </>
-            )}
-          </Button>
+          {showShareButton && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleShare}
+              className="h-8 gap-1.5 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-xs font-semibold text-primary transition-all cursor-pointer shadow-xs"
+              title={t('sharing.copyLink')}
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="size-3.5" />
+                  <span>{t('sharing.linkCopied')}</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="size-3.5" />
+                  <span>{t('sharing.share')}</span>
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </div>

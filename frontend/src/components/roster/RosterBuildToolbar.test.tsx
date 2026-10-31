@@ -291,5 +291,20 @@ describe('RosterBuildToolbar', () => {
       expect(html).toContain('Тактическая заметка с крит уроном')
       expect(html).not.toContain('Добавить заметку')
     })
+
+    it('renders a direct share button without dropdown menu in readOnly mode', () => {
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={mockBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).toContain('lucide-share-2')
+      expect(html).not.toContain('aria-haspopup="menu"')
+    })
   })
 })

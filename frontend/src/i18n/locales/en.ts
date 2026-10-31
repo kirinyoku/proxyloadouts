@@ -692,7 +692,7 @@ const en: TranslationSchema = {
     teamPublished: 'Squad is now public',
     teamMadePrivate: 'Squad is now private',
     verifiedOwner: 'VERIFIED OWNER',
-    viewShowcase: 'In-Game Showcase',
+    viewShowcase: 'Open Showcase',
     viewShowcaseTitle: 'View in-game showcase for UID {{uid}}',
     discordTag: 'Discord',
     copyUid: 'Copy UID',

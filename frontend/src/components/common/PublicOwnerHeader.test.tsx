@@ -11,7 +11,7 @@ vi.mock('react-i18next', async (importOriginal) => {
       t: (key: string, options?: { uid?: string }) => {
         const dict: Record<string, string> = {
           'sharing.verifiedOwner': 'VERIFIED OWNER',
-          'sharing.viewShowcase': 'Витрина в игре',
+          'sharing.viewShowcase': 'Открыть витрину',
           'sharing.viewShowcaseTitle': `Перейти к витрине ${options?.uid ?? ''}`,
           'sharing.copyUid': 'Скопировать UID',
           'sharing.share': 'Поделиться',
@@ -57,8 +57,17 @@ describe('PublicOwnerHeader', () => {
     expect(html).not.toContain('VERIFIED OWNER')
     expect(html).toContain('proxyleader#0001')
     expect(html).toContain('/showcase?uid=1504687050')
-    expect(html).toContain('Витрина в игре')
+    expect(html).toContain('Открыть витрину')
     expect(html).toContain('Поделиться')
+  })
+
+  it('hides share button when showShareButton is false', () => {
+    const html = renderToString(
+      <PublicOwnerHeader owner={verifiedOwner} showShareButton={false} />,
+    )
+
+    expect(html).toContain('Открыть витрину')
+    expect(html).not.toContain('Поделиться')
   })
 
   it('renders fallback for unverified owner without discord', () => {
