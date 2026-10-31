@@ -3,8 +3,12 @@ import { ArrowLeft, Check, Globe, Lock, RotateCcw, Search, Share2, X } from 'luc
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { createRosterShare, revokeRosterShare } from '@/api/client'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { toast } from '@/components/ui/sonner'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
+import { RevokeShareDialog } from './RevokeShareDialog'
+import { useShareStatus } from './useShareStatus'
 import {
   ALL_ATTRIBUTES,
   ALL_SPECIALTIES,
@@ -100,17 +104,32 @@ export function RosterToolbar({
   const formattedCount = String(totalAgents).padStart(2, '0')
   const hasFilter = Boolean(search || selectedAttribute || selectedSpecialty)
   const [rosterLinkCopied, setRosterLinkCopied] = useState(false)
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false)
+  const shareStatus = useShareStatus('roster', activeAccount?.id)
 
   async function handleCopyRosterLink() {
-    if (!activeAccount?.uid) return
-    const url = `${window.location.origin}/showcase?uid=${encodeURIComponent(activeAccount.uid)}&tab=presets`
+    if (!activeAccount?.id) return
     try {
+      const { token } = await createRosterShare(activeAccount.id)
+      shareStatus.setActive(true)
+      const url = `${window.location.origin}/shared/roster/${encodeURIComponent(token)}`
       await navigator.clipboard.writeText(url)
       setRosterLinkCopied(true)
       setTimeout(() => setRosterLinkCopied(false), 2000)
       toast.success(t('sharing.linkCopied'))
     } catch {
-      // ignore
+      toast.error(t('sharing.copyError'))
+    }
+  }
+
+  async function handleRevokeRosterLink() {
+    if (!activeAccount?.id) return
+    try {
+      await revokeRosterShare(activeAccount.id)
+      shareStatus.setActive(false)
+      toast.success(t('sharing.revoked'))
+    } catch {
+      toast.error(t('sharing.revokeError'))
     }
   }
 
@@ -251,47 +270,42 @@ export function RosterToolbar({
               </h1>
             )}
 
-            {/* Master Roster Visibility Toggle & Copy Link */}
             {activeAccount && (
-              <div className="flex items-center gap-1.5 ml-1 sm:ml-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onTogglePublicRoster}
-                  disabled={isUpdatingVisibility}
-                  title={isPublicRoster ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
-                  className={cn(
-                    'h-7.5 px-2 text-xs font-semibold gap-1.5 rounded-xl border transition-all cursor-pointer',
-                    isPublicRoster
-                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                      : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
-                  )}
-                >
-                  {isPublicRoster ? (
-                    <Globe className="size-3.5" />
-                  ) : (
-                    <Lock className="size-3.5" />
-                  )}
-                  <span className="hidden min-[480px]:inline text-[11px] font-sans">
-                    {isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
-                  </span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleCopyRosterLink}
-                  title={t('roster.copyPublicLink')}
-                  aria-label={t('roster.copyPublicLink')}
-                  className="size-7.5 rounded-xl border border-white/10 bg-white/[0.04] text-muted-foreground hover:text-foreground hover:bg-white/[0.08] cursor-pointer"
-                >
-                  {rosterLinkCopied ? (
-                    <Check className="size-3.5 text-primary stroke-[2.5]" />
-                  ) : (
+              <DropdownMenu onOpenChange={(open) => { if (open) shareStatus.refresh() }}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
+                    title={isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
+                    className="relative size-7.5 shrink-0 rounded-xl text-muted-foreground hover:bg-white/[0.08] hover:text-foreground cursor-pointer"
+                  >
                     <Share2 className="size-3.5" />
-                  )}
-                </Button>
-              </div>
+                    {isPublicRoster && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary" />}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72 max-w-[calc(100vw-2rem)] p-2">
+                  <DropdownMenuItem
+                    className="min-h-9 gap-2.5 px-2.5 py-1.5"
+                    role="menuitemcheckbox"
+                    aria-checked={isPublicRoster}
+                    disabled={isUpdatingVisibility}
+                    onSelect={onTogglePublicRoster}
+                  >
+                    {isPublicRoster ? <Globe className="size-4 text-primary" /> : <Lock className="size-4 text-muted-foreground" />}
+                    {isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="min-h-9 gap-2.5 px-2.5 py-1.5" onSelect={handleCopyRosterLink}>
+                    {rosterLinkCopied ? <Check className="size-4 text-primary" /> : <Share2 className="size-4" />}
+                    {t('roster.copyPublicLink')}
+                  </DropdownMenuItem>
+                  <DropdownMenuLabel className="mt-1 border-t border-white/10 px-2.5 pt-2 pb-1">{t(`sharing.linkStatus_${shareStatus.status}`)}</DropdownMenuLabel>
+                  <DropdownMenuItem className="min-h-9 gap-2.5 px-2.5 py-1.5" disabled={shareStatus.status === 'inactive'} onSelect={() => setRevokeDialogOpen(true)}>
+                    <Lock className="size-4" />
+                    {t('sharing.revokeLink')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         )}
@@ -428,6 +442,7 @@ export function RosterToolbar({
           </div>
         </div>
       )}
+      <RevokeShareDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen} onConfirm={handleRevokeRosterLink} />
     </div>
   )
 }

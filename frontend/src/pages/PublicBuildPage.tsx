@@ -70,8 +70,8 @@ function MobileSectionTabs({
 
 export function PublicBuildPage() {
   const { t } = useTranslation()
-  const { buildId } = useParams<{ buildId: string }>()
-  const { data, isLoading, isError } = usePublicBuild(buildId)
+  const { buildId, token } = useParams<{ buildId: string; token: string }>()
+  const { data, isLoading, isError } = usePublicBuild(buildId, token)
   const [mobileSection, setMobileSection] = useState<MobileSection>('discs')
 
   if (isLoading) {

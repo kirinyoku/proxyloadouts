@@ -406,6 +406,12 @@ func TestAccountRepo_ClaimVerifiedUID_DirectAndReclaimWithBuilds(t *testing.T) {
 	if err := builds.Create(ctx, build); err != nil {
 		t.Fatalf("failed to create build: %v", err)
 	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO share_links (token_hash, account_id) VALUES (?, ?)`, []byte("roster"), acc.ID.String()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO share_links (token_hash, build_id) VALUES (?, ?)`, []byte("build"), build.ID.String()); err != nil {
+		t.Fatal(err)
+	}
 	team := &domain.Team{
 		UserID:        userA.ID,
 		GameAccountID: acc.ID,
@@ -431,6 +437,10 @@ func TestAccountRepo_ClaimVerifiedUID_DirectAndReclaimWithBuilds(t *testing.T) {
 	}
 	if reclaimedAcc.UserID != userB.ID {
 		t.Errorf("expected account user_id to be %s, got %s", userB.ID, reclaimedAcc.UserID)
+	}
+	var links int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM share_links WHERE account_id = ? OR build_id = ?`, acc.ID.String(), build.ID.String()).Scan(&links); err != nil || links != 0 {
+		t.Fatalf("expected transferred links to be revoked, got %d, error %v", links, err)
 	}
 
 	// Verify builds transferred to userB

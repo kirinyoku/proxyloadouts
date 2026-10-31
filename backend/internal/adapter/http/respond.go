@@ -67,7 +67,7 @@ func respondDomainError(w http.ResponseWriter, r *http.Request, err error) {
 			slog.ErrorContext(r.Context(), "internal server error",
 				"error", err,
 				"request_id", reqID,
-				"path", r.URL.Path,
+				"path", safeRequestPath(r),
 				"method", r.Method,
 				"caller", caller,
 			)
@@ -75,7 +75,7 @@ func respondDomainError(w http.ResponseWriter, r *http.Request, err error) {
 				notifier.NotifyServerError(telegram.ServerErrorAlert{
 					Method:       r.Method,
 					RoutePattern: routePatternFromRequest(r),
-					RequestURI:   r.URL.RequestURI(),
+					RequestURI:   safeRequestURI(r),
 					RequestID:    reqID,
 					ClientIP:     getClientIP(r),
 					User:         userLabelFromRequest(r),

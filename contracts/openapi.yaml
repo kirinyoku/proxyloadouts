@@ -11,6 +11,122 @@ servers:
     description: Local development / embedded server
 
 paths:
+  /builds/{buildID}/share:
+    parameters:
+      - name: buildID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getBuildShareStatus
+      summary: Check whether a build has active sharing links
+      tags: [Builds]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '200':
+          description: Link access status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareStatus' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      operationId: createBuildShare
+      summary: Create a private build sharing link
+      tags: [Builds]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '201':
+          description: Secret token for a new link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareToken' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      operationId: revokeBuildShares
+      summary: Revoke all private links for a build
+      tags: [Builds]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '204': { description: Links revoked }
+  /accounts/{accountID}/roster-share:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getRosterShareStatus
+      summary: Check whether a roster has active sharing links
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '200':
+          description: Link access status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareStatus' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      operationId: createRosterShare
+      summary: Create a private roster sharing link
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '201':
+          description: Secret token for a new link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareToken' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      operationId: revokeRosterShares
+      summary: Revoke all private links for a roster
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '204': { description: Links revoked }
+  /shared/builds/{token}:
+    get:
+      operationId: getSharedBuild
+      summary: Get a build using its secret link token
+      tags: [Builds]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lang
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Shared build
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicBuildResponse' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+  /shared/rosters/{token}:
+    get:
+      operationId: getSharedRoster
+      summary: Get public builds in a roster using its secret link token
+      tags: [Accounts]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lang
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Shared roster
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicShowcaseRosterResponse' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
   /health:
     get:
       summary: Health check
@@ -1357,6 +1473,18 @@ components:
       description: AES-256-GCM encrypted session cookie issued on Discord OAuth2 completion (named __Host-pl_session in production).
 
   schemas:
+    ShareStatus:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+    ShareToken:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: Secret bearer token. Anyone holding it can access the shared resource.
     User:
       type: object
       required:

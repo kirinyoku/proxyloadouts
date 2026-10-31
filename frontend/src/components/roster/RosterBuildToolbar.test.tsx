@@ -207,7 +207,7 @@ describe('RosterBuildToolbar', () => {
     expect(mobileToolbar).not.toContain('text-[10px] text-muted-foreground/90')
   })
 
-  it('renders visibility toggle button and share button', () => {
+  it('renders a sharing menu trigger', () => {
     const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
@@ -217,10 +217,8 @@ describe('RosterBuildToolbar', () => {
       />,
     )
 
-    // Contains share button
     expect(html).toContain('lucide-share-2')
-    // Contains lock icon since mockBuilds[0].is_public is false
-    expect(html).toContain('lucide-lock')
+    expect(html).toContain('aria-haspopup="menu"')
   })
 
   describe('readOnly mode', () => {

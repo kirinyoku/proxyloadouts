@@ -40,6 +40,7 @@ const PrivacyPage = lazy(loadPrivacyPage)
 const NotFoundPage = lazy(loadNotFoundPage)
 const PublicBuildPage = lazy(loadPublicBuildPage)
 const PublicTeamPage = lazy(loadPublicTeamPage)
+const SharedRosterPage = lazy(() => import('@/pages/SharedRosterPage'))
 
 function BuildRouteRedirect() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -93,6 +94,8 @@ function App() {
                     <Route path="/terms" element={<Navigate to="/privacy" replace />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/b/:buildId" element={<PublicBuildPage />} />
+                    <Route path="/shared/build/:token" element={<PublicBuildPage />} />
+                    <Route path="/shared/roster/:token" element={<SharedRosterPage />} />
                     <Route path="/t/:teamId" element={<PublicTeamPage />} />
                     <Route element={<ProtectedRoute />}>
                       <Route path="/roster" element={<RosterPage />} />

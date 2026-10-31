@@ -255,6 +255,9 @@ func (r *SQLiteAccountRepo) ClaimVerifiedUID(
 			nullableString(nickname), nullableString(avatarURL),
 		}
 		if primary.userID != userID.String() {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM share_links WHERE account_id = ? OR build_id IN (SELECT id FROM agent_builds WHERE game_account_id = ? AND user_id = ?);`, targetAccountID, targetAccountID, primary.userID); err != nil {
+				return nil, fmt.Errorf("failed to revoke shared links on account transfer: %w", err)
+			}
 			// Reset Discord sharing for new owner upon Re-claim to protect privacy
 			updateQuery += `, show_discord = 0`
 		}

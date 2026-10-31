@@ -4,6 +4,82 @@
  */
 
 export interface paths {
+    "/builds/{buildID}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        /** Check whether a build has active sharing links */
+        get: operations["getBuildShareStatus"];
+        put?: never;
+        /** Create a private build sharing link */
+        post: operations["createBuildShare"];
+        /** Revoke all private links for a build */
+        delete: operations["revokeBuildShares"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/accounts/{accountID}/roster-share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        /** Check whether a roster has active sharing links */
+        get: operations["getRosterShareStatus"];
+        put?: never;
+        /** Create a private roster sharing link */
+        post: operations["createRosterShare"];
+        /** Revoke all private links for a roster */
+        delete: operations["revokeRosterShares"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared/builds/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a build using its secret link token */
+        get: operations["getSharedBuild"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared/rosters/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get public builds in a roster using its secret link token */
+        get: operations["getSharedRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -676,6 +752,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ShareStatus: {
+            active: boolean;
+        };
+        ShareToken: {
+            /** @description Secret bearer token. Anyone holding it can access the shared resource. */
+            token: string;
+        };
         User: {
             /** Format: uuid */
             id: string;
@@ -1196,6 +1279,188 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getBuildShareStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Link access status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareStatus"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    createBuildShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secret token for a new link */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareToken"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    revokeBuildShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Links revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getRosterShareStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Link access status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareStatus"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    createRosterShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secret token for a new link */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareToken"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    revokeRosterShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Links revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getSharedBuild: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared build */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBuildResponse"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    getSharedRoster: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared roster */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicShowcaseRosterResponse"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
     getHealth: {
         parameters: {
             query?: never;

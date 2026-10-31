@@ -211,18 +211,19 @@ export function useTeamCount(gameAccountId: string | undefined, options?: QueryO
   })
 }
 
-export function usePublicBuild(id: string | undefined) {
+export function usePublicBuild(id: string | undefined, token?: string) {
   const { i18n: i18nInstance } = useTranslation()
   const langKey = i18nInstance.language?.slice(0, 2) === 'en' ? 'en' : 'ru'
 
   return useQuery({
-    queryKey: queryKeys.publicBuild(id ?? '', langKey),
+    queryKey: token ? ['shared-build', token, langKey] : queryKeys.publicBuild(id ?? '', langKey),
     queryFn: ({ signal }) =>
-      id
+      token ? api.fetchSharedBuild(token, langKey, signal) : id
         ? api.fetchPublicBuild(id, langKey, signal)
         : Promise.reject(new Error('build id is required')),
-    enabled: Boolean(id),
-    staleTime: COLLECTION_STALE_TIME,
+    enabled: Boolean(id || token),
+    staleTime: token ? 0 : COLLECTION_STALE_TIME,
+    gcTime: token ? 0 : undefined,
   })
 }
 

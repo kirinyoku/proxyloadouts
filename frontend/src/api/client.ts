@@ -214,6 +214,35 @@ export function fetchShowcaseRoster(
   })
 }
 
+export function createRosterShare(id: string): Promise<{ token: string }> {
+  return request(`/accounts/${encodeURIComponent(id)}/roster-share`, { method: 'POST' })
+}
+
+export function createBuildShare(id: string): Promise<{ token: string }> {
+  return request(`/builds/${encodeURIComponent(id)}/share`, { method: 'POST' })
+}
+
+export function fetchShareStatus(kind: 'roster' | 'build', id: string): Promise<{ active: boolean }> {
+  const path = kind === 'roster' ? `/accounts/${encodeURIComponent(id)}/roster-share` : `/builds/${encodeURIComponent(id)}/share`
+  return request(path)
+}
+
+export function revokeRosterShare(id: string): Promise<void> {
+  return request(`/accounts/${encodeURIComponent(id)}/roster-share`, { method: 'DELETE' })
+}
+
+export function revokeBuildShare(id: string): Promise<void> {
+  return request(`/builds/${encodeURIComponent(id)}/share`, { method: 'DELETE' })
+}
+
+export function fetchSharedRoster(token: string, lang: string, signal?: AbortSignal): Promise<PublicShowcaseRosterResponse> {
+  return request(`/shared/rosters/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
+}
+
+export function fetchSharedBuild(token: string, lang: string, signal?: AbortSignal): Promise<PublicBuildResponse> {
+  return request(`/shared/builds/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
+}
+
 export function fetchBuilds(
   gameAccountId: string,
   lang?: string,

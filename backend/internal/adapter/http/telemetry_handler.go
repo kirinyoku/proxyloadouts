@@ -55,7 +55,7 @@ func alertMiddleware(notifier AlertNotifier) func(http.Handler) http.Handler {
 					notifier.NotifyPanic(telegram.PanicAlert{
 						Method:       r.Method,
 						RoutePattern: routePatternFromRequest(r),
-						RequestURI:   r.URL.RequestURI(),
+						RequestURI:   safeRequestURI(r),
 						RequestID:    middleware.GetReqID(r.Context()),
 						ClientIP:     getClientIP(r),
 						User:         userLabelFromRequest(r),
@@ -81,7 +81,7 @@ func routePatternFromRequest(r *http.Request) string {
 			return pattern
 		}
 	}
-	return r.URL.Path
+	return safeRequestURI(r)
 }
 
 func userLabelFromRequest(r *http.Request) string {

@@ -20,17 +20,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import { createBuildShare, revokeBuildShare } from '@/api/client'
 import { toast } from '@/components/ui/sonner'
 import { formatDateTime } from '@/lib/format'
-import { cn } from '@/lib/utils'
 import { useDeleteBuild, useRenameBuild, useToggleBuildVisibility } from '@/api/hooks'
 import type { Build } from '@/types'
+import { RevokeShareDialog } from './RevokeShareDialog'
+import { useShareStatus } from './useShareStatus'
 
 interface RosterBuildToolbarProps {
   agentName: string
@@ -66,6 +64,8 @@ export function RosterBuildToolbar({
   const [nameDraft, setNameDraft] = useState('')
   const [editingNote, setEditingNote] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false)
+  const shareStatus = useShareStatus('build', readOnly ? undefined : currentBuild?.id)
 
   if (!currentBuild) return null
 
@@ -77,33 +77,28 @@ export function RosterBuildToolbar({
 
   async function handleShare() {
     if (!currentBuild) return
-    const url = `${window.location.origin}/b/${currentBuild.id}`
     try {
+      let url = `${window.location.origin}/b/${currentBuild.id}`
+      if (!readOnly) {
+        const { token } = await createBuildShare(currentBuild.id)
+        shareStatus.setActive(true)
+        url = `${window.location.origin}/shared/build/${encodeURIComponent(token)}`
+      }
       await navigator.clipboard.writeText(url)
+      toast.success(t('sharing.linkCopied'))
     } catch {
-      // ignore
+      toast.error(t('sharing.copyError'))
     }
+  }
 
-    if (readOnly) {
-      toast.success(t('sharing.linkCopied'))
-      return
-    }
-
-    if (!currentBuild.is_public) {
-      toggleVisibilityMutation.mutate(
-        {
-          id: currentBuild.id,
-          gameAccountId: currentBuild.game_account_id,
-          isPublic: true,
-        },
-        {
-          onSuccess: () => {
-            toast.success(t('sharing.linkCopiedPublishedBuild'))
-          },
-        },
-      )
-    } else {
-      toast.success(t('sharing.linkCopied'))
+  async function handleRevokeLink() {
+    if (!currentBuild) return
+    try {
+      await revokeBuildShare(currentBuild.id)
+      shareStatus.setActive(false)
+      toast.success(t('sharing.revoked'))
+    } catch {
+      toast.error(t('sharing.revokeError'))
     }
   }
 
@@ -180,8 +175,54 @@ export function RosterBuildToolbar({
     })
   }
 
+  const shareMenu = (
+    <DropdownMenu onOpenChange={(open) => { if (open) shareStatus.refresh() }}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={isPending}
+          aria-label={t('sharing.shareBuild')}
+          title={t('sharing.shareBuild')}
+          className="relative size-8 shrink-0 rounded-xl text-muted-foreground hover:bg-white/[0.08] hover:text-foreground cursor-pointer"
+        >
+          <Share2 className="size-3.5" />
+          {currentBuild.is_public && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-72 max-w-[calc(100vw-2rem)] p-2">
+        {!readOnly && (
+          <DropdownMenuItem
+            className="min-h-9 gap-2.5 px-2.5 py-1.5"
+            role="menuitemcheckbox"
+            aria-checked={currentBuild.is_public}
+            disabled={isPending}
+            onSelect={() => handleToggleVisibility(!currentBuild.is_public)}
+          >
+            {currentBuild.is_public ? <Globe className="size-4 text-primary" /> : <Lock className="size-4 text-muted-foreground" />}
+            {currentBuild.is_public ? t('sharing.isPublic') : t('sharing.isPrivate')}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem className="min-h-9 gap-2.5 px-2.5 py-1.5" disabled={isPending} onSelect={handleShare}>
+          <Share2 className="size-4" />
+          {t('sharing.shareBuild')}
+        </DropdownMenuItem>
+        {!readOnly && (
+          <>
+            <DropdownMenuLabel className="mt-1 border-t border-white/10 px-2.5 pt-2 pb-1">{t(`sharing.linkStatus_${shareStatus.status}`)}</DropdownMenuLabel>
+            <DropdownMenuItem className="min-h-9 gap-2.5 px-2.5 py-1.5" disabled={isPending || shareStatus.status === 'inactive'} onSelect={() => setRevokeDialogOpen(true)}>
+              <Lock className="size-4" />
+              {t('sharing.revokeLink')}
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <div className="border-b border-white/[0.08] pb-2">
+      <RevokeShareDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen} onConfirm={handleRevokeLink} />
       {/* 1. Desktop & Tablet layout (sm+): one row —
           capacity indicator | build controls cluster (hugs content, expands up to line max) | delete action */}
       <div className="hidden sm:flex items-center gap-2.5">
@@ -376,46 +417,7 @@ export function RosterBuildToolbar({
 
         {/* Zone 3: actions (visibility toggle, share, delete) */}
         <div className="flex shrink-0 items-center gap-1.5">
-          {!readOnly && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => handleToggleVisibility(!currentBuild.is_public)}
-                  disabled={isPending}
-                  aria-label={currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
-                  className={cn(
-                    'flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all cursor-pointer select-none',
-                    currentBuild.is_public
-                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                      : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
-                  )}
-                >
-                  {currentBuild.is_public ? (
-                    <Globe className="size-3.5" />
-                  ) : (
-                    <Lock className="size-3.5" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleShare}
-            disabled={isPending}
-            className="h-8 gap-1.5 px-2.5 text-xs font-semibold rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary cursor-pointer shadow-xs transition-all active:scale-95"
-            title={t('sharing.share')}
-            aria-label={t('sharing.share')}
-          >
-            <Share2 className="size-3.5" />
-            <span className="hidden md:inline">{t('sharing.share')}</span>
-          </Button>
+          {shareMenu}
 
           {!readOnly && (
             <AlertDialog>
@@ -552,41 +554,7 @@ export function RosterBuildToolbar({
             </div>
           )}
 
-          {/* Visibility toggle button on mobile */}
-          {!readOnly && (
-            <button
-              type="button"
-              onClick={() => handleToggleVisibility(!currentBuild.is_public)}
-              disabled={isPending}
-              aria-label={currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
-              title={currentBuild.is_public ? t('sharing.publicTooltip') : t('sharing.privateTooltip')}
-              className={cn(
-                'flex size-8 shrink-0 items-center justify-center rounded-xl border transition-all cursor-pointer select-none',
-                currentBuild.is_public
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                  : 'border-white/10 bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
-              )}
-            >
-              {currentBuild.is_public ? (
-                <Globe className="size-3.5" />
-              ) : (
-                <Lock className="size-3.5" />
-              )}
-            </button>
-          )}
-
-          {/* Share button on mobile */}
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={handleShare}
-            disabled={isPending}
-            className="size-8 shrink-0 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary cursor-pointer"
-            title={t('sharing.share')}
-            aria-label={t('sharing.share')}
-          >
-            <Share2 className="size-3.5" />
-          </Button>
+          {shareMenu}
 
           {/* Delete button on mobile with icon only */}
           {!readOnly && (

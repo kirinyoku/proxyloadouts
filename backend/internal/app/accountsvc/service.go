@@ -246,6 +246,11 @@ func (s *Service) GetVerifiedByUID(ctx context.Context, uid string) (*domain.Gam
 	return s.accounts.GetVerifiedByUID(ctx, cleanUID)
 }
 
+// GetPublicOwnerInfo returns the displayable owner metadata for an active account.
+func (s *Service) GetPublicOwnerInfo(ctx context.Context, accountID uuid.UUID) (*domain.PublicOwnerInfo, error) {
+	return s.accounts.GetPublicOwnerInfoByAccountID(ctx, accountID)
+}
+
 // List returns all linked game accounts for the given user.
 func (s *Service) List(ctx context.Context, userID uuid.UUID) ([]*domain.GameAccount, error) {
 	if userID == uuid.Nil {
