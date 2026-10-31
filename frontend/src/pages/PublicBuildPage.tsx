@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Check, Home, Layers, Share2, Sparkles } from 'lucide-react'
+import { Check, Layers, Share2 } from 'lucide-react'
 import { usePublicBuild } from '@/api/hooks'
 import { PublicOwnerHeader } from '@/components/common/PublicOwnerHeader'
-import { EmptyState } from '@/components/common/EmptyState'
 import { PageLoader } from '@/components/common/PageLoader'
+import { SharedUnavailableState } from '@/components/common/SharedUnavailableState'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
@@ -98,29 +98,10 @@ export function PublicBuildPage() {
 
   if (isError || !data) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-16">
-        <EmptyState
-          icon={Layers}
-          title={t('sharing.buildNotFoundTitle')}
-          description={t('sharing.buildNotFoundDesc')}
-          action={
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Button asChild variant="secondary" className="gap-2 rounded-xl">
-                <Link to="/">
-                  <Home className="size-4" />
-                  <span>{t('sharing.backToHome')}</span>
-                </Link>
-              </Button>
-              <Button asChild className="gap-2 rounded-xl bg-primary text-primary-foreground">
-                <Link to="/showcase">
-                  <Sparkles className="size-4" />
-                  <span>{t('sharing.backToShowcase')}</span>
-                </Link>
-              </Button>
-            </div>
-          }
-        />
-      </div>
+      <SharedUnavailableState
+        title={t('sharing.buildNotFoundTitle')}
+        description={t('sharing.buildNotFoundDesc')}
+      />
     )
   }
 

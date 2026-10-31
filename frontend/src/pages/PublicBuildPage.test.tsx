@@ -132,7 +132,7 @@ describe('PublicBuildPage', () => {
     const html = renderToString(<PublicBuildPage />)
     expect(html).toContain('Сборка не найдена или скрыта владельцем')
     expect(html).toContain('На главную')
-    expect(html).toContain('К витрине')
+    expect(html).not.toContain('К витрине')
   })
 
   it('renders build details and author header on success', () => {

@@ -699,6 +699,8 @@ const en: TranslationSchema = {
     uidCopied: 'UID copied to clipboard',
     buildNotFoundTitle: 'Build not found or hidden by owner',
     buildNotFoundDesc: 'This build either does not exist, was deleted, or the owner made it private.',
+    rosterNotFoundTitle: 'Roster not found or hidden by owner',
+    rosterNotFoundDesc: 'This roster either does not exist, was deleted, or the owner made it private.',
     teamNotFoundTitle: 'Squad not found or hidden by owner',
     teamNotFoundDesc: 'This squad either does not exist, was deleted, or the owner made it private.',
     backToHome: 'Go to home',

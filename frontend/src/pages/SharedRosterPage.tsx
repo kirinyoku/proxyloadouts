@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { fetchSharedRoster } from '@/api/client'
-import { EmptyState } from '@/components/common/EmptyState'
 import { PageLoader } from '@/components/common/PageLoader'
+import { SharedUnavailableState } from '@/components/common/SharedUnavailableState'
 import { ShowcaseProfileIdentity } from '@/components/showcase/ShowcaseProfileHeader'
 import { ShowcaseSavedPresets } from '@/components/showcase/ShowcaseSavedPresets'
 
@@ -20,7 +19,14 @@ export default function SharedRosterPage() {
   })
 
   if (isPending) return <PageLoader label={t('common.loading')} />
-  if (isError || !data) return <EmptyState icon={Layers} title={t('sharing.rosterNotFound')} />
+  if (isError || !data) {
+    return (
+      <SharedUnavailableState
+        title={t('sharing.rosterNotFoundTitle')}
+        description={t('sharing.rosterNotFoundDesc')}
+      />
+    )
+  }
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-7xl px-3 py-6 sm:px-4">
