@@ -1,4 +1,5 @@
 import { useDeferredValue, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useMe } from '@/api/hooks'
@@ -64,9 +65,10 @@ function MobileSectionTabs({
 
 export interface ShowcaseSavedPresetsProps {
   builds: Build[]
+  profile?: ReactNode
 }
 
-export function ShowcaseSavedPresets({ builds }: ShowcaseSavedPresetsProps) {
+export function ShowcaseSavedPresets({ builds, profile }: ShowcaseSavedPresetsProps) {
   const { t } = useTranslation()
   const { data: me } = useMe()
 
@@ -199,11 +201,10 @@ export function ShowcaseSavedPresets({ builds }: ShowcaseSavedPresetsProps) {
 
   if (allGroups.length === 0) {
     return (
-      <EmptyState
-        icon={Layers}
-        title={t('showcase.noPublicPresets')}
-        description=""
-      />
+      <div className="space-y-3">
+        {profile}
+        <EmptyState icon={Layers} title={t('showcase.noPublicPresets')} description="" />
+      </div>
     )
   }
 
@@ -226,22 +227,26 @@ export function ShowcaseSavedPresets({ builds }: ShowcaseSavedPresetsProps) {
 
   return (
     <div className="space-y-3">
-      {/* Filtering Toolbar */}
-      <RosterToolbar
-        search={search}
-        onSearchChange={setSearch}
-        selectedAttribute={selectedAttribute}
-        onAttributeChange={setSelectedAttribute}
-        selectedSpecialty={selectedSpecialty}
-        onSpecialtyChange={setSelectedSpecialty}
-        totalAgents={allGroups.length}
-        availableAttributes={availableAttributes}
-        availableSpecialties={availableSpecialties}
-        rosterAttributes={rosterAttributes}
-        rosterSpecialties={rosterSpecialties}
-        onResetFilters={handleResetFilters}
-        hideTitle
-      />
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-stretch">
+        {profile}
+        <div className="min-w-0 flex-1 xl:[&>div]:h-full">
+          <RosterToolbar
+            search={search}
+            onSearchChange={setSearch}
+            selectedAttribute={selectedAttribute}
+            onAttributeChange={setSelectedAttribute}
+            selectedSpecialty={selectedSpecialty}
+            onSpecialtyChange={setSelectedSpecialty}
+            totalAgents={allGroups.length}
+            availableAttributes={availableAttributes}
+            availableSpecialties={availableSpecialties}
+            rosterAttributes={rosterAttributes}
+            rosterSpecialties={rosterSpecialties}
+            onResetFilters={handleResetFilters}
+            hideTitle
+          />
+        </div>
+      </div>
 
       {filteredGroups.length === 0 || !activeGroup || !activeBuild || !agent ? (
         <EmptyState

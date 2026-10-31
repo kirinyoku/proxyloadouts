@@ -273,6 +273,73 @@ function CacheStatusPill({
   )
 }
 
+export function ShowcaseProfileIdentity({ profile, owner }: {
+  profile: Pick<ShowcaseResponse, 'uid' | 'nickname' | 'region' | 'avatar_url' | 'interknot_level'>
+  owner?: PublicOwnerInfo | null
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div className="relative shrink-0 pb-1">
+        {profile.avatar_url ? (
+          <img
+            src={profile.avatar_url}
+            alt=""
+            width={44}
+            height={44}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            className="block size-11 rounded-full border-2 border-black bg-secondary object-cover ring-2 ring-primary/55"
+          />
+        ) : (
+          <div className="flex size-11 items-center justify-center rounded-full border-2 border-black bg-secondary font-heading text-xs font-bold text-primary ring-2 ring-primary/55">
+            {profile.nickname.slice(0, 2).toUpperCase()}
+          </div>
+        )}
+        {Boolean(profile.interknot_level && profile.interknot_level > 0) && (
+          <span className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-[3px_3px_0_3px] border border-black bg-primary px-1 font-heading text-[8px] leading-[1.2] font-black whitespace-nowrap text-primary-foreground shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+            IL {profile.interknot_level}
+          </span>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-col justify-center gap-1">
+        <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
+          <span
+            title={profile.nickname}
+            className="font-heading text-base leading-tight font-bold tracking-wide text-foreground uppercase truncate max-w-[130px] sm:max-w-[180px] md:max-w-[220px] lg:max-w-[200px] xl:max-w-[260px]"
+          >
+            {profile.nickname}
+          </span>
+          <RegionBadge region={profile.region} className="shrink-0" />
+        </div>
+        <div className="flex items-center gap-1.5 font-mono text-[11px] min-w-0 flex-nowrap">
+          <UidCopyChip uid={profile.uid} />
+          {owner?.discord_username && (
+            <div
+              className="inline-flex h-6 min-h-[24px] max-w-[130px] sm:max-w-[160px] shrink-0 items-center gap-1.5 rounded-md border border-white/10 bg-[#5865F2]/10 px-2 py-0.5 text-foreground/90 select-none"
+              title={`Discord: ${owner.discord_username}`}
+            >
+              {owner.discord_avatar_url ? (
+                <img
+                  src={owner.discord_avatar_url}
+                  alt=""
+                  className="size-3.5 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <DiscordIcon className="size-3 shrink-0 text-[#8891f2]" />
+              )}
+              <span className="font-sans font-medium text-xs truncate">
+                {owner.discord_username}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface ShowcaseProfileHeaderProps {
   showcase: ShowcaseResponse
   verifiedOwner?: PublicOwnerInfo | null
@@ -313,66 +380,7 @@ export function ShowcaseProfileHeader({
       )}
     >
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3 lg:gap-4 sm:justify-start">
-        {/* Profile Identity: avatar, IL level, nickname, server badge, UID copy */}
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="relative shrink-0 pb-1">
-            {showcase.avatar_url ? (
-              <img
-                src={showcase.avatar_url}
-                alt=""
-                width={44}
-                height={44}
-                loading="eager"
-                decoding="async"
-                fetchPriority="high"
-                className="block size-11 rounded-full border-2 border-black bg-secondary object-cover ring-2 ring-primary/55"
-              />
-            ) : (
-              <div className="flex size-11 items-center justify-center rounded-full border-2 border-black bg-secondary font-heading text-xs font-bold text-primary ring-2 ring-primary/55">
-                {showcase.nickname.slice(0, 2).toUpperCase()}
-              </div>
-            )}
-            {Boolean(showcase.interknot_level && showcase.interknot_level > 0) && (
-              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-[3px_3px_0_3px] border border-black bg-primary px-1 font-heading text-[8px] leading-[1.2] font-black whitespace-nowrap text-primary-foreground shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                IL {showcase.interknot_level}
-              </span>
-            )}
-          </div>
-
-          <div className="flex min-w-0 flex-col justify-center gap-1">
-            <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
-              <span
-                title={showcase.nickname}
-                className="font-heading text-base leading-tight font-bold tracking-wide text-foreground uppercase truncate max-w-[130px] sm:max-w-[180px] md:max-w-[220px] lg:max-w-[200px] xl:max-w-[260px]"
-              >
-                {showcase.nickname}
-              </span>
-              <RegionBadge region={showcase.region} className="shrink-0" />
-            </div>
-            <div className="flex items-center gap-1.5 font-mono text-[11px] min-w-0 flex-nowrap">
-              <UidCopyChip uid={showcase.uid} />
-              {owner?.discord_username && (
-                <div
-                  className="inline-flex h-6 min-h-[24px] max-w-[130px] sm:max-w-[160px] shrink-0 items-center gap-1.5 rounded-md border border-white/10 bg-[#5865F2]/10 px-2 py-0.5 text-foreground/90 select-none"
-                  title={`Discord: ${owner.discord_username}`}
-                >
-                  {owner.discord_avatar_url ? (
-                    <img
-                      src={owner.discord_avatar_url}
-                      alt=""
-                      className="size-3.5 shrink-0 rounded-full object-cover"
-                    />
-                  ) : (
-                    <DiscordIcon className="size-3 shrink-0 text-[#8891f2]" />
-                  )}
-                  <span className="font-sans font-medium text-xs truncate">
-                    {owner.discord_username}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <ShowcaseProfileIdentity profile={showcase} owner={owner} />
 
         {/* Action Row: Divider + Cache Status API + Search input pushed to right edge */}
         <div className="flex items-center gap-2 min-w-0 pt-2 border-t border-white/[0.06] sm:border-t-0 sm:pt-0 sm:ml-auto">
