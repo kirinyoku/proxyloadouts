@@ -22,4 +22,11 @@ describe('Switch', () => {
     const html = renderToString(<Switch checked disabled onCheckedChange={() => {}} />)
     expect(html).toContain('disabled=""')
   })
+
+  it('renders compact size variant when size="sm"', () => {
+    const html = renderToString(<Switch checked size="sm" onCheckedChange={() => {}} />)
+    expect(html).toContain('h-4.5 w-8')
+    expect(html).toContain('size-3.5')
+    expect(html).toContain('translate-x-3.5')
+  })
 })

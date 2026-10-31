@@ -18,9 +18,10 @@ interface LinkUidFormProps {
 const UID_MAX_LENGTH = 10
 
 /**
- * Inline "link a Proxy UID" form. The input doubles as its own status field:
- * a detected server chip or a live digit counter sits inside the right edge,
- * so the region and the 9–10 digit rule are visible before submitting.
+ * Inline "link a Proxy UID" form.
+ *
+ * Integrated composite input field with auto-detected server region chip
+ * and live 10-digit counter, maintaining clean hierarchy and strict accessibility.
  */
 export function LinkUidForm({
   uid,
@@ -68,7 +69,7 @@ export function LinkUidForm({
             aria-describedby={errorMessage ? 'uid-hint' : undefined}
             autoComplete="off"
             className={cn(
-              'h-11 sm:h-9.5 rounded-lg border-white/10 bg-black/30 pr-3 font-mono text-base sm:text-sm tabular-nums transition-colors focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/40',
+              'h-10 sm:h-9.5 rounded-lg border-white/10 bg-black/30 pr-3 font-mono text-base sm:text-sm tabular-nums transition-colors focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/40',
               (detectedRegion || showCounter) && 'pr-24'
             )}
           />
@@ -90,7 +91,7 @@ export function LinkUidForm({
           type="submit"
           disabled={isPending}
           loading={isPending}
-          className="h-11 sm:h-9.5 w-full shrink-0 rounded-lg px-4 text-sm sm:text-xs font-semibold sm:font-medium sm:w-auto"
+          className="h-10 sm:h-9.5 w-full shrink-0 rounded-lg px-4 text-sm sm:text-xs font-semibold sm:font-medium sm:w-auto"
         >
           {isPending ? t('settings.adding') : t('settings.addAccountButton')}
         </Button>

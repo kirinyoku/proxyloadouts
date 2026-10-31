@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import { ShowcaseProfileHeader } from './ShowcaseProfileHeader'
+import { ShowcaseProfileHeader, UidCopyChip } from './ShowcaseProfileHeader'
 import type { ShowcaseResponse } from '@/types/showcase'
 
 vi.mock('react-i18next', async (importOriginal) => {
@@ -284,5 +284,21 @@ describe('ShowcaseProfileHeader', () => {
     )
 
     expect(html).toContain('custom-showcase-class')
+  })
+
+  it('UidCopyChip supports custom title, ariaLabel, and className props', () => {
+    const html = renderToString(
+      <UidCopyChip
+        uid="1504687050"
+        title="Custom Copy Title"
+        ariaLabel="Custom Copy Aria"
+        className="custom-chip-class"
+      />,
+    )
+
+    expect(html).toContain('title="Custom Copy Title"')
+    expect(html).toContain('aria-label="Custom Copy Aria"')
+    expect(html).toContain('custom-chip-class')
+    expect(html).toContain('1504687050')
   })
 })

@@ -79,4 +79,31 @@ describe('ProxyAccountRow', () => {
     expect(html).toContain('Show Discord')
     expect(html).not.toContain('Verify UID')
   })
+
+  it('renders identity with nickname, region badge, and UidCopyChip', () => {
+    const accountWithNickname: GameAccount = {
+      ...unverifiedAccount,
+      nickname: 'ProxyPlayer',
+    }
+    const html = renderToString(
+      <ProxyAccountRow account={accountWithNickname} isActive={false} />,
+    )
+    expect(html).toContain('ProxyPlayer')
+    expect(html).toContain('EU')
+    expect(html).toContain('title="Server: Europe"')
+    expect(html).toContain('1504687050')
+    expect(html).toContain('title="Copy UID"')
+    expect(html).toContain('aria-label="Copy UID"')
+  })
+
+  it('renders verified checkmark after region badge when verified', () => {
+    const html = renderToString(
+      <ProxyAccountRow account={verifiedAccount} isActive={true} />,
+    )
+    expect(html).toContain('EU')
+    expect(html).toContain('VERIFIED')
+    const regionIdx = html.indexOf('EU')
+    const verifiedIdx = html.indexOf('VERIFIED')
+    expect(regionIdx).toBeLessThan(verifiedIdx)
+  })
 })

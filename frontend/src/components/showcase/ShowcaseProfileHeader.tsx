@@ -140,7 +140,17 @@ export function RegionBadge({ region, className }: { region: string; className?:
   )
 }
 
-function UidCopyChip({ uid }: { uid: string }) {
+export function UidCopyChip({
+  uid,
+  title,
+  ariaLabel,
+  className,
+}: {
+  uid: string
+  title?: string
+  ariaLabel?: string
+  className?: string
+}) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -162,9 +172,12 @@ function UidCopyChip({ uid }: { uid: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      title={t('showcase.copyUidTitle')}
-      aria-label={t('showcase.copyUidAria')}
-      className="inline-flex h-6 min-h-[24px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-foreground transition-all hover:border-white/20 hover:bg-white/[0.08] active:scale-95 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+      title={title ?? t('showcase.copyUidTitle')}
+      aria-label={ariaLabel ?? t('showcase.copyUidAria')}
+      className={cn(
+        'inline-flex h-6 min-h-[24px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-foreground transition-all hover:border-white/20 hover:bg-white/[0.08] active:scale-95 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
+        className
+      )}
     >
       <span className="tabular-nums">{uid}</span>
       {copied ? (

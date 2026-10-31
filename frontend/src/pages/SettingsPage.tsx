@@ -338,7 +338,7 @@ export function SettingsPage() {
           }
         >
           {isPending ? (
-            <div className="divide-y divide-white/[0.05]" aria-busy="true">
+            <div className="flex flex-col gap-3 py-3 sm:py-3.5" aria-busy="true">
               <ProxyAccountRowSkeleton />
               <ProxyAccountRowSkeleton />
             </div>
@@ -347,7 +347,7 @@ export function SettingsPage() {
               {t('settings.noAccounts')}
             </p>
           ) : (
-            <ul className="divide-y divide-white/[0.05]">
+            <ul className="flex flex-col gap-3 py-3 sm:py-3.5">
               {accounts.map((account) => (
                 <li key={account.id}>
                   <ProxyAccountRow
