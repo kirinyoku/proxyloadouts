@@ -270,4 +270,34 @@ describe('RosterToolbar', () => {
 
     expect(html).toContain('hidden md:flex items-center gap-2 w-full justify-between')
   })
+
+  it('renders share button to the right of the search input when activeAccount is provided', () => {
+    const html = renderToString(
+      <RosterToolbar
+        search=""
+        onSearchChange={vi.fn()}
+        selectedAttribute={null}
+        onAttributeChange={vi.fn()}
+        selectedSpecialty={null}
+        onSpecialtyChange={vi.fn()}
+        totalAgents={6}
+        activeAccount={{
+          id: 'acc-1',
+          uid: '1500000001',
+          region: 'Europe',
+          created_at: '2026-03-01T12:00:00Z',
+        }}
+        isPublicRoster
+      />,
+    )
+
+    const desktopIndex = html.indexOf('hidden md:flex items-center gap-2')
+    expect(desktopIndex).toBeGreaterThan(-1)
+    const desktopHtml = html.slice(desktopIndex)
+
+    const searchPos = desktopHtml.indexOf('placeholder="Поиск агента..."')
+    const sharePos = desktopHtml.indexOf('lucide-share-2')
+    expect(searchPos).toBeGreaterThan(-1)
+    expect(sharePos).toBeGreaterThan(searchPos)
+  })
 })

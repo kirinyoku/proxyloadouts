@@ -8,6 +8,7 @@ import { ApiError, createTeamShare, revokeTeamShare } from '@/api/client'
 import { queryKeys, useBuilds, useDeleteTeam, usePatchTeam, useUpdateTeam } from '@/api/hooks'
 import { RevokeShareDialog } from '@/components/roster/RevokeShareDialog'
 import { useShareStatus } from '@/components/roster/useShareStatus'
+import { ShareIconButton } from '@/components/common/ShareIconButton'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -200,24 +201,14 @@ export const TeamCard = memo(function TeamCard({
   }
 
   const shareButton = (
-    <Button
-      variant="ghost"
-      size="icon"
+    <ShareIconButton
       disabled={!readOnly && isPending}
       onClick={readOnly ? handleShareTeam : undefined}
+      isPublic={team.is_public}
+      copied={teamLinkCopied}
       aria-label={t('sharing.shareTeam')}
       title={t('sharing.shareTeam')}
-      className="relative size-8 shrink-0 rounded-xl text-muted-foreground hover:bg-white/[0.08] hover:text-foreground cursor-pointer"
-    >
-      {teamLinkCopied ? (
-        <Check className="size-3.5 text-primary stroke-[2.5]" />
-      ) : (
-        <Share2 className="size-3.5" />
-      )}
-      {team.is_public && !teamLinkCopied && (
-        <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary" />
-      )}
-    </Button>
+    />
   )
 
   const shareMenu = readOnly ? (
@@ -227,13 +218,13 @@ export const TeamCard = memo(function TeamCard({
       <DropdownMenuTrigger asChild>
         {shareButton}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-2rem)] p-2">
+      <DropdownMenuContent align="end" className="w-max min-w-0 max-w-[calc(100vw-2rem)] p-1.5">
         <DropdownMenuItem
           role="menuitemcheckbox"
           aria-checked={team.is_public}
           disabled={isPending}
           onSelect={() => handleToggleTeamVisibility(!team.is_public)}
-          className="min-h-9 gap-2.5 px-2.5 py-1.5"
+          className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
         >
           {team.is_public ? (
             <Globe className="size-4 text-primary" />
@@ -243,7 +234,7 @@ export const TeamCard = memo(function TeamCard({
           {team.is_public ? t('sharing.isPublic') : t('sharing.isPrivate')}
         </DropdownMenuItem>
         <DropdownMenuItem
-          className="min-h-9 gap-2.5 px-2.5 py-1.5"
+          className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
           disabled={isPending}
           onSelect={handleShareTeam}
         >
@@ -254,11 +245,11 @@ export const TeamCard = memo(function TeamCard({
           )}
           {t('sharing.shareTeam')}
         </DropdownMenuItem>
-        <DropdownMenuLabel className="mt-1 border-t border-white/10 px-2.5 pt-2 pb-1">
+        <DropdownMenuLabel className="mt-0.5 border-t border-white/10 px-2.5 pt-1.5 pb-0.5 whitespace-nowrap">
           {t(`sharing.linkStatus_${shareStatus.status}`)}
         </DropdownMenuLabel>
         <DropdownMenuItem
-          className="min-h-9 gap-2.5 px-2.5 py-1.5"
+          className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
           disabled={isPending || shareStatus.status === 'inactive'}
           onSelect={() => setRevokeDialogOpen(true)}
         >

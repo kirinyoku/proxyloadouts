@@ -3,6 +3,7 @@ import { ArrowLeft, Check, Globe, Lock, RotateCcw, Search, Share2, X } from 'luc
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { ShareIconButton } from '@/components/common/ShareIconButton'
 import { createRosterShare, revokeRosterShare } from '@/api/client'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { toast } from '@/components/ui/sonner'
@@ -227,7 +228,45 @@ export function RosterToolbar({
     })
   }
 
-  const hasLeftSection = Boolean(fromTeams || !hideTitle || activeAccount)
+  const hasLeftSection = Boolean(fromTeams || !hideTitle)
+
+  function renderShareMenu(buttonClassName?: string) {
+    if (!activeAccount) return null
+    return (
+      <DropdownMenu onOpenChange={(open) => { if (open) shareStatus.refresh() }}>
+        <DropdownMenuTrigger asChild>
+          <ShareIconButton
+            size="icon-sm"
+            isPublic={isPublicRoster}
+            aria-label={isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
+            title={isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
+            className={cn('size-8', buttonClassName)}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-max min-w-0 max-w-[calc(100vw-2rem)] p-1.5">
+          <DropdownMenuItem
+            className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
+            role="menuitemcheckbox"
+            aria-checked={isPublicRoster}
+            disabled={isUpdatingVisibility}
+            onSelect={onTogglePublicRoster}
+          >
+            {isPublicRoster ? <Globe className="size-4 text-primary" /> : <Lock className="size-4 text-muted-foreground" />}
+            {isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap" onSelect={handleCopyRosterLink}>
+            {rosterLinkCopied ? <Check className="size-4 text-primary" /> : <Share2 className="size-4" />}
+            {t('roster.copyPublicLink')}
+          </DropdownMenuItem>
+          <DropdownMenuLabel className="mt-0.5 border-t border-white/10 px-2.5 pt-1.5 pb-0.5 whitespace-nowrap">{t(`sharing.linkStatus_${shareStatus.status}`)}</DropdownMenuLabel>
+          <DropdownMenuItem className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap" disabled={shareStatus.status === 'inactive'} onSelect={() => setRevokeDialogOpen(true)}>
+            <Lock className="size-4" />
+            {t('sharing.revokeLink')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
 
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 rounded-2xl border border-white/[0.08] bg-card/90 p-2 sm:px-3 sm:py-1.5 shadow-lg backdrop-blur-xl">
@@ -235,7 +274,7 @@ export function RosterToolbar({
       <div
         className={cn(
           'flex items-center justify-between gap-2 select-none',
-          hideTitle && !fromTeams && !activeAccount ? 'w-full md:hidden' : 'w-full md:w-auto',
+          hideTitle && !fromTeams ? 'w-full md:hidden' : 'w-full md:w-auto',
         )}
       >
         {hasLeftSection && (
@@ -269,53 +308,15 @@ export function RosterToolbar({
                 )}
               </h1>
             )}
-
-            {activeAccount && (
-              <DropdownMenu onOpenChange={(open) => { if (open) shareStatus.refresh() }}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
-                    title={isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
-                    className="relative size-7.5 shrink-0 rounded-xl text-muted-foreground hover:bg-white/[0.08] hover:text-foreground cursor-pointer"
-                  >
-                    <Share2 className="size-3.5" />
-                    {isPublicRoster && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary" />}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-72 max-w-[calc(100vw-2rem)] p-2">
-                  <DropdownMenuItem
-                    className="min-h-9 gap-2.5 px-2.5 py-1.5"
-                    role="menuitemcheckbox"
-                    aria-checked={isPublicRoster}
-                    disabled={isUpdatingVisibility}
-                    onSelect={onTogglePublicRoster}
-                  >
-                    {isPublicRoster ? <Globe className="size-4 text-primary" /> : <Lock className="size-4 text-muted-foreground" />}
-                    {isPublicRoster ? t('roster.statusPublic') : t('roster.statusPrivate')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="min-h-9 gap-2.5 px-2.5 py-1.5" onSelect={handleCopyRosterLink}>
-                    {rosterLinkCopied ? <Check className="size-4 text-primary" /> : <Share2 className="size-4" />}
-                    {t('roster.copyPublicLink')}
-                  </DropdownMenuItem>
-                  <DropdownMenuLabel className="mt-1 border-t border-white/10 px-2.5 pt-2 pb-1">{t(`sharing.linkStatus_${shareStatus.status}`)}</DropdownMenuLabel>
-                  <DropdownMenuItem className="min-h-9 gap-2.5 px-2.5 py-1.5" disabled={shareStatus.status === 'inactive'} onSelect={() => setRevokeDialogOpen(true)}>
-                    <Lock className="size-4" />
-                    {t('sharing.revokeLink')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           </div>
         )}
 
-        {/* Mobile Search input & Reset button placed on the top row */}
-        {totalAgents > 0 && (
+        {/* Mobile Search input, Reset button & Share button placed on the top row */}
+        {totalAgents > 0 ? (
           <div
             className={cn(
               'flex items-center gap-1.5 md:hidden flex-1 min-w-0',
-              hideTitle ? 'w-full' : 'justify-end max-w-[210px]',
+              hideTitle ? 'w-full' : 'justify-end max-w-[240px]',
             )}
           >
             <div className="relative w-full">
@@ -348,7 +349,11 @@ export function RosterToolbar({
                 <RotateCcw className="size-3.5" />
               </button>
             )}
+
+            {renderShareMenu('size-7.5')}
           </div>
+        ) : (
+          renderShareMenu('size-7.5 md:size-8')
         )}
       </div>
 
@@ -439,6 +444,8 @@ export function RosterToolbar({
                 <RotateCcw className="size-3.5" />
               </button>
             )}
+
+            {renderShareMenu('size-8')}
           </div>
         </div>
       )}

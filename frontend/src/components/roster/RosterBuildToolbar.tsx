@@ -21,6 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { ShareIconButton } from '@/components/common/ShareIconButton'
 import { Button } from '@/components/ui/button'
 import { createBuildShare, revokeBuildShare } from '@/api/client'
 import { toast } from '@/components/ui/sonner'
@@ -181,24 +182,14 @@ export function RosterBuildToolbar({
   }
 
   const shareButton = (
-    <Button
-      variant="ghost"
-      size="icon"
+    <ShareIconButton
       disabled={isPending}
       onClick={readOnly ? handleShare : undefined}
+      isPublic={currentBuild.is_public}
+      copied={linkCopied}
       aria-label={t('sharing.shareBuild')}
       title={t('sharing.shareBuild')}
-      className="relative size-8 shrink-0 rounded-xl text-muted-foreground hover:bg-white/[0.08] hover:text-foreground cursor-pointer"
-    >
-      {linkCopied ? (
-        <Check className="size-3.5 text-primary" />
-      ) : (
-        <Share2 className="size-3.5" />
-      )}
-      {currentBuild.is_public && !linkCopied && (
-        <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary" />
-      )}
-    </Button>
+    />
   )
 
   const shareMenu = readOnly ? (
@@ -208,9 +199,9 @@ export function RosterBuildToolbar({
       <DropdownMenuTrigger asChild>
         {shareButton}
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-72 max-w-[calc(100vw-2rem)] p-2">
+      <DropdownMenuContent className="w-max min-w-0 max-w-[calc(100vw-2rem)] p-1.5">
         <DropdownMenuItem
-          className="min-h-9 gap-2.5 px-2.5 py-1.5"
+          className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
           role="menuitemcheckbox"
           aria-checked={currentBuild.is_public}
           disabled={isPending}
@@ -219,12 +210,12 @@ export function RosterBuildToolbar({
           {currentBuild.is_public ? <Globe className="size-4 text-primary" /> : <Lock className="size-4 text-muted-foreground" />}
           {currentBuild.is_public ? t('sharing.isPublic') : t('sharing.isPrivate')}
         </DropdownMenuItem>
-        <DropdownMenuItem className="min-h-9 gap-2.5 px-2.5 py-1.5" disabled={isPending} onSelect={handleShare}>
+        <DropdownMenuItem className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap" disabled={isPending} onSelect={handleShare}>
           <Share2 className="size-4" />
           {t('sharing.shareBuild')}
         </DropdownMenuItem>
-        <DropdownMenuLabel className="mt-1 border-t border-white/10 px-2.5 pt-2 pb-1">{t(`sharing.linkStatus_${shareStatus.status}`)}</DropdownMenuLabel>
-        <DropdownMenuItem className="min-h-9 gap-2.5 px-2.5 py-1.5" disabled={isPending || shareStatus.status === 'inactive'} onSelect={() => setRevokeDialogOpen(true)}>
+        <DropdownMenuLabel className="mt-0.5 border-t border-white/10 px-2.5 pt-1.5 pb-0.5 whitespace-nowrap">{t(`sharing.linkStatus_${shareStatus.status}`)}</DropdownMenuLabel>
+        <DropdownMenuItem className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap" disabled={isPending || shareStatus.status === 'inactive'} onSelect={() => setRevokeDialogOpen(true)}>
           <Lock className="size-4" />
           {t('sharing.revokeLink')}
         </DropdownMenuItem>

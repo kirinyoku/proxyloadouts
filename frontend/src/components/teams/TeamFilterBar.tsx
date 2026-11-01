@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { createTeamsShare, revokeTeamsShare } from '@/api/client'
 import { RevokeShareDialog } from '@/components/roster/RevokeShareDialog'
 import { useShareStatus } from '@/components/roster/useShareStatus'
+import { ShareIconButton } from '@/components/common/ShareIconButton'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -120,26 +121,20 @@ export function TeamFilterBar({
         {activeAccount && (
           <DropdownMenu onOpenChange={(open) => { if (open) shareStatus.refresh() }}>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
+              <ShareIconButton
+                size="icon-lg"
+                isPublic={isPublicTeams}
                 aria-label={isPublicTeams ? t('teams.statusPublic') : t('teams.statusPrivate')}
                 title={isPublicTeams ? t('teams.statusPublic') : t('teams.statusPrivate')}
-                className="relative size-9 shrink-0 rounded-lg text-muted-foreground hover:bg-white/[0.08] hover:text-foreground cursor-pointer"
-              >
-                <Share2 className="size-4" />
-                {isPublicTeams && (
-                  <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
-                )}
-              </Button>
+              />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-2rem)] p-2">
+            <DropdownMenuContent align="end" className="w-max min-w-0 max-w-[calc(100vw-2rem)] p-1.5">
               <DropdownMenuItem
                 role="menuitemcheckbox"
                 aria-checked={isPublicTeams}
                 disabled={isUpdatingVisibility}
                 onSelect={onTogglePublicTeams}
-                className="min-h-9 gap-2.5 px-2.5 py-1.5"
+                className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
               >
                 {isPublicTeams ? (
                   <Globe className="size-4 text-primary" />
@@ -149,7 +144,7 @@ export function TeamFilterBar({
                 {isPublicTeams ? t('teams.statusPublic') : t('teams.statusPrivate')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="min-h-9 gap-2.5 px-2.5 py-1.5"
+                className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
                 onSelect={handleCopyTeamsLink}
               >
                 {teamsLinkCopied ? (
@@ -159,11 +154,11 @@ export function TeamFilterBar({
                 )}
                 {t('teams.copyPublicLink')}
               </DropdownMenuItem>
-              <DropdownMenuLabel className="mt-1 border-t border-white/10 px-2.5 pt-2 pb-1">
+              <DropdownMenuLabel className="mt-0.5 border-t border-white/10 px-2.5 pt-1.5 pb-0.5 whitespace-nowrap">
                 {t(`sharing.linkStatus_${shareStatus.status}`)}
               </DropdownMenuLabel>
               <DropdownMenuItem
-                className="min-h-9 gap-2.5 px-2.5 py-1.5"
+                className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
                 disabled={shareStatus.status === 'inactive'}
                 onSelect={() => setRevokeDialogOpen(true)}
               >

@@ -1,17 +1,17 @@
 import { useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Check, Layers, Share2 } from 'lucide-react'
+import { Layers } from 'lucide-react'
 import { usePublicBuild } from '@/api/hooks'
 import { PublicOwnerHeader } from '@/components/common/PublicOwnerHeader'
 import { PageLoader } from '@/components/common/PageLoader'
+import { ShareIconButton } from '@/components/common/ShareIconButton'
 import { SharedUnavailableState } from '@/components/common/SharedUnavailableState'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { MindscapeBadge } from '@/components/ui/MindscapeBadge'
-import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/sonner'
 import {
   agentRoleCircleUrl,
@@ -225,30 +225,20 @@ export function PublicBuildPage() {
               {/* Actions: Separator + Share Button */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <div className="hidden h-6 w-px shrink-0 bg-white/[0.12] sm:block" aria-hidden="true" />
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <ShareIconButton
                   onClick={handleShare}
+                  isPublic={build.is_public}
+                  copied={linkCopied}
                   aria-label={t('sharing.shareBuild')}
                   title={t('sharing.shareBuild')}
-                  className="relative size-8 shrink-0 rounded-xl text-muted-foreground hover:bg-white/[0.08] hover:text-foreground cursor-pointer"
-                >
-                  {linkCopied ? (
-                    <Check className="size-3.5 text-primary" />
-                  ) : (
-                    <Share2 className="size-3.5" />
-                  )}
-                  {build.is_public && !linkCopied && (
-                    <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary" />
-                  )}
-                </Button>
+                />
               </div>
             </div>
 
             {/* Mobile Note: full-width sub-row in header */}
             {build.description?.trim() && (
               <div
-                className="flex sm:hidden items-center gap-1.5 min-w-0 pt-2 font-mono text-xs text-muted-foreground"
+                className="flex sm:hidden items-center gap-1.5 min-w-0 pt-3 font-mono text-xs text-muted-foreground"
                 title={build.description.trim()}
               >
                 <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
