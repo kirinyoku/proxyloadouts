@@ -497,7 +497,7 @@ export function ShowcasePage() {
             value: 'live' as const,
             fullLabel: `${t('showcase.liveShowcase')} (${showcase?.agents.length ?? 0})`,
             compactLabel: `${i18n.language.startsWith('ru') ? 'Витрина' : 'Showcase'} (${showcase?.agents.length ?? 0})`,
-            glyph: <ScanLine className="size-3.5" />,
+            glyph: <ScanLine className="size-3.5 shrink-0" />,
           },
         ]
       : []),
@@ -507,7 +507,7 @@ export function ShowcasePage() {
             value: 'presets' as const,
             fullLabel: `${t('showcase.savedPresets')} (${rosterQuery.data?.builds.length ?? 0})`,
             compactLabel: `${i18n.language.startsWith('ru') ? 'Пресеты' : 'Presets'} (${rosterQuery.data?.builds.length ?? 0})`,
-            glyph: <Layers className="size-3.5" />,
+            glyph: <Layers className="size-3.5 shrink-0" />,
           },
         ]
       : []),
@@ -517,7 +517,7 @@ export function ShowcasePage() {
             value: 'squads' as const,
             fullLabel: `${t('showcase.squads')} (${rosterQuery.data?.teams.length ?? 0})`,
             compactLabel: `${t('showcase.squads')} (${rosterQuery.data?.teams.length ?? 0})`,
-            glyph: <Users className="size-3.5" />,
+            glyph: <Users className="size-3.5 shrink-0" />,
           },
         ]
       : []),
@@ -555,9 +555,9 @@ export function ShowcasePage() {
               <div
                 role="tablist"
                 aria-label={t('showcase.liveShowcase')}
-                className="w-full lg:w-auto lg:shrink-0 rounded-2xl border border-white/[0.08] bg-card/96 p-2 sm:px-2.5 shadow-lg backdrop-blur-sm flex items-center"
+                className="w-full lg:w-auto lg:shrink-0 rounded-2xl border border-white/[0.08] bg-card/96 p-1.5 sm:p-2 sm:px-2.5 shadow-lg backdrop-blur-sm flex items-center"
               >
-                <div className="grid w-full auto-cols-fr grid-flow-col gap-1.5 sm:gap-2 lg:flex lg:w-auto">
+                <div className="flex w-full gap-1 sm:grid sm:auto-cols-fr sm:grid-flow-col sm:gap-2 lg:flex lg:w-auto">
                   {modeOptions.map((opt) => (
                     <button
                       key={opt.value}
@@ -566,7 +566,7 @@ export function ShowcasePage() {
                       aria-selected={effectiveMode === opt.value}
                       onClick={() => handleModeChange(opt.value)}
                       className={cn(
-                        'flex h-8 sm:h-8.5 items-center justify-center gap-1.5 rounded-lg px-2.5 sm:px-3 lg:px-3.5 whitespace-nowrap text-xs font-semibold transition-all select-none',
+                        'flex h-8 sm:h-8.5 min-w-0 grow sm:grow-0 items-center justify-center gap-1 sm:gap-1.5 rounded-lg px-1.5 sm:px-3 lg:px-3.5 whitespace-nowrap text-[11px] sm:text-xs font-semibold transition-all select-none',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
                         effectiveMode === opt.value
                           ? 'border border-primary/40 bg-primary/10 text-primary shadow-xs font-bold'
@@ -574,7 +574,8 @@ export function ShowcasePage() {
                       )}
                     >
                       {opt.glyph}
-                      <span className="truncate">{opt.fullLabel}</span>
+                      <span className="truncate sm:hidden">{opt.compactLabel}</span>
+                      <span className="hidden truncate sm:inline">{opt.fullLabel}</span>
                     </button>
                   ))}
                 </div>

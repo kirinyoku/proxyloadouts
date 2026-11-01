@@ -630,4 +630,61 @@ describe('ShowcasePage', () => {
     const html = renderToString(<ShowcasePage />)
     expect(html).toContain('Anby Demara')
   })
+
+  it('renders both compact mobile and full desktop mode labels when public builds and teams exist', () => {
+    mockUseMe.mockReturnValue({ data: null })
+    mockUseActiveAccount.mockReturnValue({
+      activeAccount: null,
+      accounts: [],
+      isPending: false,
+    })
+    mockUseShowcase.mockReturnValue({
+      data: mockShowcase,
+      isPending: false,
+      isError: false,
+      isRefetching: false,
+      refetch: vi.fn(),
+    })
+    mockUseShowcaseRoster.mockReturnValue({
+      data: {
+        owner: { uid: '1504687050', region: 'Europe', nickname: 'ProxyMaster', avatar_url: null },
+        is_public_roster: true,
+        is_public_teams: true,
+        is_public_showcase: true,
+        builds: [
+          {
+            id: 'b1',
+            name: 'Standard Preset',
+            agent_id: 1011,
+            agent_name: 'Anby Demara',
+            is_public: true,
+            created_at: '',
+            updated_at: '',
+            build_data: mockAgent,
+          },
+        ],
+        teams: [
+          {
+            team: { id: 't1', name: 'Alpha Squad', is_public: true },
+            members: [],
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+    })
+    mockUseBuilds.mockReturnValue({
+      data: [],
+      isPending: false,
+    })
+
+    const html = renderToString(<ShowcasePage />)
+
+    // Compact mobile labels
+    expect(html).toContain('class="truncate sm:hidden">Витрина (1)</span>')
+    expect(html).toContain('class="truncate sm:hidden">Пресеты (1)</span>')
+    // Full desktop labels
+    expect(html).toContain('class="hidden truncate sm:inline">Витрина в игре (1)</span>')
+    expect(html).toContain('class="hidden truncate sm:inline">Архив сборок (1)</span>')
+  })
 })
