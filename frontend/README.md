@@ -21,6 +21,7 @@ The frontend client of **ProxyLoadouts (PXL)** is a React 19 Single Page Applica
    - [3. Agent Preset Library (`Roster`) — Multiple Builds per Agent](#3-agent-preset-library-roster--multiple-builds-per-agent)
    - [4. Squad Overview (`Squads`) — Boss & Team Context at a Glance](#4-squad-overview-squads--boss--team-context-at-a-glance)
    - [5. Squad Editor & Proactive Conflict Detection (`TeamBuilder` & `BuildPickerDialog`)](#5-squad-editor--proactive-conflict-detection-teambuilder--buildpickerdialog)
+   - [6. Social Sharing & Secret Public Links (`PublicBuildPage`, `PublicTeamPage`, `SharedRosterPage`)](#6-social-sharing--secret-public-links-publicbuildpage-publicteampage-sharedrosterpage)
 2. [Design System & Visual Ergonomics](#design-system--visual-ergonomics)
 3. [Frontend Architecture & State Management](#frontend-architecture--state-management)
 4. [Directory Structure](#directory-structure)
@@ -86,6 +87,17 @@ The frontend client of **ProxyLoadouts (PXL)** is a React 19 Single Page Applica
   - Candidate presets that share a W-Engine UID or Drive Disc UID with an agent already in the squad are marked with a red `CONFLICT` badge.
   - Expanding the conflict row lists the exact shared items (e.g., `W-Engine "Neon Fantasies" is used by Nangong Yu`, `Drive Disc [1] is used by Nangong Yu`).
   - A **`HIDE CONFLICTS`** toggle lets players filter the list down to only compatible presets.
+
+---
+
+### 6. Social Sharing & Secret Public Links (`PublicBuildPage`, `PublicTeamPage`, `SharedRosterPage`)
+
+![Social Sharing System](../docs/images/07-sharing-system.png)
+
+- **Zero-Barrier Guest Access**: Recipients visiting a shared build (`/b/:token`), squad (`/t/:token`), or roster (`/r/:token`) do not need to register or authenticate via Discord. They immediately see full interactive equipment cards, exact 6-disc substat rolls, total stat summaries, and active set bonuses.
+- **Unified Share Controls & Instant Revocation**:
+  - A standardized share trigger across rosters, builds, and squads opens a compact share popover with one-click link copying and live modal previews.
+  - Owners can regenerate or permanently revoke links at any time. Revoked or invalid tokens render a dedicated, branded `Unavailable` state explaining that the link has expired or was removed by its author.
 
 ---
 
@@ -167,7 +179,7 @@ frontend/src/
 ├── hooks/                  # Shared React hooks (useActiveAccount, useIsMobile)
 ├── i18n/                   # English (EN) and Russian (RU) locale dictionaries
 ├── lib/                    # Client conflict checker (conflicts.ts), stat formatters, generated constants
-├── pages/                  # Route views (Home, Showcase, Roster, Teams, TeamBuilder, Settings)
+├── pages/                  # Route views (Home, Showcase, Roster, Teams, TeamBuilder, Settings, PublicBuildPage, PublicTeamPage, SharedRosterPage)
 ├── store/                  # Zustand stores (useTeamDraftStore)
 ├── styles/                 # Local font declarations (fonts.css)
 └── types/                  # OpenAPI-generated types & domain interfaces

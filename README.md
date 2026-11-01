@@ -37,6 +37,7 @@ ProxyLoadouts is a web service that gives you an external loadout library and sq
 1. **One-Screen Build Capture (`Showcase`)**: Place your agents on your in-game showcase and scan your UID (powered by EnkaNetwork). Instead of taking 6 separate screenshots, you see the agent's W-Engine, total stats, and **all 6 Drive Discs with their substat rolls** on a single screen.
 2. **Multiple Presets per Agent (`Roster`)**: Save up to **5 named builds per agent** with custom notes—so you can keep dedicated presets for different teams, bosses, or combat buffs.
 3. **Squad Planner with Conflict Check (`Squads`)**: Combine saved agent presets into 3-agent squads with notes (e.g., which boss the squad targets or which disc to swap). When picking builds for a squad, ProxyLoadouts automatically warns you if two agents share the exact same W-Engine or Drive Disc.
+4. **Secret Share Links & Public Previews (`Sharing`)**: Share individual builds (`/b/:token`), 3-agent combat squads (`/t/:token`), or your entire roster (`/r/:token`) via unguessable secret tokens. Recipients can inspect full equipment cards and substats without an account, and links can be revoked instantly.
 
 > While you still equip Drive Discs manually in-game, you always know **exactly which W-Engine and which 6 Drive Discs** to put on each agent for any squad or boss.
 
@@ -118,7 +119,7 @@ proxyloadouts/
 ├── contracts/
 │   └── openapi.yaml        # OpenAPI 3.1 API specification (SSOT)
 ├── backend/                # Go 1.26 backend service (see backend/README.md)
-│   ├── cmd/                # Server entrypoint & game catalog codegen CLI
+│   ├── cmd/                # Server entrypoint, game catalog codegen & user quota CLI
 │   ├── internal/           # Domain, conflict engine, use cases, adapters
 │   └── migrations/         # Embedded SQLite schema migrations
 ├── frontend/               # React 19 SPA client (see frontend/README.md)
