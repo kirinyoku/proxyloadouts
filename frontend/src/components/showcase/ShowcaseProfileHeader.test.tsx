@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import { ShowcaseProfileHeader } from './ShowcaseProfileHeader'
+import { ShowcaseProfileHeader, UidCopyChip } from './ShowcaseProfileHeader'
 import type { ShowcaseResponse } from '@/types/showcase'
 
 vi.mock('react-i18next', async (importOriginal) => {
@@ -75,6 +75,71 @@ describe('ShowcaseProfileHeader', () => {
     expect(html).toContain('1504687050')
   })
 
+  it('renders nickname with title attribute and responsive truncation classes', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={{ ...mockShowcase, nickname: 'VERYLONGLOWLEVELNICKNAME' }}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+
+    expect(html).toContain('title="VERYLONGLOWLEVELNICKNAME"')
+    expect(html).toContain('VERYLONGLOWLEVELNICKNAME')
+    expect(html).toContain('truncate')
+    expect(html).toContain('max-w-[130px]')
+  })
+
+  it('renders discord badge with title attribute and truncation when owner has discord handle', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={{
+          ...mockShowcase,
+          verified_owner: {
+            uid: '1504687050',
+            region: 'Europe',
+            nickname: 'LOWLEVEL',
+            avatar_url: null,
+            is_verified: true,
+            discord_username: 'very_long_discord_username_that_should_truncate#0001',
+          },
+        }}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+
+    expect(html).toContain('title="Discord: very_long_discord_username_that_should_truncate#0001"')
+    expect(html).toContain('very_long_discord_username_that_should_truncate#0001')
+    expect(html).toContain('max-w-[130px]')
+  })
+
+  it('renders avatar with size-11 and UID chip with tabular-nums', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={mockShowcase}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />
+    )
+
+    expect(html).toContain('size-11')
+    expect(html).toContain('1504687050')
+    expect(html).toContain('tabular-nums')
+  })
+
   it('renders cached status pill with countdown and refresh button', () => {
     const html = renderToString(
       <ShowcaseProfileHeader
@@ -88,7 +153,7 @@ describe('ShowcaseProfileHeader', () => {
       />
     )
 
-    expect(html).toContain('кэш')
+    expect(html).not.toContain('кэш')
     expect(html).toContain('45с')
   })
 
@@ -111,6 +176,7 @@ describe('ShowcaseProfileHeader', () => {
     )
 
     expect(html).toContain('Обновить сейчас')
+    expect(html).toContain('sr-only')
     expect(html).not.toContain('45с')
   })
 
@@ -128,6 +194,7 @@ describe('ShowcaseProfileHeader', () => {
     )
 
     expect(html).toContain('Обновление…')
+    expect(html).toContain('sr-only')
   })
 
   it('renders clear button when uidInput is non-empty', () => {
@@ -178,5 +245,60 @@ describe('ShowcaseProfileHeader', () => {
 
     expect(html).not.toContain('showcase.linkUid')
     expect(html).not.toContain('Привязать UID')
+  })
+
+  it('hides IL badge when interknot_level is 0 or not provided', () => {
+    const zeroLevelShowcase: ShowcaseResponse = {
+      ...mockShowcase,
+      interknot_level: 0,
+    }
+
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={zeroLevelShowcase}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+      />,
+    )
+
+    expect(html).not.toMatch(/IL\s*(<!-- -->)?\s*0/)
+    expect(html).not.toContain('IL')
+  })
+
+  it('applies custom className to outer container', () => {
+    const html = renderToString(
+      <ShowcaseProfileHeader
+        showcase={mockShowcase}
+        uidInput="1504687050"
+        isUidValid={true}
+        isRefetching={false}
+        onScan={() => {}}
+        onUidInputChange={() => {}}
+        onRefresh={() => {}}
+        className="custom-showcase-class"
+      />,
+    )
+
+    expect(html).toContain('custom-showcase-class')
+  })
+
+  it('UidCopyChip supports custom title, ariaLabel, and className props', () => {
+    const html = renderToString(
+      <UidCopyChip
+        uid="1504687050"
+        title="Custom Copy Title"
+        ariaLabel="Custom Copy Aria"
+        className="custom-chip-class"
+      />,
+    )
+
+    expect(html).toContain('title="Custom Copy Title"')
+    expect(html).toContain('aria-label="Custom Copy Aria"')
+    expect(html).toContain('custom-chip-class')
+    expect(html).toContain('1504687050')
   })
 })

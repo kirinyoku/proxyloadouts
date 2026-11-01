@@ -64,6 +64,7 @@ type CreateInput struct {
 	Name          string
 	Description   *string
 	BuildIDs      []uuid.UUID // order defines slot numbers (1..len)
+	IsPublic      *bool
 }
 
 // UpdateInput describes changes to an existing team.
@@ -74,6 +75,7 @@ type UpdateInput struct {
 	Name          string
 	Description   *string
 	BuildIDs      []uuid.UUID // order defines slot numbers (1..len)
+	IsPublic      *bool
 }
 
 // ValidationError reports a team rejected by the Conflict Engine. The report
@@ -162,11 +164,17 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.Team, 
 		return nil, &ValidationError{Report: report}
 	}
 
+	isPublic := true
+	if input.IsPublic != nil {
+		isPublic = *input.IsPublic
+	}
+
 	team := &domain.Team{
 		UserID:        input.UserID,
 		GameAccountID: input.GameAccountID,
 		Name:          name,
 		Description:   input.Description,
+		IsPublic:      isPublic,
 	}
 	members := make([]domain.TeamMember, 0, len(buildsList))
 	for i, build := range buildsList {
@@ -235,6 +243,9 @@ func (s *Service) Update(ctx context.Context, input UpdateInput) (*domain.Team, 
 	team.Name = name
 	team.Description = input.Description
 	team.GameAccountID = targetAccountID
+	if input.IsPublic != nil {
+		team.IsPublic = *input.IsPublic
+	}
 
 	members := make([]domain.TeamMember, 0, len(buildsList))
 	for i, build := range buildsList {
@@ -362,6 +373,98 @@ func (s *Service) List(ctx context.Context, userID, accountID uuid.UUID, lang ..
 	return summaries, nil
 }
 
+// ListPublicByAccount returns all publicly shared teams of a game account with their validity reports
+// and implicitly read member builds, dynamically localized when lang is specified.
+func (s *Service) ListPublicByAccount(ctx context.Context, accountID uuid.UUID, lang ...string) ([]*TeamSummary, error) {
+	if accountID == uuid.Nil {
+		return nil, fmt.Errorf("%w: game account is required", domain.ErrInvalidInput)
+	}
+
+	teams, err := s.teams.ListPublicByAccount(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if len(teams) == 0 {
+		return []*TeamSummary{}, nil
+	}
+
+	requestedLang := ""
+	if len(lang) > 0 {
+		requestedLang = lang[0]
+	}
+
+	teamIDs := make([]uuid.UUID, len(teams))
+	for i, team := range teams {
+		teamIDs[i] = team.ID
+	}
+
+	membersByTeam, err := s.teams.GetMembersByTeams(ctx, teamIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	uniqueBuildIDMap := make(map[uuid.UUID]struct{})
+	for _, members := range membersByTeam {
+		for _, member := range members {
+			uniqueBuildIDMap[member.BuildID] = struct{}{}
+		}
+	}
+	buildIDs := make([]uuid.UUID, 0, len(uniqueBuildIDMap))
+	for id := range uniqueBuildIDMap {
+		buildIDs = append(buildIDs, id)
+	}
+
+	buildMap, err := s.builds.GetByIDs(ctx, buildIDs)
+	if err != nil {
+		return nil, err
+	}
+	if buildMap == nil {
+		buildMap = make(map[uuid.UUID]*domain.AgentBuild)
+	}
+
+	for _, b := range buildMap {
+		s.enrichBuildWithLang(ctx, b, requestedLang)
+	}
+
+	summaries := make([]*TeamSummary, 0, len(teams))
+	for _, team := range teams {
+		members := membersByTeam[team.ID]
+		buildsList := make([]*domain.AgentBuild, 0, len(members))
+		detailMembers := make([]MemberDetail, 0, len(members))
+		for _, member := range members {
+			build, ok := buildMap[member.BuildID]
+			if !ok {
+				var err error
+				build, err = s.builds.GetByID(ctx, member.BuildID)
+				if err != nil {
+					return nil, fmt.Errorf("failed to load build %s of public team %s: %w", member.BuildID, team.ID, err)
+				}
+				s.enrichBuildWithLang(ctx, build, requestedLang)
+				buildMap[member.BuildID] = build
+			}
+			buildsList = append(buildsList, build)
+			detailMembers = append(detailMembers, MemberDetail{Member: member, Build: build})
+		}
+		report := conflicts.Validate(buildsList)
+
+		summaries = append(summaries, &TeamSummary{
+			Team:    team,
+			Report:  report,
+			Members: detailMembers,
+		})
+	}
+	return summaries, nil
+}
+
+// HasPublicByAccount reports whether an account has at least one publicly shared team.
+// Unlike ListPublicByAccount, this executes an efficient existence check without loading member builds or running conflict validation.
+func (s *Service) HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error) {
+	if accountID == uuid.Nil {
+		return false, fmt.Errorf("%w: game account is required", domain.ErrInvalidInput)
+	}
+	return s.teams.HasPublicByAccount(ctx, accountID)
+}
+
 // CountForAccount returns the number of teams on an owned game account.
 //
 // Callers that only need to know whether the per-account team limit has been
@@ -396,6 +499,177 @@ func (s *Service) Delete(ctx context.Context, userID, teamID uuid.UUID) error {
 		return err
 	}
 	return s.teams.Delete(ctx, teamID)
+}
+
+// SetVisibility updates the public visibility flag of an owned team without modifying its roster
+// or touching its updated_at timestamp.
+func (s *Service) SetVisibility(ctx context.Context, userID, teamID uuid.UUID, isPublic bool) (*domain.Team, error) {
+	team, err := s.ownedTeam(ctx, userID, teamID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.teams.UpdateVisibility(ctx, teamID, isPublic); err != nil {
+		return nil, err
+	}
+	team.IsPublic = isPublic
+	return team, nil
+}
+
+// PatchInput describes partial updates to an owned team.
+type PatchInput struct {
+	TeamID      uuid.UUID
+	UserID      uuid.UUID
+	Name        *string
+	Description *string
+	IsPublic    *bool
+}
+
+// Patch updates name, description, and/or visibility of an owned team.
+func (s *Service) Patch(ctx context.Context, input PatchInput, lang ...string) (*TeamSummary, error) {
+	team, err := s.ownedTeam(ctx, input.UserID, input.TeamID)
+	if err != nil {
+		return nil, err
+	}
+
+	nameToSet := team.Name
+	if input.Name != nil {
+		trimmed := strings.TrimSpace(*input.Name)
+		if trimmed == "" {
+			return nil, fmt.Errorf("%w: team name must not be empty", domain.ErrInvalidInput)
+		}
+		if utf8.RuneCountInString(trimmed) > domain.MaxTeamNameLength {
+			return nil, fmt.Errorf("%w: team name must not exceed %d characters", domain.ErrInvalidInput, domain.MaxTeamNameLength)
+		}
+		nameToSet = trimmed
+	}
+
+	descToSet := team.Description
+	if input.Description != nil {
+		trimmed := strings.TrimSpace(*input.Description)
+		if trimmed != "" {
+			if utf8.RuneCountInString(trimmed) > domain.MaxTeamDescriptionLength {
+				return nil, fmt.Errorf("%w: team description must not exceed %d characters", domain.ErrInvalidInput, domain.MaxTeamDescriptionLength)
+			}
+			descToSet = &trimmed
+		} else {
+			descToSet = nil
+		}
+	}
+
+	if input.Name != nil || input.Description != nil {
+		members, err := s.teams.GetMembers(ctx, team.ID)
+		if err != nil {
+			return nil, err
+		}
+		team.Name = nameToSet
+		team.Description = descToSet
+		if input.IsPublic != nil {
+			team.IsPublic = *input.IsPublic
+		}
+		if err := s.teams.Update(ctx, team, members); err != nil {
+			return nil, err
+		}
+	} else if input.IsPublic != nil {
+		if err := s.teams.UpdateVisibility(ctx, team.ID, *input.IsPublic); err != nil {
+			return nil, err
+		}
+	}
+
+	return s.GetSummary(ctx, input.UserID, input.TeamID, lang...)
+}
+
+// GetSummary returns an owned team with its conflict report and loaded builds,
+// localized when lang is specified.
+func (s *Service) GetSummary(ctx context.Context, userID, teamID uuid.UUID, lang ...string) (*TeamSummary, error) {
+	team, err := s.ownedTeam(ctx, userID, teamID)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := s.teams.GetMembers(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+
+	requestedLang := ""
+	if len(lang) > 0 {
+		requestedLang = lang[0]
+	}
+
+	buildsList := make([]*domain.AgentBuild, 0, len(members))
+	detailMembers := make([]MemberDetail, 0, len(members))
+	for _, member := range members {
+		build, err := s.builds.GetByID(ctx, member.BuildID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load build %s of team %s: %w", member.BuildID, teamID, err)
+		}
+		s.enrichBuildWithLang(ctx, build, requestedLang)
+		buildsList = append(buildsList, build)
+		detailMembers = append(detailMembers, MemberDetail{Member: member, Build: build})
+	}
+
+	report := conflicts.Validate(buildsList)
+
+	return &TeamSummary{
+		Team:    team,
+		Report:  report,
+		Members: detailMembers,
+	}, nil
+}
+
+// PublicTeamDetail pairs a publicly accessible team with its conflict report, member builds, and owner info.
+type PublicTeamDetail struct {
+	Team    *domain.Team
+	Report  domain.ConflictReport
+	Members []MemberDetail
+	Owner   *domain.PublicOwnerInfo
+}
+
+// GetPublic returns a publicly shared team with its roster and conflict report.
+// Returns domain.ErrNotFound if the team does not exist, is private (is_public = false),
+// or its owner is banned.
+// Implements Implicit Member Read: referenced builds are loaded regardless of their
+// individual build.IsPublic flags.
+func (s *Service) GetPublic(ctx context.Context, teamID uuid.UUID, lang ...string) (*PublicTeamDetail, error) {
+	team, owner, err := s.teams.GetPublicByID(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := s.teams.GetMembers(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+
+	requestedLang := ""
+	if len(lang) > 0 {
+		requestedLang = lang[0]
+	}
+
+	buildsList := make([]*domain.AgentBuild, 0, len(members))
+	detailMembers := make([]MemberDetail, 0, len(members))
+	for _, member := range members {
+		// Implicit Member Read: load build directly by ID regardless of build.IsPublic
+		build, err := s.builds.GetByID(ctx, member.BuildID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load build %s of public team %s: %w", member.BuildID, teamID, err)
+		}
+		s.enrichBuildWithLang(ctx, build, requestedLang)
+		buildsList = append(buildsList, build)
+		detailMembers = append(detailMembers, MemberDetail{
+			Member: member,
+			Build:  build,
+		})
+	}
+
+	report := conflicts.Validate(buildsList)
+
+	return &PublicTeamDetail{
+		Team:    team,
+		Report:  report,
+		Members: detailMembers,
+		Owner:   owner,
+	}, nil
 }
 
 func (s *Service) ownedTeam(ctx context.Context, userID, teamID uuid.UUID) (*domain.Team, error) {

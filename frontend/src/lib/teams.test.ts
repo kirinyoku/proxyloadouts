@@ -13,6 +13,7 @@ function createStubBuild(agentName: string, fallbackName?: string): Build {
     weapon_uid: null,
     weapon_id: null,
     disc_uids: [],
+    is_public: false,
     build_data: {
       id: 1000,
       name: fallbackName || agentName,

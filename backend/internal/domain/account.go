@@ -65,11 +65,38 @@ func RegionFromUID(uid string) (string, bool) {
 // GameAccount is a ZZZ account (UID) linked to a user. A user may link
 // several accounts (mains, twinks, other regions).
 type GameAccount struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	UID       string
-	Region    string
-	CreatedAt time.Time
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	UID            string
+	Region         string
+	Nickname       *string
+	AvatarURL      *string
+	VerifiedAt     *time.Time
+	IsPublicRoster bool
+	IsPublicTeams  bool
+	ShowDiscord    bool
+	CreatedAt      time.Time
+}
+
+// IsVerified reports whether the game account has verified ownership.
+func (a *GameAccount) IsVerified() bool {
+	return a != nil && a.VerifiedAt != nil
+}
+
+// IsPublicShowcase reports whether either roster presets or squads are public.
+func (a *GameAccount) IsPublicShowcase() bool {
+	return a != nil && (a.IsPublicRoster || a.IsPublicTeams)
+}
+
+// PublicOwnerInfo contains public identity details of a game account owner
+// for showcase and shared build/team pages.
+type PublicOwnerInfo struct {
+	UID              string
+	Region           string
+	Nickname         *string
+	AvatarURL        *string
+	DiscordUsername  *string // non-nil only when owner enabled ShowDiscord and has Discord identity
+	DiscordAvatarURL *string // non-nil only when owner enabled ShowDiscord and has Discord identity
 }
 
 // ValidateUID checks the ZZZ UID format: a numeric string of 9-10 digits.

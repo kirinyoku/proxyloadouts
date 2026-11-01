@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import { SaveBuildDialog } from './SaveBuildDialog'
+import { getRegionShortCode } from '@/lib/uid'
 import type { Agent, GameAccount } from '@/types'
 
 const mockGameAccount: GameAccount = {
@@ -90,7 +91,7 @@ describe('SaveBuildDialog', () => {
 
     expect(html).toContain('Эллен')
     expect(html).toContain(mockGameAccount.uid)
-    expect(html).toContain(mockGameAccount.region)
+    expect(html).toContain(getRegionShortCode(mockGameAccount.region))
     expect(html).toContain('2 / 10')
     expect(html).toContain('saveBuild.namePlaceholder')
     expect(html).toContain('saveBuild.descPlaceholder')

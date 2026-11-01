@@ -3,10 +3,28 @@ package http
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+func safeRequestURI(r *http.Request) string {
+	for _, prefix := range []string{"/api/v1/shared/builds/", "/api/v1/shared/rosters/", "/shared/build/", "/shared/roster/"} {
+		if strings.HasPrefix(r.URL.Path, prefix) {
+			return prefix + "[redacted]"
+		}
+	}
+	return r.URL.RequestURI()
+}
+
+func safeRequestPath(r *http.Request) string {
+	uri := safeRequestURI(r)
+	if i := strings.IndexByte(uri, '?'); i >= 0 {
+		return uri[:i]
+	}
+	return uri
+}
 
 // SlogRequestLogger returns a Chi HTTP middleware that logs incoming requests
 // as structured JSON using the standard library log/slog package.
@@ -50,7 +68,7 @@ func SlogRequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 					"http request",
 					slog.String("request_id", middleware.GetReqID(r.Context())),
 					slog.String("method", r.Method),
-					slog.String("path", r.URL.Path),
+					slog.String("path", safeRequestPath(r)),
 					slog.Int("status", status),
 					slog.Float64("duration_ms", float64(duration.Microseconds())/1000.0),
 					slog.Int("bytes", ww.BytesWritten()),

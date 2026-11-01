@@ -4,6 +4,158 @@
  */
 
 export interface paths {
+    "/builds/{buildID}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        /** Check whether a build has active sharing links */
+        get: operations["getBuildShareStatus"];
+        put?: never;
+        /** Create a private build sharing link */
+        post: operations["createBuildShare"];
+        /** Revoke all private links for a build */
+        delete: operations["revokeBuildShares"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/accounts/{accountID}/roster-share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        /** Check whether a roster has active sharing links */
+        get: operations["getRosterShareStatus"];
+        put?: never;
+        /** Create a private roster sharing link */
+        post: operations["createRosterShare"];
+        /** Revoke all private links for a roster */
+        delete: operations["revokeRosterShares"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/accounts/{accountID}/teams-share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        /** Check whether an account has active squad sharing links */
+        get: operations["getTeamsShareStatus"];
+        put?: never;
+        /** Create a private squad sharing link */
+        post: operations["createTeamsShare"];
+        /** Revoke all private squad links for an account */
+        delete: operations["revokeTeamsShares"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{teamID}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        /** Check whether a team has active sharing links */
+        get: operations["getTeamShareStatus"];
+        put?: never;
+        /** Create a private team sharing link */
+        post: operations["createTeamShare"];
+        /** Revoke all private links for a team */
+        delete: operations["revokeTeamShares"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared/builds/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a build using its secret link token */
+        get: operations["getSharedBuild"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared/rosters/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get public builds in a roster using its secret link token */
+        get: operations["getSharedRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared/teams/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a team using its secret link token */
+        get: operations["getSharedTeam"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared/squads/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get shared squad presets using secret link token */
+        get: operations["getSharedSquads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -169,6 +321,90 @@ export interface paths {
         delete: operations["deleteAccount"];
         options?: never;
         head?: never;
+        /**
+         * Update game account settings
+         * @description Updates privacy settings such as public showcase visibility and Discord identity sharing. Enabling public showcase requires verified ownership.
+         */
+        patch: operations["updateAccount"];
+        trace?: never;
+    };
+    "/accounts/{accountID}/verify/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start UID ownership verification
+         * @description Generates or returns an active one-time verification code (PXL-XXXX) to be placed into the in-game profile signature.
+         */
+        post: operations["startAccountVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/accounts/{accountID}/verify/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm UID ownership verification
+         * @description Fetches a fresh showcase profile from Enka Network bypassing cache and checks if the player's signature contains the active verification code.
+         */
+        post: operations["confirmAccountVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/accounts/verify/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start UID ownership verification by UID
+         * @description Generates or returns an active one-time verification code (PXL-XXXX) for the given UID to be placed into the in-game profile signature.
+         */
+        post: operations["startVerificationByUID"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/accounts/verify/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm UID ownership verification by UID
+         * @description Fetches fresh showcase profile from Enka Network and checks player signature for the active verification code. Atomically creates or re-claims the game account.
+         */
+        post: operations["confirmVerificationByUID"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -184,6 +420,26 @@ export interface paths {
          * @description Public endpoint retrieving character showcase from Enka Network via Fairy SDK. Coalesced with singleflight and cached in-memory.
          */
         get: operations["scanShowcase"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/showcase/{uid}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get verified public showcase roster
+         * @description Retrieves publicly shared build presets and squad assemblies for a verified ZZZ UID directly from local database without upstream network calls.
+         */
+        get: operations["getPublicShowcaseRoster"];
         put?: never;
         post?: never;
         delete?: never;
@@ -242,6 +498,26 @@ export interface paths {
          * @description Updates the preset name or optional description. Equipment remains immutable.
          */
         patch: operations["updateBuildDetails"];
+        trace?: never;
+    };
+    "/public/builds/{buildID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get public agent build
+         * @description Retrieves a single publicly shared agent build with owner metadata. Returns 404 if build is private or owner is banned.
+         */
+        get: operations["getPublicBuild"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/teams": {
@@ -331,6 +607,30 @@ export interface paths {
          * @description Removes an owned team; members cascade deleted.
          */
         delete: operations["deleteTeam"];
+        options?: never;
+        head?: never;
+        /**
+         * Partially update team preset
+         * @description Updates the team preset name, description, or visibility flag. Roster slots remain untouched.
+         */
+        patch: operations["patchTeam"];
+        trace?: never;
+    };
+    "/public/teams/{teamID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get public team details
+         * @description Retrieves a single publicly shared team squad preset with member details and owner metadata. Returns 404 if team is private or owner is banned.
+         */
+        get: operations["getPublicTeam"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -528,6 +828,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ShareStatus: {
+            active: boolean;
+        };
+        ShareToken: {
+            /** @description Secret bearer token. Anyone holding it can access the shared resource. */
+            token: string;
+        };
         User: {
             /** Format: uuid */
             id: string;
@@ -547,6 +854,22 @@ export interface components {
              * @enum {string}
              */
             region: "Europe" | "America" | "Asia" | "TW/HK/MO";
+            /** @example ProxyLeader */
+            nickname?: string | null;
+            avatar_url?: string | null;
+            /** Format: date-time */
+            verified_at?: string | null;
+            /** @default true */
+            is_public_roster: boolean;
+            /** @default true */
+            is_public_teams: boolean;
+            /**
+             * @deprecated
+             * @default false
+             */
+            is_public_showcase: boolean;
+            /** @default false */
+            show_discord: boolean;
             /** Format: date-time */
             created_at: string;
         };
@@ -558,6 +881,45 @@ export interface components {
              * @enum {string}
              */
             region?: "Europe" | "America" | "Asia" | "TW/HK/MO";
+        };
+        UpdateAccountRequest: {
+            /** @description Whether this account's agent presets are public (requires verified ownership) */
+            is_public_roster?: boolean;
+            /** @description Whether this account's team squads are public (requires verified ownership) */
+            is_public_teams?: boolean;
+            /**
+             * @deprecated
+             * @description Deprecated alias for updating both roster and teams visibility
+             */
+            is_public_showcase?: boolean;
+            /** @description Whether to display owner's Discord identity on public pages */
+            show_discord?: boolean;
+        };
+        VerificationChallengeRequest: {
+            uid: string;
+            /**
+             * @description Server region (optional; automatically determined from 10-digit UID prefix if omitted)
+             * @example Europe
+             * @enum {string}
+             */
+            region?: "Europe" | "America" | "Asia" | "TW/HK/MO";
+        };
+        VerificationConfirmRequest: {
+            uid: string;
+            /**
+             * @description Server region (optional; automatically determined from 10-digit UID prefix if omitted)
+             * @example Europe
+             * @enum {string}
+             */
+            region?: "Europe" | "America" | "Asia" | "TW/HK/MO";
+        };
+        VerificationChallengeResponse: {
+            /** @example PXL-9A4B */
+            code: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** @example 30 */
+            cooldown_seconds: number;
         };
         UserLimits: {
             /**
@@ -600,6 +962,8 @@ export interface components {
             disc_uids: string[];
             /** @description Full enriched agent payload from Enka / Fairy */
             build_data: Record<string, never>;
+            /** @example false */
+            is_public: boolean;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -618,6 +982,7 @@ export interface components {
         PatchBuildRequest: {
             name?: string;
             description?: string | null;
+            is_public?: boolean;
         };
         Team: {
             /** Format: uuid */
@@ -627,6 +992,8 @@ export interface components {
             /** @example Ice Anomaly Trio */
             name: string;
             description?: string | null;
+            /** @example false */
+            is_public: boolean;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -663,6 +1030,7 @@ export interface components {
             /** @description Squad preset name. If omitted or empty, auto-generated from member agent names (e.g. "Aria/Nangong Yu/Sanna"). */
             name?: string;
             description?: string | null;
+            is_public?: boolean;
             build_ids: string[];
         };
         UpdateTeamRequest: {
@@ -671,7 +1039,13 @@ export interface components {
             /** @description Squad preset name. If omitted or empty, auto-generated from member agent names (e.g. "Aria/Nangong Yu/Sanna"). */
             name?: string;
             description?: string | null;
+            is_public?: boolean;
             build_ids: string[];
+        };
+        PatchTeamRequest: {
+            name?: string;
+            description?: string | null;
+            is_public?: boolean;
         };
         /** @enum {string} */
         ConflictCode: "DUPLICATE_AGENT" | "ITEM_REUSE" | "WEAPON_REUSE" | "ACCOUNT_MISMATCH";
@@ -689,6 +1063,44 @@ export interface components {
             is_valid: boolean;
             errors: components["schemas"]["ConflictError"][];
         };
+        PublicOwnerInfo: {
+            /** @example 1500000000 */
+            uid: string;
+            /**
+             * @example Europe
+             * @enum {string}
+             */
+            region: "Europe" | "America" | "Asia" | "TW/HK/MO";
+            /** @example ProxyLeader */
+            nickname: string | null;
+            avatar_url: string | null;
+            /**
+             * @description Owner's Discord username (only populated if show_discord is true)
+             * @example ProxyLeader
+             */
+            discord_username?: string | null;
+            /** @description Owner's Discord avatar URL (only populated if show_discord is true) */
+            discord_avatar_url?: string | null;
+        };
+        PublicBuildResponse: {
+            build: components["schemas"]["Build"];
+            owner: components["schemas"]["PublicOwnerInfo"];
+        };
+        PublicTeamResponse: {
+            team: components["schemas"]["Team"];
+            report: components["schemas"]["ConflictReport"];
+            members: components["schemas"]["TeamMember"][];
+            owner: components["schemas"]["PublicOwnerInfo"];
+        };
+        PublicShowcaseRosterResponse: {
+            owner: components["schemas"]["PublicOwnerInfo"];
+            is_public_roster: boolean;
+            is_public_teams: boolean;
+            /** @deprecated */
+            is_public_showcase: boolean;
+            builds: components["schemas"]["Build"][];
+            teams: components["schemas"]["TeamSummary"][];
+        };
         ShowcaseResponse: {
             uid: string;
             nickname: string;
@@ -702,6 +1114,10 @@ export interface components {
             fetched_at: string;
             agent_count: number;
             agents: Record<string, never>[];
+            /** @description Public owner profile if UID is claimed and verified by an active user */
+            verified_owner?: components["schemas"]["PublicOwnerInfo"] | null;
+            /** @description True if verified owner has published presets and squads */
+            has_public_roster?: boolean;
         };
         AdminStats: {
             /** Format: date-time */
@@ -939,6 +1355,370 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getBuildShareStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Link access status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareStatus"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    createBuildShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secret token for a new link */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareToken"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    revokeBuildShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Links revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getRosterShareStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Link access status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareStatus"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    createRosterShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secret token for a new link */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareToken"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    revokeRosterShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Links revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTeamsShareStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Link access status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareStatus"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    createTeamsShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secret token for a new link */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareToken"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    revokeTeamsShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Links revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTeamShareStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Link access status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareStatus"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    createTeamShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secret token for a new link */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareToken"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    revokeTeamShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Links revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getSharedBuild: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared build */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBuildResponse"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    getSharedRoster: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared roster */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicShowcaseRosterResponse"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    getSharedTeam: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared team */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicTeamResponse"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    getSharedSquads: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared squads */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicShowcaseRosterResponse"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
     getHealth: {
         parameters: {
             query?: never;
@@ -1163,6 +1943,149 @@ export interface operations {
             404: components["responses"]["NotFoundError"];
         };
     };
+    updateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Account updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameAccount"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+        };
+    };
+    startAccountVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verification challenge generated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationChallengeResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    confirmAccountVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Account ownership verified successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameAccount"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            429: components["responses"]["RateLimitedError"];
+            502: components["responses"]["BadGatewayError"];
+        };
+    };
+    startVerificationByUID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Verification challenge generated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationChallengeResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            409: components["responses"]["ConflictError"];
+        };
+    };
+    confirmVerificationByUID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Account ownership verified and claimed successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameAccount"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            429: components["responses"]["RateLimitedError"];
+            502: components["responses"]["BadGatewayError"];
+        };
+    };
     scanShowcase: {
         parameters: {
             query?: {
@@ -1190,6 +2113,34 @@ export interface operations {
             404: components["responses"]["NotFoundError"];
             429: components["responses"]["RateLimitedError"];
             502: components["responses"]["BadGatewayError"];
+        };
+    };
+    getPublicShowcaseRoster: {
+        parameters: {
+            query?: {
+                /** @description Preferred localization language for agent equipment and metadata (e.g. 'ru', 'en') */
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                uid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public showcase roster */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicShowcaseRosterResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            429: components["responses"]["RateLimitedError"];
         };
     };
     listBuilds: {
@@ -1325,6 +2276,35 @@ export interface operations {
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
+        };
+    };
+    getPublicBuild: {
+        parameters: {
+            query?: {
+                /** @description Target language for dynamic localization (e.g. ru, en) */
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique build ID */
+                buildID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public agent build details with owner information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBuildResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            429: components["responses"]["RateLimitedError"];
         };
     };
     listTeams: {
@@ -1516,6 +2496,68 @@ export interface operations {
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
+        };
+    };
+    patchTeam: {
+        parameters: {
+            query?: {
+                /** @description Target language for dynamic localization (e.g. ru, en) */
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchTeamRequest"];
+            };
+        };
+        responses: {
+            /** @description Team updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSummary"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    getPublicTeam: {
+        parameters: {
+            query?: {
+                /** @description Target language for dynamic localization (e.g. ru, en) */
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique team ID */
+                teamID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public squad composition with member builds and owner information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicTeamResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            429: components["responses"]["RateLimitedError"];
         };
     };
     adminGetStats: {

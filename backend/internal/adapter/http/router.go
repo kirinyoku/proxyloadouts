@@ -32,8 +32,11 @@ type Options struct {
 	// If nil, a default limiter of 20 req/min with burst 10 is created.
 	AuthRateLimiter *IPRateLimiter
 	// TelemetryRateLimiter optionally provides the rate limiter for client error reports.
-	// If nil, a default limiter of 6 req/min with burst 3 is created.
+	// If nil, a default limiter of 60 req/min with burst 3 is created.
 	TelemetryRateLimiter *IPRateLimiter
+	// PublicReadRateLimiter optionally provides the rate limiter for public build/team endpoints.
+	// If nil, a default limiter of 60 req/min with burst 15 is created.
+	PublicReadRateLimiter *IPRateLimiter
 }
 
 // Pinger verifies database connectivity for health probes.
@@ -107,10 +110,13 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 	r.Get("/health", health)
 
 	authHandler := NewAuthHandler(deps.Auth, deps.Users, deps.Accounts, opts)
-	showcaseHandler := NewShowcaseHandler(deps.Scanner)
+	showcaseHandler := NewShowcaseHandler(deps.Scanner, deps.Accounts, deps.Builds, deps.Teams)
 	accountHandler := NewAccountHandler(deps.Accounts)
 	buildHandler := NewBuildHandler(deps.Builds)
 	teamHandler := NewTeamHandler(deps.Teams)
+	publicHandler := NewPublicHandler(deps.Builds, deps.Teams)
+	shareStore, _ := deps.DB.(shareDB)
+	shareHandler := &shareHandler{db: shareStore, accounts: deps.Accounts, builds: deps.Builds, teams: deps.Teams}
 	telemetryHandler := NewTelemetryHandler(deps.Alerts)
 
 	showcaseLimiter := opts.ShowcaseRateLimiter
@@ -128,6 +134,11 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		telemetryLimiter = NewIPRateLimiter(rate.Limit(6.0/60.0), 3, 10*time.Minute)
 	}
 
+	publicLimiter := opts.PublicReadRateLimiter
+	if publicLimiter == nil {
+		publicLimiter = NewIPRateLimiter(rate.Limit(1.0), 15, 10*time.Minute)
+	}
+
 	requireAuth := requireAuth(deps.Auth, deps.Users, opts)
 	checkOrigin := verifyOrigin(opts)
 
@@ -135,11 +146,19 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		api.Get("/health", health)
 		api.With(checkOrigin, telemetryLimiter.Handler).Post("/telemetry/client-error", telemetryHandler.handleClientError)
 
-		// Public endpoints: guests may scan showcases (SOW §4).
+		// Public endpoints: guests may scan showcases (SOW §4), view shared builds and teams.
 		api.With(authLimiter.Handler).Get("/auth/discord/login", authHandler.handleLogin)
 		api.With(authLimiter.Handler).Get("/auth/discord/callback", authHandler.handleCallback)
 		api.With(checkOrigin, authLimiter.Handler).Post("/auth/logout", authHandler.handleLogout)
 		api.With(showcaseLimiter.Handler).Get("/showcase/{uid}", showcaseHandler.handle)
+		api.With(publicLimiter.Handler).Get("/showcase/{uid}/roster", showcaseHandler.handleRoster)
+
+		api.With(publicLimiter.Handler).Get("/public/builds/{buildID}", publicHandler.handleGetBuild)
+		api.With(publicLimiter.Handler).Get("/public/teams/{teamID}", publicHandler.handleGetTeam)
+		api.With(publicLimiter.Handler).Get("/shared/builds/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, shareTargetBuild) })
+		api.With(publicLimiter.Handler).Get("/shared/rosters/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, shareTargetRoster) })
+		api.With(publicLimiter.Handler).Get("/shared/teams/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, shareTargetTeam) })
+		api.With(publicLimiter.Handler).Get("/shared/squads/{token}", func(w http.ResponseWriter, r *http.Request) { shareHandler.read(w, r, shareTargetSquads) })
 
 		api.With(requireAuth).Get("/auth/me", authHandler.handleMe)
 
@@ -152,13 +171,27 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 
 			private.Get("/accounts", accountHandler.handleList)
 			private.Post("/accounts", accountHandler.handleCreate)
+			private.Patch("/accounts/{accountID}", accountHandler.handleUpdate)
 			private.Delete("/accounts/{accountID}", accountHandler.handleDelete)
+			private.Post("/accounts/{accountID}/roster-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, shareTargetRoster) })
+			private.Get("/accounts/{accountID}/roster-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, shareTargetRoster) })
+			private.Delete("/accounts/{accountID}/roster-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, shareTargetRoster) })
+			private.Post("/accounts/{accountID}/teams-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, shareTargetSquads) })
+			private.Get("/accounts/{accountID}/teams-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, shareTargetSquads) })
+			private.Delete("/accounts/{accountID}/teams-share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, shareTargetSquads) })
+			private.Post("/accounts/verify/challenge", accountHandler.handleVerifyChallengeByUID)
+			private.Post("/accounts/verify/confirm", accountHandler.handleVerifyConfirmByUID)
+			private.Post("/accounts/{accountID}/verify/challenge", accountHandler.handleVerifyChallenge)
+			private.Post("/accounts/{accountID}/verify/confirm", accountHandler.handleVerifyConfirm)
 
 			private.Get("/builds", buildHandler.handleList)
 			private.Post("/builds", buildHandler.handleCreate)
 			private.Get("/builds/{buildID}", buildHandler.handleGet)
 			private.Patch("/builds/{buildID}", buildHandler.handleUpdate)
 			private.Delete("/builds/{buildID}", buildHandler.handleDelete)
+			private.Post("/builds/{buildID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, shareTargetBuild) })
+			private.Get("/builds/{buildID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, shareTargetBuild) })
+			private.Delete("/builds/{buildID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, shareTargetBuild) })
 
 			private.Get("/teams", teamHandler.handleList)
 			private.Get("/teams/validate", teamHandler.handleValidate)
@@ -168,12 +201,20 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 			private.Get("/teams/count", teamHandler.handleCount)
 			private.Get("/teams/{teamID}", teamHandler.handleGet)
 			private.Put("/teams/{teamID}", teamHandler.handleUpdate)
+			private.Patch("/teams/{teamID}", teamHandler.handlePatch)
 			private.Delete("/teams/{teamID}", teamHandler.handleDelete)
+			private.Post("/teams/{teamID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.create(w, r, shareTargetTeam) })
+			private.Get("/teams/{teamID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.status(w, r, shareTargetTeam) })
+			private.Delete("/teams/{teamID}/share", func(w http.ResponseWriter, r *http.Request) { shareHandler.revoke(w, r, shareTargetTeam) })
 		})
 	})
 
-	// Embedded SPA with history-API fallback.
-	r.Handle("/*", spaHandler())
+	// Embedded SPA with history-API fallback and dynamic OpenGraph injection.
+	var metaProv PublicMetaProvider
+	if deps.Builds != nil || deps.Teams != nil {
+		metaProv = &metaProvider{builds: deps.Builds, teams: deps.Teams}
+	}
+	r.Handle("/*", spaHandler(metaProv))
 
 	return r
 }

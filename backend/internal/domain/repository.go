@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -32,6 +33,12 @@ type AccountRepository interface {
 	GetByUserAndUID(ctx context.Context, userID uuid.UUID, uid string) (*GameAccount, error)
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]*GameAccount, error)
 	CountByUser(ctx context.Context, userID uuid.UUID) (int, error)
+	UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error
+	UpdateSettings(ctx context.Context, id uuid.UUID, isPublicRoster, isPublicTeams, showDiscord bool) error
+	ClaimVerifiedUID(ctx context.Context, userID uuid.UUID, uid, region string, verifiedAt time.Time, nickname, avatarURL *string) (*GameAccount, error)
+	VerifyOwnership(ctx context.Context, accountID uuid.UUID, uid string, verifiedAt time.Time, nickname, avatarURL *string) error
+	GetVerifiedByUID(ctx context.Context, uid string) (*GameAccount, *PublicOwnerInfo, error)
+	GetPublicOwnerInfoByAccountID(ctx context.Context, accountID uuid.UUID) (*PublicOwnerInfo, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -43,10 +50,15 @@ type AccountRepository interface {
 type BuildRepository interface {
 	Create(ctx context.Context, build *AgentBuild) error
 	GetByID(ctx context.Context, id uuid.UUID) (*AgentBuild, error)
+	GetPublicByID(ctx context.Context, id uuid.UUID) (*AgentBuild, *PublicOwnerInfo, error)
 	ListByAccount(ctx context.Context, accountID uuid.UUID) ([]*AgentBuild, error)
+	ListPublicByAccount(ctx context.Context, accountID uuid.UUID) ([]*AgentBuild, error)
+	HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error)
+	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*AgentBuild, error)
 	CountByAccountAndAgent(ctx context.Context, accountID uuid.UUID, agentID int) (int, error)
 	UpdateDetails(ctx context.Context, id uuid.UUID, name string, description *string) error
 	UpdateName(ctx context.Context, id uuid.UUID, name string) error
+	UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -57,10 +69,14 @@ type TeamRepository interface {
 	Create(ctx context.Context, team *Team, members []TeamMember) error
 	// Update atomically updates team metadata and replaces all member slots.
 	Update(ctx context.Context, team *Team, members []TeamMember) error
+	UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Team, error)
+	GetPublicByID(ctx context.Context, id uuid.UUID) (*Team, *PublicOwnerInfo, error)
 	GetMembers(ctx context.Context, teamID uuid.UUID) ([]TeamMember, error)
 	GetMembersByTeams(ctx context.Context, teamIDs []uuid.UUID) (map[uuid.UUID][]TeamMember, error)
 	ListByAccount(ctx context.Context, accountID uuid.UUID) ([]*Team, error)
+	ListPublicByAccount(ctx context.Context, accountID uuid.UUID) ([]*Team, error)
+	HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error)
 	CountByAccount(ctx context.Context, accountID uuid.UUID) (int, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }

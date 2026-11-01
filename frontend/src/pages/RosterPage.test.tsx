@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { RosterPage } from './RosterPage'
 import type { Build } from '@/types'
 
@@ -48,8 +49,10 @@ vi.mock('@/api/hooks', async (importOriginal) => {
     ...actual,
     useMe: () => ({ data: undefined, isLoading: false }),
     useBuilds: () => mockUseBuilds(),
+    useUpdateAccount: () => ({ mutate: vi.fn(), isPending: false }),
     useRenameBuild: () => ({ mutate: vi.fn(), isPending: false }),
     useDeleteBuild: () => ({ mutate: vi.fn(), isPending: false }),
+    useToggleBuildVisibility: () => ({ mutate: vi.fn(), isPending: false }),
   }
 })
 
@@ -63,6 +66,7 @@ const mockBuild: Build = {
   weapon_uid: null,
   weapon_id: null,
   disc_uids: [],
+  is_public: false,
   build_data: {
     id: 1011,
     name: 'Anby Demara',
@@ -100,6 +104,9 @@ const mockBuild: Build = {
   updated_at: '2026-09-01T00:00:00Z',
 }
 
+const renderWithTooltip = (node: React.ReactElement) =>
+  renderToString(<TooltipProvider>{node}</TooltipProvider>)
+
 describe('RosterPage', () => {
   it('renders active roster and showcase when builds are present and match filters', () => {
     mockUseActiveAccount.mockReturnValue({
@@ -114,7 +121,7 @@ describe('RosterPage', () => {
       isSuccess: true,
     })
 
-    const html = renderToString(<RosterPage />)
+    const html = renderWithTooltip(<RosterPage />)
 
     // Should render agent rail and showcase
     expect(html).toContain('Anby Demara')
@@ -141,7 +148,7 @@ describe('RosterPage', () => {
       isSuccess: true,
     })
 
-    const html = renderToString(<RosterPage />)
+    const html = renderWithTooltip(<RosterPage />)
     expect(html).toContain('Привяжите UID')
   })
 
@@ -158,7 +165,7 @@ describe('RosterPage', () => {
       isSuccess: true,
     })
 
-    const html = renderToString(<RosterPage />)
+    const html = renderWithTooltip(<RosterPage />)
     expect(html).toContain('В ростере пока нет сохраненных сборок')
   })
 
@@ -176,7 +183,7 @@ describe('RosterPage', () => {
     })
 
     // Search query that matches no agents
-    const html = renderToString(<RosterPage initialSearch="NonExistentAgent" />)
+    const html = renderWithTooltip(<RosterPage initialSearch="NonExistentAgent" />)
 
     // Should display empty search results message
     expect(html).toContain('По поисковому запросу ничего не найдено.')
@@ -200,7 +207,7 @@ describe('RosterPage', () => {
     })
 
     // Filter by Ice attribute without search query
-    const html = renderToString(<RosterPage initialAttribute="Ice" />)
+    const html = renderWithTooltip(<RosterPage initialAttribute="Ice" />)
 
     // Empty plate is reserved only for search, so it must not render
     expect(html).not.toContain('По поисковому запросу ничего не найдено.')
@@ -257,7 +264,7 @@ describe('RosterPage', () => {
     })
 
     // Select Physical attribute: Defense has NO Physical agent, so Defense must be disabled
-    const htmlWithPhysical = renderToString(<RosterPage initialAttribute="Physical" />)
+    const htmlWithPhysical = renderWithTooltip(<RosterPage initialAttribute="Physical" />)
 
     // Corin build should be rendered
     expect(htmlWithPhysical).toContain('Corin Wickes')

@@ -313,6 +313,11 @@ func (s *SingleflightService[T]) Delete(key string) {
 	s.cache.Delete(key)
 }
 
+// Set stores a value directly in the underlying cache with the given TTL.
+func (s *SingleflightService[T]) Set(key string, value T, ttl time.Duration) {
+	s.cache.Set(key, value, ttl)
+}
+
 // FetchResult contains the returned data and cache metadata.
 type FetchResult[T any] struct {
 	Data         T
@@ -445,6 +450,11 @@ func (c *ProfileCache[T]) Clear() {
 // Delete removes a specific key from the profile cache.
 func (c *ProfileCache[T]) Delete(key string) {
 	c.sf.Delete(key)
+}
+
+// Set stores a value in the profile cache with the given TTL.
+func (c *ProfileCache[T]) Set(key string, value T, ttl time.Duration) {
+	c.sf.Cache().Set(key, value, ttl)
 }
 
 // GetOrFetch fetches or returns cached data.

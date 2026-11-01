@@ -60,6 +60,7 @@ const mockBuild1: Build = {
   weapon_uid: 'w-1',
   weapon_id: 12001,
   disc_uids: [],
+  is_public: false,
   created_at: '2026-09-25T20:00:00Z',
   updated_at: '2026-09-25T20:00:00Z',
   build_data: {
@@ -95,6 +96,7 @@ const mockBuild2: Build = {
   weapon_uid: 'w-1', // same weapon -> conflict!
   weapon_id: 12001,
   disc_uids: [],
+  is_public: false,
   created_at: '2026-09-25T20:00:00Z',
   updated_at: '2026-09-25T20:00:00Z',
   build_data: {

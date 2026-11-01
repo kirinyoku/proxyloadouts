@@ -11,8 +11,14 @@ import type {
   CreateTeamRequest,
   GameAccount,
   MeResponse,
+  PatchTeamRequest,
+  TeamSummary,
+  UpdateAccountRequest,
   UpdateTeamRequest,
+  VerificationChallengeRequest,
+  VerificationConfirmRequest,
 } from '@/types'
+import { useAccountStore } from '@/store/useAccountStore'
 import * as api from './client'
 
 const AUTH_STALE_TIME = 60_000
@@ -46,6 +52,8 @@ export const queryKeys = {
   me: ['auth', 'me'] as const,
   showcase: (uid: string, lang?: string) =>
     lang ? (['showcase', uid, lang] as const) : (['showcase', uid] as const),
+  showcaseRoster: (uid: string, lang?: string) =>
+    lang ? (['showcase', 'roster', uid, lang] as const) : (['showcase', 'roster', uid] as const),
   builds: (gameAccountId: string, lang?: string) =>
     lang ? (['builds', gameAccountId, lang] as const) : (['builds', gameAccountId] as const),
   teams: (gameAccountId: string, lang?: string) =>
@@ -54,6 +62,10 @@ export const queryKeys = {
     lang ? (['teams', 'detail', id, lang] as const) : (['teams', 'detail', id] as const),
   teamCount: (gameAccountId: string) => ['teams', 'count', gameAccountId] as const,
   teamValidation: (buildIdsKey: string) => ['team-validation', buildIdsKey] as const,
+  publicBuild: (id: string, lang?: string) =>
+    lang ? (['public', 'build', id, lang] as const) : (['public', 'build', id] as const),
+  publicTeam: (id: string, lang?: string) =>
+    lang ? (['public', 'team', id, lang] as const) : (['public', 'team', id] as const),
 }
 
 /**
@@ -118,6 +130,18 @@ export function useShowcase(uid: string) {
     queryKey: queryKeys.showcase(uid, langKey),
     queryFn: ({ signal }) => api.fetchShowcase(uid, langKey, signal),
     enabled: uid.trim().length > 0,
+    staleTime: SHOWCASE_STALE_TIME,
+  })
+}
+
+export function useShowcaseRoster(uid: string, options?: QueryOptions) {
+  const { i18n: i18nInstance } = useTranslation()
+  const langKey = i18nInstance.language?.slice(0, 2) === 'en' ? 'en' : 'ru'
+
+  return useQuery({
+    queryKey: queryKeys.showcaseRoster(uid, langKey),
+    queryFn: ({ signal }) => api.fetchShowcaseRoster(uid, langKey, signal),
+    enabled: uid.trim().length > 0 && (options?.enabled ?? true),
     staleTime: SHOWCASE_STALE_TIME,
   })
 }
@@ -187,6 +211,40 @@ export function useTeamCount(gameAccountId: string | undefined, options?: QueryO
   })
 }
 
+export function usePublicBuild(id: string | undefined, token?: string) {
+  const { i18n: i18nInstance } = useTranslation()
+  const langKey = i18nInstance.language?.slice(0, 2) === 'en' ? 'en' : 'ru'
+
+  return useQuery({
+    queryKey: token ? ['shared-build', token, langKey] : queryKeys.publicBuild(id ?? '', langKey),
+    queryFn: ({ signal }) =>
+      token ? api.fetchSharedBuild(token, langKey, signal) : id
+        ? api.fetchPublicBuild(id, langKey, signal)
+        : Promise.reject(new Error('build id is required')),
+    enabled: Boolean(id || token),
+    staleTime: token ? 0 : COLLECTION_STALE_TIME,
+    gcTime: token ? 0 : undefined,
+  })
+}
+
+export function usePublicTeam(id: string | undefined, token?: string) {
+  const { i18n: i18nInstance } = useTranslation()
+  const langKey = i18nInstance.language?.slice(0, 2) === 'en' ? 'en' : 'ru'
+
+  return useQuery({
+    queryKey: token ? ['shared-team', token, langKey] : queryKeys.publicTeam(id ?? '', langKey),
+    queryFn: ({ signal }) =>
+      token
+        ? api.fetchSharedTeam(token, langKey, signal)
+        : id
+          ? api.fetchPublicTeam(id, langKey, signal)
+          : Promise.reject(new Error('team id is required')),
+    enabled: Boolean(id || token),
+    staleTime: token ? 0 : COLLECTION_STALE_TIME,
+    gcTime: token ? 0 : undefined,
+  })
+}
+
 export function useLogout() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -244,11 +302,102 @@ export function useDeleteAccount() {
       // also match the user's other game accounts, whose data is untouched.
       void queryClient.invalidateQueries({ queryKey: ['builds', id] })
       void queryClient.invalidateQueries({ queryKey: ['teams', id] })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'build'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
       toast.success(i18n.t('toasts.accountDeleted'))
     },
     onError: (error) => notifyMutationError(error, i18n.t('toasts.accountDeleteError')),
   })
 }
+
+export function useUpdateAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+    } & UpdateAccountRequest) => api.updateAccount(id, body),
+    onSuccess: (updatedAccount) => {
+      queryClient.setQueryData<MeResponse>(queryKeys.me, (current) =>
+        current
+          ? {
+              ...current,
+              accounts: current.accounts.map((acc) =>
+                acc.id === updatedAccount.id ? updatedAccount : acc,
+              ),
+            }
+          : current,
+      )
+      void queryClient.invalidateQueries({
+        queryKey: ['showcase', 'roster', updatedAccount.uid],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ['showcase', updatedAccount.uid],
+      })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'build'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
+      toast.success(i18n.t('toasts.accountSettingsUpdated'))
+    },
+    onError: (error) => notifyMutationError(error, i18n.t('toasts.accountSettingsUpdateError')),
+  })
+}
+
+export const useUpdateAccountSettings = useUpdateAccount
+
+export function useStartVerification() {
+  return useMutation({
+    mutationFn: (param: string | VerificationChallengeRequest) =>
+      typeof param === 'string'
+        ? api.startAccountVerification(param)
+        : api.startVerificationByUID(param),
+    onError: (error) => notifyMutationError(error, i18n.t('settings.verifyError')),
+  })
+}
+
+export function useConfirmVerification() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (param: string | VerificationConfirmRequest) =>
+      typeof param === 'string'
+        ? api.confirmAccountVerification(param)
+        : api.confirmVerificationByUID(param),
+    onSuccess: (updatedAccount) => {
+      queryClient.setQueryData<MeResponse>(queryKeys.me, (current) => {
+        if (!current) return current
+        const exists = current.accounts.some((acc) => acc.id === updatedAccount.id)
+        return {
+          ...current,
+          accounts: exists
+            ? current.accounts.map((acc) =>
+                acc.id === updatedAccount.id ? updatedAccount : acc,
+              )
+            : [...current.accounts, updatedAccount],
+        }
+      })
+      if (!useAccountStore.getState().activeAccountId) {
+        useAccountStore.getState().setActiveAccount(updatedAccount.id)
+      }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.me })
+      void queryClient.invalidateQueries({
+        queryKey: ['showcase', 'roster', updatedAccount.uid],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ['showcase', updatedAccount.uid],
+      })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'build'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
+      toast.success(i18n.t('settings.verifySuccess'))
+    },
+    onError: (error) => notifyMutationError(error, i18n.t('settings.verifyError')),
+  })
+}
+
+export const useConfirmAccountVerification = useConfirmVerification
 
 export function useSaveBuild() {
   const queryClient = useQueryClient()
@@ -263,6 +412,8 @@ export function useSaveBuild() {
             ? [build, ...current.filter(({ id }) => id !== build.id)]
             : current,
       )
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'build'] })
       toast.success(i18n.t('toasts.buildSaved', { name: build.name }))
     },
     onError: (error) => notifyMutationError(error, i18n.t('toasts.buildSaveError')),
@@ -290,9 +441,53 @@ export function useRenameBuild() {
         queryKey: queryKeys.builds(variables.gameAccountId, currentLangKey()),
         exact: true,
       })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'build'] })
       toast.success(i18n.t('toasts.buildUpdated', { name: variables.name }))
     },
     onError: (error) => notifyMutationError(error, i18n.t('toasts.buildUpdateError')),
+  })
+}
+
+export function useToggleBuildVisibility() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      isPublic,
+    }: {
+      id: string
+      gameAccountId: string
+      isPublic: boolean
+    }) => api.updateBuild(id, { is_public: isPublic }),
+    onMutate: async ({ id, gameAccountId, isPublic }) => {
+      const langKey = currentLangKey()
+      const queryKey = queryKeys.builds(gameAccountId, langKey)
+      await queryClient.cancelQueries({ queryKey, exact: true })
+      const previousBuilds = queryClient.getQueryData<Build[]>(queryKey)
+
+      if (previousBuilds) {
+        queryClient.setQueryData<Build[]>(
+          queryKey,
+          previousBuilds.map((b) => (b.id === id ? { ...b, is_public: isPublic } : b)),
+        )
+      }
+      return { previousBuilds, queryKey }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousBuilds) {
+        queryClient.setQueryData(context.queryKey, context.previousBuilds)
+      }
+      toast.error(i18n.t('toasts.visibilityUpdateError'))
+    },
+    onSettled: (_data, _error, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.builds(variables.gameAccountId, currentLangKey()),
+        exact: true,
+      })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'build'] })
+    },
   })
 }
 
@@ -305,6 +500,8 @@ export function useDeleteBuild() {
         queryKey: queryKeys.builds(variables.gameAccountId, currentLangKey()),
         exact: true,
       })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'build'] })
       toast.success(i18n.t('toasts.buildDeleted'))
     },
     onError: (error) => {
@@ -353,6 +550,8 @@ export function useSaveTeam() {
         queryKey: queryKeys.teamCount(variables.game_account_id),
         exact: true,
       })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
       toast.success(i18n.t('toasts.teamSaved', { name: team.name }))
     },
     onError: (error) => {
@@ -376,11 +575,102 @@ export function useUpdateTeam() {
         queryKey: queryKeys.team(variables.id, langKey),
         exact: true,
       })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
       toast.success(i18n.t('toasts.teamUpdated', { name: team.name }))
     },
     onError: (error) => {
       if (error instanceof api.ApiError && error.conflicts) return
       notifyMutationError(error, i18n.t('toasts.teamUpdateError'))
+    },
+  })
+}
+
+export function usePatchTeam() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string
+      gameAccountId?: string
+      body: PatchTeamRequest
+    }) => api.patchTeam(id, body),
+    onSuccess: (_team, variables) => {
+      const langKey = currentLangKey()
+      if (variables.gameAccountId) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.teams(variables.gameAccountId, langKey),
+          exact: true,
+        })
+      } else {
+        void queryClient.invalidateQueries({ queryKey: ['teams'] })
+      }
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.team(variables.id, langKey),
+        exact: true,
+      })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
+    },
+    onError: (error) => notifyMutationError(error, i18n.t('toasts.teamUpdateError')),
+  })
+}
+
+export function useToggleTeamVisibility() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      isPublic,
+    }: {
+      id: string
+      gameAccountId?: string
+      isPublic: boolean
+    }) => api.patchTeam(id, { is_public: isPublic }),
+    onMutate: async ({ id, gameAccountId, isPublic }) => {
+      const langKey = currentLangKey()
+      const queryKey = gameAccountId ? queryKeys.teams(gameAccountId, langKey) : ['teams']
+      await queryClient.cancelQueries({ queryKey })
+      const previousTeams = gameAccountId
+        ? queryClient.getQueryData<TeamSummary[]>(queryKey)
+        : undefined
+
+      if (previousTeams) {
+        queryClient.setQueryData<TeamSummary[]>(
+          queryKey,
+          previousTeams.map((t) =>
+            t.team.id === id
+              ? { ...t, team: { ...t.team, is_public: isPublic } }
+              : t,
+          ),
+        )
+      }
+      return { previousTeams, queryKey }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTeams) {
+        queryClient.setQueryData(context.queryKey, context.previousTeams)
+      }
+      toast.error(i18n.t('toasts.visibilityUpdateError'))
+    },
+    onSettled: (_data, _error, variables) => {
+      const langKey = currentLangKey()
+      if (variables.gameAccountId) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.teams(variables.gameAccountId, langKey),
+          exact: true,
+        })
+      } else {
+        void queryClient.invalidateQueries({ queryKey: ['teams'] })
+      }
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.team(variables.id, langKey),
+        exact: true,
+      })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
     },
   })
 }
@@ -402,6 +692,8 @@ export function useDeleteTeam() {
       // Drop the detail entry outright: an invalidated key would keep the
       // deleted team renderable in the editor until its next refetch.
       queryClient.removeQueries({ queryKey: queryKeys.team(variables.id, langKey), exact: true })
+      void queryClient.invalidateQueries({ queryKey: ['showcase'] })
+      void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
       toast.success(i18n.t('toasts.teamDeleted'))
     },
     onError: (error) => notifyMutationError(error, i18n.t('toasts.teamDeleteError')),

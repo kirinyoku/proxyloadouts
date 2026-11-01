@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, X } from 'lucide-react'
+import { AlertCircle, UserRound, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
 import { useMe, useSaveBuild } from '@/api/hooks'
@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { agentRoleCircleUrl } from '@/lib/agent-icons'
+import { getRegionShortCode } from '@/lib/uid'
 import { cn } from '@/lib/utils'
 import type { Agent, GameAccount } from '@/types'
 
@@ -108,11 +109,31 @@ export function SaveBuildDialog({
           <div className="rounded-xl border border-border/60 bg-card/60 px-3.5 py-2.5 space-y-2 text-xs">
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground whitespace-nowrap">{t('saveBuild.accountLabel')}</span>
-              <div className="flex items-center gap-2 font-mono whitespace-nowrap">
-                <span className="font-bold text-foreground">{targetAccount.uid}</span>
-                <span className="rounded bg-subtle px-1.5 py-0.5 text-[11px] text-muted-foreground font-sans">
-                  {targetAccount.region}
-                </span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                {targetAccount.avatar_url ? (
+                  <img
+                    src={targetAccount.avatar_url}
+                    alt=""
+                    width={28}
+                    height={28}
+                    className="size-7 rounded-full border border-border/70 object-cover shrink-0"
+                  />
+                ) : (
+                  <span className="flex size-7 items-center justify-center rounded-full border border-border/70 bg-muted/40 text-muted-foreground shrink-0">
+                    <UserRound className="size-3.5" />
+                  </span>
+                )}
+                <div className="flex flex-col min-w-0 text-right sm:text-left">
+                  <span className="truncate font-heading text-xs font-bold text-foreground">
+                    {targetAccount.nickname || targetAccount.uid}
+                  </span>
+                  <span className="truncate font-mono text-[10px] text-muted-foreground tabular-nums">
+                    {targetAccount.uid}
+                    {targetAccount.region && (
+                      <span className="uppercase"> · {getRegionShortCode(targetAccount.region)}</span>
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
 

@@ -11,6 +11,238 @@ servers:
     description: Local development / embedded server
 
 paths:
+  /builds/{buildID}/share:
+    parameters:
+      - name: buildID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getBuildShareStatus
+      summary: Check whether a build has active sharing links
+      tags: [Builds]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '200':
+          description: Link access status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareStatus' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      operationId: createBuildShare
+      summary: Create a private build sharing link
+      tags: [Builds]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '201':
+          description: Secret token for a new link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareToken' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      operationId: revokeBuildShares
+      summary: Revoke all private links for a build
+      tags: [Builds]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '204': { description: Links revoked }
+  /accounts/{accountID}/roster-share:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getRosterShareStatus
+      summary: Check whether a roster has active sharing links
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '200':
+          description: Link access status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareStatus' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      operationId: createRosterShare
+      summary: Create a private roster sharing link
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '201':
+          description: Secret token for a new link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareToken' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      operationId: revokeRosterShares
+      summary: Revoke all private links for a roster
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '204': { description: Links revoked }
+  /accounts/{accountID}/teams-share:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getTeamsShareStatus
+      summary: Check whether an account has active squad sharing links
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '200':
+          description: Link access status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareStatus' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      operationId: createTeamsShare
+      summary: Create a private squad sharing link
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '201':
+          description: Secret token for a new link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareToken' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      operationId: revokeTeamsShares
+      summary: Revoke all private squad links for an account
+      tags: [Accounts]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '204': { description: Links revoked }
+  /teams/{teamID}/share:
+    parameters:
+      - name: teamID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getTeamShareStatus
+      summary: Check whether a team has active sharing links
+      tags: [Teams]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '200':
+          description: Link access status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareStatus' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      operationId: createTeamShare
+      summary: Create a private team sharing link
+      tags: [Teams]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '201':
+          description: Secret token for a new link
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareToken' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      operationId: revokeTeamShares
+      summary: Revoke all private links for a team
+      tags: [Teams]
+      security: [{ CookieAuth: [] }]
+      responses:
+        '204': { description: Links revoked }
+  /shared/builds/{token}:
+    get:
+      operationId: getSharedBuild
+      summary: Get a build using its secret link token
+      tags: [Builds]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lang
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Shared build
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicBuildResponse' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+  /shared/rosters/{token}:
+    get:
+      operationId: getSharedRoster
+      summary: Get public builds in a roster using its secret link token
+      tags: [Accounts]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lang
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Shared roster
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicShowcaseRosterResponse' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+  /shared/teams/{token}:
+    get:
+      operationId: getSharedTeam
+      summary: Get a team using its secret link token
+      tags: [Teams]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lang
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Shared team
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicTeamResponse' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+  /shared/squads/{token}:
+    get:
+      operationId: getSharedSquads
+      summary: Get shared squad presets using secret link token
+      tags: [Accounts]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lang
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Shared squads
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicShowcaseRosterResponse' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
   /health:
     get:
       summary: Health check
@@ -194,6 +426,44 @@ paths:
           $ref: '#/components/responses/ConflictError'
 
   /accounts/{accountID}:
+    patch:
+      summary: Update game account settings
+      description: Updates privacy settings such as public showcase visibility and Discord identity sharing. Enabling public showcase requires verified ownership.
+      operationId: updateAccount
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: accountID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountRequest'
+      responses:
+        '200':
+          description: Account updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameAccount'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
     delete:
       summary: Unlink a game account
       description: Removes linked game account; cascades to associated builds and teams.
@@ -220,6 +490,140 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+
+  /accounts/{accountID}/verify/challenge:
+    post:
+      summary: Start UID ownership verification
+      description: Generates or returns an active one-time verification code (PXL-XXXX) to be placed into the in-game profile signature.
+      operationId: startAccountVerification
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: accountID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Verification challenge generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationChallengeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /accounts/{accountID}/verify/confirm:
+    post:
+      summary: Confirm UID ownership verification
+      description: Fetches a fresh showcase profile from Enka Network bypassing cache and checks if the player's signature contains the active verification code.
+      operationId: confirmAccountVerification
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: accountID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Account ownership verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameAccount'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '502':
+          $ref: '#/components/responses/BadGatewayError'
+
+  /accounts/verify/challenge:
+    post:
+      summary: Start UID ownership verification by UID
+      description: Generates or returns an active one-time verification code (PXL-XXXX) for the given UID to be placed into the in-game profile signature.
+      operationId: startVerificationByUID
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationChallengeRequest'
+      responses:
+        '200':
+          description: Verification challenge generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationChallengeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /accounts/verify/confirm:
+    post:
+      summary: Confirm UID ownership verification by UID
+      description: Fetches fresh showcase profile from Enka Network and checks player signature for the active verification code. Atomically creates or re-claims the game account.
+      operationId: confirmVerificationByUID
+      tags:
+        - Accounts
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationConfirmRequest'
+      responses:
+        '200':
+          description: Account ownership verified and claimed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameAccount'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '502':
+          $ref: '#/components/responses/BadGatewayError'
 
   /showcase/{uid}:
     get:
@@ -260,6 +664,44 @@ paths:
           $ref: '#/components/responses/RateLimitedError'
         '502':
           $ref: '#/components/responses/BadGatewayError'
+
+  /showcase/{uid}/roster:
+    get:
+      summary: Get verified public showcase roster
+      description: Retrieves publicly shared build presets and squad assemblies for a verified ZZZ UID directly from local database without upstream network calls.
+      operationId: getPublicShowcaseRoster
+      tags:
+        - Showcase
+      security: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{9,10}$'
+            example: "1500000000"
+        - name: lang
+          in: query
+          required: false
+          description: Preferred localization language for agent equipment and metadata (e.g. 'ru', 'en')
+          schema:
+            type: string
+            default: "ru"
+            example: "ru"
+      responses:
+        '200':
+          description: Public showcase roster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicShowcaseRosterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /builds:
     get:
@@ -423,6 +865,43 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '409':
           $ref: '#/components/responses/ConflictError'
+
+  /public/builds/{buildID}:
+    get:
+      summary: Get public agent build
+      description: Retrieves a single publicly shared agent build with owner metadata. Returns 404 if build is private or owner is banned.
+      operationId: getPublicBuild
+      tags:
+        - Builds
+      security: []
+      parameters:
+        - name: buildID
+          in: path
+          required: true
+          description: Unique build ID
+          schema:
+            type: string
+            format: uuid
+        - name: lang
+          in: query
+          required: false
+          description: Target language for dynamic localization (e.g. ru, en)
+          schema:
+            type: string
+            example: ru
+      responses:
+        '200':
+          description: Public agent build details with owner information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBuildResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /teams:
     get:
@@ -640,6 +1119,49 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '422':
           $ref: '#/components/responses/UnprocessableEntityError'
+    patch:
+      summary: Partially update team preset
+      description: Updates the team preset name, description, or visibility flag. Roster slots remain untouched.
+      operationId: patchTeam
+      tags:
+        - Teams
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: lang
+          in: query
+          required: false
+          description: Target language for dynamic localization (e.g. ru, en)
+          schema:
+            type: string
+            example: ru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchTeamRequest'
+      responses:
+        '200':
+          description: Team updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamSummary'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
     delete:
       summary: Delete team preset
       description: Removes an owned team; members cascade deleted.
@@ -666,6 +1188,43 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+
+  /public/teams/{teamID}:
+    get:
+      summary: Get public team details
+      description: Retrieves a single publicly shared team squad preset with member details and owner metadata. Returns 404 if team is private or owner is banned.
+      operationId: getPublicTeam
+      tags:
+        - Teams
+      security: []
+      parameters:
+        - name: teamID
+          in: path
+          required: true
+          description: Unique team ID
+          schema:
+            type: string
+            format: uuid
+        - name: lang
+          in: query
+          required: false
+          description: Target language for dynamic localization (e.g. ru, en)
+          schema:
+            type: string
+            example: ru
+      responses:
+        '200':
+          description: Public squad composition with member builds and owner information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicTeamResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   # -----------------------------------------------------------------------
   # Admin surface (docs/product/PRD-admin-dashboard.md)
@@ -1030,6 +1589,18 @@ components:
       description: AES-256-GCM encrypted session cookie issued on Discord OAuth2 completion (named __Host-pl_session in production).
 
   schemas:
+    ShareStatus:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+    ShareToken:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: Secret bearer token. Anyone holding it can access the shared resource.
     User:
       type: object
       required:
@@ -1059,6 +1630,9 @@ components:
         - id
         - uid
         - region
+        - is_public_roster
+        - is_public_teams
+        - show_discord
         - created_at
       properties:
         id:
@@ -1071,6 +1645,33 @@ components:
           type: string
           enum: [Europe, America, Asia, TW/HK/MO]
           example: "Europe"
+        nickname:
+          type:
+            - string
+            - "null"
+          example: "ProxyLeader"
+        avatar_url:
+          type:
+            - string
+            - "null"
+        verified_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        is_public_roster:
+          type: boolean
+          default: true
+        is_public_teams:
+          type: boolean
+          default: true
+        is_public_showcase:
+          type: boolean
+          default: false
+          deprecated: true
+        show_discord:
+          type: boolean
+          default: false
         created_at:
           type: string
           format: date-time
@@ -1088,6 +1689,68 @@ components:
           description: Server region (optional; automatically determined from 10-digit UID prefix if omitted)
           enum: [Europe, America, Asia, TW/HK/MO]
           example: "Europe"
+
+    UpdateAccountRequest:
+      type: object
+      properties:
+        is_public_roster:
+          type: boolean
+          description: Whether this account's agent presets are public (requires verified ownership)
+        is_public_teams:
+          type: boolean
+          description: Whether this account's team squads are public (requires verified ownership)
+        is_public_showcase:
+          type: boolean
+          deprecated: true
+          description: Deprecated alias for updating both roster and teams visibility
+        show_discord:
+          type: boolean
+          description: Whether to display owner's Discord identity on public pages
+
+    VerificationChallengeRequest:
+      type: object
+      required:
+        - uid
+      properties:
+        uid:
+          type: string
+          pattern: '^[0-9]{9,10}$'
+        region:
+          type: string
+          description: Server region (optional; automatically determined from 10-digit UID prefix if omitted)
+          enum: [Europe, America, Asia, TW/HK/MO]
+          example: "Europe"
+
+    VerificationConfirmRequest:
+      type: object
+      required:
+        - uid
+      properties:
+        uid:
+          type: string
+          pattern: '^[0-9]{9,10}$'
+        region:
+          type: string
+          description: Server region (optional; automatically determined from 10-digit UID prefix if omitted)
+          enum: [Europe, America, Asia, TW/HK/MO]
+          example: "Europe"
+
+    VerificationChallengeResponse:
+      type: object
+      required:
+        - code
+        - expires_at
+        - cooldown_seconds
+      properties:
+        code:
+          type: string
+          example: "PXL-9A4B"
+        expires_at:
+          type: string
+          format: date-time
+        cooldown_seconds:
+          type: integer
+          example: 30
 
     UserLimits:
       type: object
@@ -1144,6 +1807,7 @@ components:
         - name
         - disc_uids
         - build_data
+        - is_public
         - created_at
         - updated_at
       properties:
@@ -1181,6 +1845,9 @@ components:
         build_data:
           type: object
           description: Full enriched agent payload from Enka / Fairy
+        is_public:
+          type: boolean
+          example: false
         created_at:
           type: string
           format: date-time
@@ -1219,6 +1886,8 @@ components:
           type:
             - string
             - "null"
+        is_public:
+          type: boolean
 
     Team:
       type: object
@@ -1226,6 +1895,7 @@ components:
         - id
         - game_account_id
         - name
+        - is_public
         - created_at
         - updated_at
       properties:
@@ -1242,6 +1912,9 @@ components:
           type:
             - string
             - "null"
+        is_public:
+          type: boolean
+          example: false
         created_at:
           type: string
           format: date-time
@@ -1324,6 +1997,8 @@ components:
           type:
             - string
             - "null"
+        is_public:
+          type: boolean
         build_ids:
           type: array
           minItems: 1
@@ -1348,6 +2023,8 @@ components:
           type:
             - string
             - "null"
+        is_public:
+          type: boolean
         build_ids:
           type: array
           minItems: 1
@@ -1355,6 +2032,18 @@ components:
           items:
             type: string
             format: uuid
+
+    PatchTeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        is_public:
+          type: boolean
 
     ConflictCode:
       type: string
@@ -1401,6 +2090,100 @@ components:
           items:
             $ref: '#/components/schemas/ConflictError'
 
+    PublicOwnerInfo:
+      type: object
+      required:
+        - uid
+        - region
+        - nickname
+        - avatar_url
+      properties:
+        uid:
+          type: string
+          example: "1500000000"
+        region:
+          type: string
+          enum: [Europe, America, Asia, TW/HK/MO]
+          example: "Europe"
+        nickname:
+          type:
+            - string
+            - "null"
+          example: "ProxyLeader"
+        avatar_url:
+          type:
+            - string
+            - "null"
+        discord_username:
+          type:
+            - string
+            - "null"
+          description: Owner's Discord username (only populated if show_discord is true)
+          example: "ProxyLeader"
+        discord_avatar_url:
+          type:
+            - string
+            - "null"
+          description: Owner's Discord avatar URL (only populated if show_discord is true)
+
+    PublicBuildResponse:
+      type: object
+      required:
+        - build
+        - owner
+      properties:
+        build:
+          $ref: '#/components/schemas/Build'
+        owner:
+          $ref: '#/components/schemas/PublicOwnerInfo'
+
+    PublicTeamResponse:
+      type: object
+      required:
+        - team
+        - report
+        - members
+        - owner
+      properties:
+        team:
+          $ref: '#/components/schemas/Team'
+        report:
+          $ref: '#/components/schemas/ConflictReport'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMember'
+        owner:
+          $ref: '#/components/schemas/PublicOwnerInfo'
+
+    PublicShowcaseRosterResponse:
+      type: object
+      required:
+        - owner
+        - is_public_roster
+        - is_public_teams
+        - is_public_showcase
+        - builds
+        - teams
+      properties:
+        owner:
+          $ref: '#/components/schemas/PublicOwnerInfo'
+        is_public_roster:
+          type: boolean
+        is_public_teams:
+          type: boolean
+        is_public_showcase:
+          type: boolean
+          deprecated: true
+        builds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Build'
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamSummary'
+
     ShowcaseResponse:
       type: object
       required:
@@ -1438,6 +2221,14 @@ components:
           type: array
           items:
             type: object
+        verified_owner:
+          anyOf:
+            - $ref: '#/components/schemas/PublicOwnerInfo'
+            - type: "null"
+          description: Public owner profile if UID is claimed and verified by an active user
+        has_public_roster:
+          type: boolean
+          description: True if verified owner has published presets and squads
 
     # ---------------------------------------------------------------------
     # Admin (see docs/product/PRD-admin-dashboard.md)

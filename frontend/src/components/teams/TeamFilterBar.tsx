@@ -1,7 +1,19 @@
-import { ArrowDownAZ, ArrowUpDown, Plus, Search, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowDownAZ, ArrowUpDown, Check, Globe, Lock, Plus, Search, Share2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { createTeamsShare, revokeTeamsShare } from '@/api/client'
+import { RevokeShareDialog } from '@/components/roster/RevokeShareDialog'
+import { useShareStatus } from '@/components/roster/useShareStatus'
+import { ShareIconButton } from '@/components/common/ShareIconButton'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -10,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { toast } from '@/components/ui/sonner'
+import type { GameAccount } from '@/types'
 
 export type TeamSortOption = 'newest' | 'oldest' | 'name'
 
@@ -20,6 +34,10 @@ interface TeamFilterBarProps {
   onSortChange: (sort: TeamSortOption) => void
   totalCount?: number
   maxTeams?: number
+  activeAccount?: GameAccount | null
+  isPublicTeams?: boolean
+  onTogglePublicTeams?: () => void
+  isUpdatingVisibility?: boolean
 }
 
 export function TeamFilterBar({
@@ -29,9 +47,50 @@ export function TeamFilterBar({
   onSortChange,
   totalCount = 0,
   maxTeams = 100,
+  activeAccount,
+  isPublicTeams,
+  onTogglePublicTeams,
+  isUpdatingVisibility,
 }: TeamFilterBarProps) {
   const { t } = useTranslation()
   const isMaxTeams = totalCount >= maxTeams
+  const [teamsLinkCopied, setTeamsLinkCopied] = useState(false)
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false)
+  const shareStatus = useShareStatus('teams', activeAccount?.id)
+  const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (linkTimerRef.current) clearTimeout(linkTimerRef.current)
+    }
+  }, [])
+
+  async function handleCopyTeamsLink() {
+    if (!activeAccount?.id) return
+    try {
+      const { token } = await createTeamsShare(activeAccount.id)
+      shareStatus.setActive(true)
+      const url = `${window.location.origin}/shared/squads/${encodeURIComponent(token)}`
+      await navigator.clipboard.writeText(url)
+      setTeamsLinkCopied(true)
+      if (linkTimerRef.current) clearTimeout(linkTimerRef.current)
+      linkTimerRef.current = setTimeout(() => setTeamsLinkCopied(false), 2000)
+      toast.success(t('sharing.linkCopied'))
+    } catch {
+      toast.error(t('sharing.copyError'))
+    }
+  }
+
+  async function handleRevokeTeamsLink() {
+    if (!activeAccount?.id) return
+    try {
+      await revokeTeamsShare(activeAccount.id)
+      shareStatus.setActive(false)
+      toast.success(t('sharing.revoked'))
+    } catch {
+      toast.error(t('sharing.revokeError'))
+    }
+  }
 
   return (
     <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -57,8 +116,59 @@ export function TeamFilterBar({
         )}
       </div>
 
-      {/* Sort Select & Create Squad Button */}
+      {/* Share, Sort Select & Create Squad Button */}
       <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+        {activeAccount && (
+          <DropdownMenu onOpenChange={(open) => { if (open) shareStatus.refresh() }}>
+            <DropdownMenuTrigger asChild>
+              <ShareIconButton
+                size="icon-lg"
+                isPublic={isPublicTeams}
+                aria-label={isPublicTeams ? t('teams.statusPublic') : t('teams.statusPrivate')}
+                title={isPublicTeams ? t('teams.statusPublic') : t('teams.statusPrivate')}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-max min-w-0 max-w-[calc(100vw-2rem)] p-1.5">
+              <DropdownMenuItem
+                role="menuitemcheckbox"
+                aria-checked={isPublicTeams}
+                disabled={isUpdatingVisibility}
+                onSelect={onTogglePublicTeams}
+                className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
+              >
+                {isPublicTeams ? (
+                  <Globe className="size-4 text-primary" />
+                ) : (
+                  <Lock className="size-4 text-muted-foreground" />
+                )}
+                {isPublicTeams ? t('teams.statusPublic') : t('teams.statusPrivate')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
+                onSelect={handleCopyTeamsLink}
+              >
+                {teamsLinkCopied ? (
+                  <Check className="size-4 text-primary stroke-[2.5]" />
+                ) : (
+                  <Share2 className="size-4" />
+                )}
+                {t('teams.copyPublicLink')}
+              </DropdownMenuItem>
+              <DropdownMenuLabel className="mt-0.5 border-t border-white/10 px-2.5 pt-1.5 pb-0.5 whitespace-nowrap">
+                {t(`sharing.linkStatus_${shareStatus.status}`)}
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                className="gap-2.5 px-2.5 py-1.5 whitespace-nowrap"
+                disabled={shareStatus.status === 'inactive'}
+                onSelect={() => setRevokeDialogOpen(true)}
+              >
+                <Lock className="size-4" />
+                {t('sharing.revokeLink')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         <div className="flex-1 sm:w-[160px] sm:flex-none">
           <Select
             value={sortBy}
@@ -100,6 +210,14 @@ export function TeamFilterBar({
           </Button>
         )}
       </div>
+
+      {activeAccount && (
+        <RevokeShareDialog
+          open={revokeDialogOpen}
+          onOpenChange={setRevokeDialogOpen}
+          onConfirm={handleRevokeTeamsLink}
+        />
+      )}
     </div>
   )
 }

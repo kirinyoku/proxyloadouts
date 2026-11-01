@@ -24,6 +24,7 @@ function createMockBuild(id: string, name: string, agentId: number, discSlots: {
     weapon_uid: null,
     weapon_id: null,
     disc_uids: discSlots.map((d) => d.uid),
+    is_public: false,
     build_data: {
       id: agentId,
       name: `Agent ${agentId}`,

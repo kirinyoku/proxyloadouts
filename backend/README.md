@@ -25,6 +25,7 @@ It can run either as a standalone REST API server during local development or as
    - [Stateless AES-GCM Sessions with Instant Revocation](#4-stateless-aes-gcm-sessions-with-instant-revocation)
    - [Origin & CSRF Defense Architecture](#5-origin--csrf-defense-architecture)
    - [Graceful Lifecycle & Zero-Downtime Draining](#6-graceful-lifecycle--zero-downtime-draining)
+   - [Cryptographic Share Links & Zero-Trust Storage](#7-cryptographic-share-links--zero-trust-storage)
 3. [Contract-First Governance & Codegen](#contract-first-governance--codegen)
 4. [Database Schema & Migrations](#database-schema--migrations)
 5. [Service Setup & Execution Modes](#service-setup--execution-modes)
@@ -95,7 +96,8 @@ flowchart TD
 backend/
 ├── cmd/
 │   ├── server/             # Runtime composition root, dependency injection & signal handling
-│   └── codegen/            # CLI codegen deriving TypeScript game constants from Fairy SDK
+│   ├── codegen/            # CLI codegen deriving TypeScript game constants from Fairy SDK
+│   └── userquota/          # CLI management tool for inspecting and adjusting user build/team quotas
 ├── internal/
 │   ├── domain/             # Pure entities, domain invariants, custom errors, repository ports
 │   ├── engine/
@@ -195,6 +197,23 @@ Upstream game profile queries are subject to strict rate limits. A sudden traffi
 - Background cache cleanup goroutines (`inmemory.Cache.Close()`) and rate limiter sweepers are stopped via structured `defer` chains.
 - The SQLite database handle is closed only after all active HTTP handlers have returned, preventing WAL truncation corruption.
 
+### 7. Cryptographic Share Links & Zero-Trust Storage
+
+**Decision**: Store SHA-256 token hashes (`token_hash BLOB PRIMARY KEY`) instead of plaintext URL tokens.
+
+- **The Security Challenge**: Public share URLs (`/b/:token`, `/t/:token`, `/r/:token`) contain unguessable high-entropy tokens. If raw tokens were stored directly in SQLite, an unauthorized database backup read would compromise every active secret link.
+- **Hash-At-Rest Storage**: When a user generates a share link, the raw token is returned to the client once. The database stores only `token_hash BLOB PRIMARY KEY` (computed via SHA-256). Incoming resolution requests hash the URL parameter and look up the binary digest in $O(1)$ time.
+- **Polymorphic Integrity & Cascading Lifecycle**:
+  The `share_links` table enforces a polymorphic exclusive relationship across builds, teams, and accounts:
+  ```sql
+  CHECK (
+      (CASE WHEN build_id IS NOT NULL THEN 1 ELSE 0 END +
+       CASE WHEN account_id IS NOT NULL THEN 1 ELSE 0 END +
+       CASE WHEN team_id IS NOT NULL THEN 1 ELSE 0 END) = 1
+  )
+  ```
+  Foreign keys configure `ON DELETE CASCADE`: deleting a build, team, or account atomically purges all associated share links without dangling pointer bugs.
+
 ---
 
 ## Contract-First Governance & Codegen
@@ -219,6 +238,13 @@ Database evolution is managed via versioned SQL migrations embedded directly int
 | Migration | Scope | Key Relational Invariants |
 |---|---|---|
 | `001_init.sql` | Core Schema | • UUIDv4 surrogate primary keys across all tables.<br>• Discord identity uniqueness and account cascading (`ON DELETE CASCADE`).<br>• Session revocation via atomic `token_version INT NOT NULL DEFAULT 1`.<br>• Fast conflict indexing with `disc_slots JSON` and indexed lookup columns.<br>• Upstream payload integrity with immutable `raw_data TEXT NOT NULL`.<br>• Team slot bounds (`CHECK (slot_number BETWEEN 1 AND 3)`) and deletion guards (`ON DELETE RESTRICT` for active squad builds). |
+| `002_user_limits.sql` | Quota Controls | • Configurable per-user quota ceilings (`max_accounts`, `max_builds_per_agent`, `max_teams`). |
+| `003_user_moderation.sql` | Moderation & Bans | • Account suspension via `banned_at` audit timestamp, preventing abuse and invalidating stale tokens. |
+| `004_user_custom_accounts.sql` | Account Overrides | • Granular per-user overrides for maximum linked game accounts. |
+| `005_social_sharing.sql` | Public Showcases | • UID ownership verification (`verified_at`) with partial unique index (`idx_game_accounts_verified_uid`).<br>• Public showcase controls (`is_public_showcase`, `show_discord`) and per-build/team visibility flags. |
+| `006_social_sharing_v2.sql` | Sharing Indexes | • Performance indexes for public account rosters and squads (`WHERE is_public = 1`). |
+| `007_share_links.sql` | Secret Tokens | • High-entropy secret share links with `token_hash BLOB PRIMARY KEY` (SHA-256 at rest) for builds and accounts. |
+| `008_share_links_teams.sql` | Squad Sharing | • Extended polymorphic sharing covering 3-agent squads (`team_id`) with exclusive relation check and `kind` classification. |
 
 Migrations execute automatically at application boot inside a transaction, recording applied versions in the `schema_migrations` audit table. Subsequent schema changes post-release follow strict sequential versioning (`002_...`, `003_...`).
 

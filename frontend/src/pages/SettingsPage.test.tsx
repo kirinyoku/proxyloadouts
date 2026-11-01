@@ -78,12 +78,18 @@ const mockUseBgAnimation = vi.fn()
 const mockCreateAccountMutation = { mutate: vi.fn(), isPending: false }
 const mockDeleteAccountMutation = { mutate: vi.fn(), isPending: false }
 const mockDeleteMeMutation = { mutate: vi.fn(), isPending: false }
+const mockUpdateAccountMutation = { mutate: vi.fn(), isPending: false }
+const mockStartVerificationMutation = { mutate: vi.fn(), isPending: false }
+const mockConfirmVerificationMutation = { mutate: vi.fn(), isPending: false }
 
 vi.mock('@/api/hooks', () => ({
   useMe: () => mockUseMe(),
   useCreateAccount: () => mockCreateAccountMutation,
   useDeleteAccount: () => mockDeleteAccountMutation,
   useDeleteMe: () => mockDeleteMeMutation,
+  useUpdateAccount: () => mockUpdateAccountMutation,
+  useStartVerification: () => mockStartVerificationMutation,
+  useConfirmVerification: () => mockConfirmVerificationMutation,
 }))
 
 vi.mock('@/hooks/useActiveAccount', () => ({

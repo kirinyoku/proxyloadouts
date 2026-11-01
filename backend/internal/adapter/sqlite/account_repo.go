@@ -36,9 +36,13 @@ func (r *SQLiteAccountRepo) Create(ctx context.Context, account *domain.GameAcco
 	}
 
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO game_accounts (id, user_id, uid, region, created_at)
-		 VALUES (?, ?, ?, ?, ?);`,
-		account.ID.String(), account.UserID.String(), account.UID, account.Region, formatTime(account.CreatedAt),
+		`INSERT INTO game_accounts (id, user_id, uid, region, nickname, avatar_url, verified_at, is_public_showcase, is_public_roster, is_public_teams, show_discord, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+		account.ID.String(), account.UserID.String(), account.UID, account.Region,
+		nullableString(account.Nickname), nullableString(account.AvatarURL),
+		nullableTime(account.VerifiedAt), boolToInt(account.IsPublicRoster || account.IsPublicTeams),
+		boolToInt(account.IsPublicRoster), boolToInt(account.IsPublicTeams),
+		boolToInt(account.ShowDiscord), formatTime(account.CreatedAt),
 	)
 	if err != nil {
 		if mapped := mapConstraintError(err); mapped != nil {
@@ -49,10 +53,12 @@ func (r *SQLiteAccountRepo) Create(ctx context.Context, account *domain.GameAcco
 	return nil
 }
 
+const accountSelect = `SELECT id, user_id, uid, region, nickname, avatar_url, verified_at, is_public_roster, is_public_teams, show_discord, created_at FROM game_accounts`
+
 // GetByID returns the game account with the given ID or domain.ErrNotFound.
 func (r *SQLiteAccountRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.GameAccount, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, uid, region, created_at FROM game_accounts WHERE id = ?;`,
+		accountSelect+` WHERE id = ?;`,
 		id.String(),
 	)
 	return scanAccountRow(row)
@@ -61,7 +67,7 @@ func (r *SQLiteAccountRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.
 // GetByUserAndUID returns the account of the user with the given UID or domain.ErrNotFound.
 func (r *SQLiteAccountRepo) GetByUserAndUID(ctx context.Context, userID uuid.UUID, uid string) (*domain.GameAccount, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, uid, region, created_at FROM game_accounts WHERE user_id = ? AND uid = ?;`,
+		accountSelect+` WHERE user_id = ? AND uid = ?;`,
 		userID.String(), uid,
 	)
 	return scanAccountRow(row)
@@ -70,7 +76,7 @@ func (r *SQLiteAccountRepo) GetByUserAndUID(ctx context.Context, userID uuid.UUI
 // ListByUser returns all accounts linked to the user, oldest first.
 func (r *SQLiteAccountRepo) ListByUser(ctx context.Context, userID uuid.UUID) ([]*domain.GameAccount, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, user_id, uid, region, created_at FROM game_accounts WHERE user_id = ? ORDER BY created_at, uid;`,
+		accountSelect+` WHERE user_id = ? ORDER BY created_at, uid;`,
 		userID.String(),
 	)
 	if err != nil {
@@ -102,6 +108,302 @@ func (r *SQLiteAccountRepo) CountByUser(ctx context.Context, userID uuid.UUID) (
 	return count, nil
 }
 
+// UpdateProfileMetadata updates the display nickname and avatar URL of a game account.
+func (r *SQLiteAccountRepo) UpdateProfileMetadata(ctx context.Context, id uuid.UUID, nickname, avatarURL *string) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE game_accounts SET nickname = ?, avatar_url = ? WHERE id = ?;`,
+		nullableString(nickname), nullableString(avatarURL), id.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update profile metadata for account %s: %w", id, err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("%w: game account %s", domain.ErrNotFound, id)
+	}
+	return nil
+}
+
+// UpdateSettings updates the public showcase visibility (roster and teams) and discord visibility for a game account.
+func (r *SQLiteAccountRepo) UpdateSettings(ctx context.Context, id uuid.UUID, isPublicRoster, isPublicTeams, showDiscord bool) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE game_accounts SET is_public_roster = ?, is_public_teams = ?, is_public_showcase = ?, show_discord = ? WHERE id = ?;`,
+		boolToInt(isPublicRoster), boolToInt(isPublicTeams), boolToInt(isPublicRoster || isPublicTeams), boolToInt(showDiscord), id.String(),
+	)
+	if err != nil {
+		if mapped := mapConstraintError(err); mapped != nil {
+			return mapped
+		}
+		return fmt.Errorf("failed to update settings for account %s: %w", id, err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("%w: game account %s", domain.ErrNotFound, id)
+	}
+	return nil
+}
+
+// ClaimVerifiedUID atomically claims or re-claims verification for a UID and userID.
+// If UID already exists, it transfers ownership of the game_account, agent_builds, and teams
+// to the new userID (Re-claim scenario). If it does not exist, it inserts a new verified account.
+func (r *SQLiteAccountRepo) ClaimVerifiedUID(
+	ctx context.Context,
+	userID uuid.UUID,
+	uid, region string,
+	verifiedAt time.Time,
+	nickname, avatarURL *string,
+) (*domain.GameAccount, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin verification transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if region == "" {
+		if matched, ok := domain.RegionFromUID(uid); ok {
+			region = matched
+		} else {
+			region = domain.DefaultRegion
+		}
+	}
+
+	// 1. Find all accounts with this UID ordered by verified status first, then oldest created.
+	rows, err := tx.QueryContext(ctx,
+		`SELECT id, user_id, (verified_at IS NOT NULL) AS is_verified
+		 FROM game_accounts
+		 WHERE uid = ?
+		 ORDER BY (verified_at IS NOT NULL) DESC, created_at ASC;`,
+		uid,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing game accounts for uid %s: %w", uid, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	type existingRow struct {
+		id         string
+		userID     string
+		isVerified bool
+	}
+	var existingAccounts []existingRow
+	for rows.Next() {
+		var r existingRow
+		if err := rows.Scan(&r.id, &r.userID, &r.isVerified); err != nil {
+			return nil, fmt.Errorf("failed to scan game account: %w", err)
+		}
+		existingAccounts = append(existingAccounts, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating game accounts for uid %s: %w", uid, err)
+	}
+	_ = rows.Close()
+
+	var targetAccountID string
+
+	if len(existingAccounts) == 0 {
+		newID := uuid.New()
+		targetAccountID = newID.String()
+		now := time.Now()
+		_, err = tx.ExecContext(ctx,
+			`INSERT INTO game_accounts (id, user_id, uid, region, nickname, avatar_url, verified_at, is_public_showcase, is_public_roster, is_public_teams, show_discord, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, 1, 0, ?);`,
+			targetAccountID, userID.String(), uid, region,
+			nullableString(nickname), nullableString(avatarURL),
+			formatTime(verifiedAt), formatTime(now),
+		)
+		if err != nil {
+			if mapped := mapConstraintError(err); mapped != nil {
+				return nil, mapped
+			}
+			return nil, fmt.Errorf("failed to create verified game account: %w", err)
+		}
+	} else {
+		primary := existingAccounts[0]
+		targetAccountID = primary.id
+
+		// Merge and clean up any duplicate accounts belonging to this userID
+		for _, dup := range existingAccounts[1:] {
+			if dup.userID == userID.String() {
+				if _, err := tx.ExecContext(ctx,
+					`UPDATE agent_builds SET game_account_id = ?, user_id = ? WHERE game_account_id = ?;`,
+					targetAccountID, userID.String(), dup.id,
+				); err != nil {
+					return nil, fmt.Errorf("failed to merge builds from duplicate account %s: %w", dup.id, err)
+				}
+
+				if _, err := tx.ExecContext(ctx,
+					`UPDATE teams SET game_account_id = ?, user_id = ? WHERE game_account_id = ?;`,
+					targetAccountID, userID.String(), dup.id,
+				); err != nil {
+					return nil, fmt.Errorf("failed to merge teams from duplicate account %s: %w", dup.id, err)
+				}
+
+				if _, err := tx.ExecContext(ctx,
+					`DELETE FROM game_accounts WHERE id = ?;`,
+					dup.id,
+				); err != nil {
+					return nil, fmt.Errorf("failed to clean up duplicate account %s: %w", dup.id, err)
+				}
+			}
+		}
+
+		updateQuery := `UPDATE game_accounts
+			 SET user_id = ?, region = ?, verified_at = ?,
+			     nickname = COALESCE(?, nickname),
+			     avatar_url = COALESCE(?, avatar_url),
+			     is_public_showcase = 1, is_public_roster = 1, is_public_teams = 1`
+		args := []any{
+			userID.String(), region, formatTime(verifiedAt),
+			nullableString(nickname), nullableString(avatarURL),
+		}
+		if primary.userID != userID.String() {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM share_links WHERE account_id = ? OR build_id IN (SELECT id FROM agent_builds WHERE game_account_id = ? AND user_id = ?) OR team_id IN (SELECT id FROM teams WHERE game_account_id = ? AND user_id = ?);`, targetAccountID, targetAccountID, primary.userID, targetAccountID, primary.userID); err != nil {
+				return nil, fmt.Errorf("failed to revoke shared links on account transfer: %w", err)
+			}
+			// Reset Discord sharing for new owner upon Re-claim to protect privacy
+			updateQuery += `, show_discord = 0`
+		}
+		updateQuery += ` WHERE id = ?;`
+		args = append(args, targetAccountID)
+
+		res, err := tx.ExecContext(ctx, updateQuery, args...)
+		if err != nil {
+			if mapped := mapConstraintError(err); mapped != nil {
+				return nil, mapped
+			}
+			return nil, fmt.Errorf("failed to update verified game account: %w", err)
+		}
+		if affected, _ := res.RowsAffected(); affected == 0 {
+			return nil, fmt.Errorf("%w: game account %s", domain.ErrNotFound, targetAccountID)
+		}
+
+		// Reassign builds and teams on primary account to the new user_id
+		if _, err := tx.ExecContext(ctx, `UPDATE agent_builds SET user_id = ? WHERE game_account_id = ?;`, userID.String(), targetAccountID); err != nil {
+			return nil, fmt.Errorf("failed to transfer builds to user %s: %w", userID, err)
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE teams SET user_id = ? WHERE game_account_id = ?;`, userID.String(), targetAccountID); err != nil {
+			return nil, fmt.Errorf("failed to transfer teams to user %s: %w", userID, err)
+		}
+	}
+
+	row := tx.QueryRowContext(ctx, accountSelect+` WHERE id = ?;`, targetAccountID)
+	account, err := scanAccountRow(row)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan verified game account: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit verification transaction: %w", err)
+	}
+
+	return account, nil
+}
+
+// VerifyOwnership claims or re-claims verification for accountID and uid.
+func (r *SQLiteAccountRepo) VerifyOwnership(ctx context.Context, accountID uuid.UUID, uid string, verifiedAt time.Time, nickname, avatarURL *string) error {
+	acc, err := r.GetByID(ctx, accountID)
+	if err != nil {
+		return err
+	}
+	_, err = r.ClaimVerifiedUID(ctx, acc.UserID, uid, acc.Region, verifiedAt, nickname, avatarURL)
+	return err
+}
+
+// GetVerifiedByUID returns the verified game account and public owner metadata for the given UID,
+// or domain.ErrNotFound if not verified or if the owner is banned.
+func (r *SQLiteAccountRepo) GetVerifiedByUID(ctx context.Context, uid string) (*domain.GameAccount, *domain.PublicOwnerInfo, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT ga.id, ga.user_id, ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.verified_at,
+		        ga.is_public_roster, ga.is_public_teams, ga.show_discord, ga.created_at,
+		        u.discord_id, u.username, u.avatar_url
+		 FROM game_accounts ga
+		 JOIN users u ON u.id = ga.user_id
+		 WHERE ga.uid = ? AND ga.verified_at IS NOT NULL AND u.banned_at IS NULL;`,
+		uid,
+	)
+
+	var (
+		a                domain.GameAccount
+		id               string
+		userID           string
+		nickname         sql.NullString
+		avatarURL        sql.NullString
+		verifiedAt       sql.NullString
+		isPublicRoster   int
+		isPublicTeams    int
+		showDiscord      int
+		createdAt        string
+		discordID        string
+		discordUsername  string
+		discordAvatarURL sql.NullString
+	)
+
+	if err := row.Scan(
+		&id, &userID, &a.UID, &a.Region, &nickname, &avatarURL, &verifiedAt,
+		&isPublicRoster, &isPublicTeams, &showDiscord, &createdAt,
+		&discordID, &discordUsername, &discordAvatarURL,
+	); err != nil {
+		return nil, nil, notFound("verified game account", err)
+	}
+
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse game account id %q: %w", id, err)
+	}
+	parsedUserID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse user id %q: %w", userID, err)
+	}
+	createdAtParsed, err := parseTime(createdAt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse game account created_at: %w", err)
+	}
+	parsedVerifiedAt, err := parseNullableTime(verifiedAt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse game account verified_at: %w", err)
+	}
+
+	a.ID = parsedID
+	a.UserID = parsedUserID
+	a.Nickname = nullStringPointer(nickname)
+	a.AvatarURL = nullStringPointer(avatarURL)
+	a.VerifiedAt = parsedVerifiedAt
+	a.IsPublicRoster = isPublicRoster != 0
+	a.IsPublicTeams = isPublicTeams != 0
+	a.ShowDiscord = showDiscord != 0
+	a.CreatedAt = createdAtParsed
+
+	owner := scanPublicOwnerInfo(a.UID, a.Region, nickname, avatarURL, showDiscord, discordID, discordUsername, discordAvatarURL)
+	return &a, owner, nil
+}
+
+// GetPublicOwnerInfoByAccountID returns public owner metadata for the account or domain.ErrNotFound
+// if the account does not exist or the owner is banned.
+func (r *SQLiteAccountRepo) GetPublicOwnerInfoByAccountID(ctx context.Context, accountID uuid.UUID) (*domain.PublicOwnerInfo, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.show_discord,
+		        u.discord_id, u.username, u.avatar_url
+		 FROM game_accounts ga
+		 JOIN users u ON u.id = ga.user_id
+		 WHERE ga.id = ? AND u.banned_at IS NULL;`,
+		accountID.String(),
+	)
+
+	var (
+		uid              string
+		region           string
+		nickname         sql.NullString
+		avatarURL        sql.NullString
+		showDiscord      int
+		discordID        string
+		discordUsername  string
+		discordAvatarURL sql.NullString
+	)
+	if err := row.Scan(&uid, &region, &nickname, &avatarURL, &showDiscord, &discordID, &discordUsername, &discordAvatarURL); err != nil {
+		return nil, notFound("game account public owner", err)
+	}
+
+	return scanPublicOwnerInfo(uid, region, nickname, avatarURL, showDiscord, discordID, discordUsername, discordAvatarURL), nil
+}
+
 // Delete removes the game account and cascades to its builds and teams.
 func (r *SQLiteAccountRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	res, err := r.db.ExecContext(ctx, `DELETE FROM game_accounts WHERE id = ?;`, id.String())
@@ -116,12 +418,18 @@ func (r *SQLiteAccountRepo) Delete(ctx context.Context, id uuid.UUID) error {
 
 func scanAccountRow(row rowScanner) (*domain.GameAccount, error) {
 	var (
-		a         domain.GameAccount
-		id        string
-		userID    string
-		createdAt string
+		a              domain.GameAccount
+		id             string
+		userID         string
+		nickname       sql.NullString
+		avatarURL      sql.NullString
+		verifiedAt     sql.NullString
+		isPublicRoster int
+		isPublicTeams  int
+		showDiscord    int
+		createdAt      string
 	)
-	if err := row.Scan(&id, &userID, &a.UID, &a.Region, &createdAt); err != nil {
+	if err := row.Scan(&id, &userID, &a.UID, &a.Region, &nickname, &avatarURL, &verifiedAt, &isPublicRoster, &isPublicTeams, &showDiscord, &createdAt); err != nil {
 		return nil, notFound("game account", err)
 	}
 
@@ -137,9 +445,19 @@ func scanAccountRow(row rowScanner) (*domain.GameAccount, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse game account created_at: %w", err)
 	}
+	parsedVerifiedAt, err := parseNullableTime(verifiedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse game account verified_at: %w", err)
+	}
 
 	a.ID = parsedID
 	a.UserID = parsedUserID
+	a.Nickname = nullStringPointer(nickname)
+	a.AvatarURL = nullStringPointer(avatarURL)
+	a.VerifiedAt = parsedVerifiedAt
+	a.IsPublicRoster = isPublicRoster != 0
+	a.IsPublicTeams = isPublicTeams != 0
+	a.ShowDiscord = showDiscord != 0
 	a.CreatedAt = createdAtParsed
 	return &a, nil
 }

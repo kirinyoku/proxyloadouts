@@ -33,6 +33,7 @@ type buildResponse struct {
 	WeaponID      *int            `json:"weapon_id"`
 	DiscUIDs      []string        `json:"disc_uids"`
 	BuildData     json.RawMessage `json:"build_data"`
+	IsPublic      bool            `json:"is_public"`
 	CreatedAt     string          `json:"created_at"`
 	UpdatedAt     string          `json:"updated_at"`
 }
@@ -53,6 +54,7 @@ func newBuildResponse(b *domain.AgentBuild) buildResponse {
 		WeaponID:      b.WeaponID,
 		DiscUIDs:      discUIDs,
 		BuildData:     b.BuildData,
+		IsPublic:      b.IsPublic,
 		CreatedAt:     b.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     b.UpdatedAt.UTC().Format(time.RFC3339),
 	}
@@ -70,6 +72,7 @@ type createBuildRequest struct {
 	GameAccountID   uuid.UUID       `json:"game_account_id"`
 	Name            string          `json:"name"`
 	Description     *string         `json:"description"`
+	IsPublic        *bool           `json:"is_public,omitempty"`
 	RawAgentPayload json.RawMessage `json:"raw_agent_payload"`
 	RawData         json.RawMessage `json:"raw_data,omitempty"`
 }
@@ -89,6 +92,7 @@ func (h *BuildHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		GameAccountID:   req.GameAccountID,
 		Name:            req.Name,
 		Description:     req.Description,
+		IsPublic:        req.IsPublic,
 		RawAgentPayload: req.RawAgentPayload,
 		RawData:         req.RawData,
 	})
@@ -137,7 +141,7 @@ func (h *BuildHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, newBuildResponse(build))
 }
 
-// handleUpdate renames or updates notes on an owned build preset.
+// handleUpdate renames, updates notes, or changes visibility on an owned build preset.
 func (h *BuildHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	user := MustUserFromContext(r.Context())
 
@@ -155,15 +159,17 @@ func (h *BuildHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	nameRaw, hasName := raw["name"]
 	descRaw, hasDesc := raw["description"]
+	isPubRaw, hasIsPub := raw["is_public"]
 
-	if !hasName && !hasDesc {
-		respondError(w, http.StatusBadRequest, "at least one of 'name' or 'description' must be provided")
+	if !hasName && !hasDesc && !hasIsPub {
+		respondError(w, http.StatusBadRequest, "at least one of 'name', 'description', or 'is_public' must be provided")
 		return
 	}
 
 	var (
-		name string
-		desc *string
+		name  string
+		desc  *string
+		isPub bool
 	)
 
 	if hasName {
@@ -176,6 +182,13 @@ func (h *BuildHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	if hasDesc {
 		if err := json.Unmarshal(descRaw, &desc); err != nil {
 			respondError(w, http.StatusBadRequest, "invalid description")
+			return
+		}
+	}
+
+	if hasIsPub {
+		if err := json.Unmarshal(isPubRaw, &isPub); err != nil {
+			respondError(w, http.StatusBadRequest, "invalid is_public")
 			return
 		}
 	}
@@ -197,6 +210,14 @@ func (h *BuildHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	if hasIsPub {
+		if err := h.builds.SetVisibility(r.Context(), user.ID, buildID, isPub); err != nil {
+			respondDomainError(w, r, err)
+			return
+		}
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 

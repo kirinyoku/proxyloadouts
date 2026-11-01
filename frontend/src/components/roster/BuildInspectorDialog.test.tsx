@@ -18,6 +18,7 @@ vi.mock('react-i18next', async (importOriginal) => {
           'roster.updatedAt': 'Обновлено {{date}}',
           'roster.notePrefix': '// Заметка:',
           'roster.addNote': 'Заметка',
+          'sharing.viewBuildPage': 'Открыть страницу сборки',
           'common.close': 'Закрыть',
           'attributes.Fire': 'Огонь',
           'specialties.Attack': 'Нападение',
@@ -56,6 +57,7 @@ const mockBuild: Build = {
   weapon_uid: 'w-1',
   weapon_id: 12002,
   disc_uids: [],
+  is_public: false,
   created_at: '2026-09-25T20:00:00Z',
   updated_at: '2026-09-25T20:00:00Z',
   build_data: {
@@ -161,5 +163,53 @@ describe('BuildInspectorDialog', () => {
 
     // 2-column grid layout with responsive lg breakpoint
     expect(html).toContain('lg:grid-cols-[270px_minmax(0,1fr)]')
+  })
+
+  it('does not render link to /b/:id when isPublicView is true and build is public', () => {
+    const publicBuild = { ...mockBuild, is_public: true }
+    const html = renderToString(
+      <BuildInspectorDialog
+        build={publicBuild}
+        open={true}
+        onOpenChange={() => {}}
+        isPublicView={true}
+      />,
+    )
+
+    expect(html).not.toContain('/b/build-evelyn-1')
+    expect(html).not.toContain('Открыть страницу сборки')
+    expect(html).not.toContain('/roster?build=')
+  })
+
+  it('does not render link to /b/:id when publicMode is true and build is public', () => {
+    const publicBuild = { ...mockBuild, is_public: true }
+    const html = renderToString(
+      <BuildInspectorDialog
+        build={publicBuild}
+        open={true}
+        onOpenChange={() => {}}
+        publicMode={true}
+      />,
+    )
+
+    expect(html).not.toContain('/b/build-evelyn-1')
+    expect(html).not.toContain('Открыть страницу сборки')
+    expect(html).not.toContain('/roster?build=')
+  })
+
+  it('does not render link to build page or roster when publicMode is true and build is private', () => {
+    const privateBuild = { ...mockBuild, is_public: false }
+    const html = renderToString(
+      <BuildInspectorDialog
+        build={privateBuild}
+        open={true}
+        onOpenChange={() => {}}
+        publicMode={true}
+      />,
+    )
+
+    expect(html).not.toContain('/b/build-evelyn-1')
+    expect(html).not.toContain('Открыть страницу сборки')
+    expect(html).not.toContain('/roster?build=')
   })
 })

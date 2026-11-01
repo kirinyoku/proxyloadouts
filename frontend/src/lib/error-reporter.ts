@@ -64,7 +64,7 @@ export function reportError(error: unknown, context?: ErrorReportContext): void 
   )
   const url =
     typeof window !== 'undefined' && window.location?.href
-      ? truncate(window.location.href, MAX_URL_LEN)
+      ? truncate(window.location.href.replace(/(\/shared\/(?:build|roster)\/)[^/?#]+/g, '$1[redacted]'), MAX_URL_LEN)
       : undefined
 
   const signature = `${message}|${stack?.split('\n')[0] ?? ''}`

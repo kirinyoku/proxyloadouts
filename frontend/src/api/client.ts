@@ -6,12 +6,21 @@ import type {
   CreateTeamRequest,
   GameAccount,
   MeResponse,
+  PatchTeamRequest,
+  PublicBuildResponse,
+  PublicShowcaseRosterResponse,
+  PublicTeamResponse,
   ShowcaseResponse,
   Team,
   TeamCountResponse,
   TeamDetail,
   TeamSummary,
+  UpdateAccountRequest,
+  UpdateBuildRequest,
   UpdateTeamRequest,
+  VerificationChallengeRequest,
+  VerificationChallengeResponse,
+  VerificationConfirmRequest,
 } from '@/types'
 
 import { getCurrentLanguage } from '@/i18n'
@@ -141,8 +150,45 @@ export function createAccount(body: CreateAccountRequest): Promise<GameAccount> 
   return request<GameAccount>('/accounts', { method: 'POST', body })
 }
 
+export function updateAccount(id: string, body: UpdateAccountRequest): Promise<GameAccount> {
+  return request<GameAccount>(`/accounts/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body,
+  })
+}
+
 export function deleteAccount(id: string): Promise<void> {
   return request<void>(`/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+export function startAccountVerification(id: string): Promise<VerificationChallengeResponse> {
+  return request<VerificationChallengeResponse>(`/accounts/${encodeURIComponent(id)}/verify/challenge`, {
+    method: 'POST',
+  })
+}
+
+export function startVerificationByUID(
+  body: VerificationChallengeRequest,
+): Promise<VerificationChallengeResponse> {
+  return request<VerificationChallengeResponse>('/accounts/verify/challenge', {
+    method: 'POST',
+    body,
+  })
+}
+
+export function confirmAccountVerification(id: string): Promise<GameAccount> {
+  return request<GameAccount>(`/accounts/${encodeURIComponent(id)}/verify/confirm`, {
+    method: 'POST',
+  })
+}
+
+export function confirmVerificationByUID(
+  body: VerificationConfirmRequest,
+): Promise<GameAccount> {
+  return request<GameAccount>('/accounts/verify/confirm', {
+    method: 'POST',
+    body,
+  })
 }
 
 export function fetchShowcase(
@@ -153,6 +199,90 @@ export function fetchShowcase(
   const activeLang = lang || getCurrentLanguage()
   const query = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
   return request<ShowcaseResponse>(`/showcase/${encodeURIComponent(uid)}${query}`, { signal })
+}
+
+export function fetchShowcaseRoster(
+  uid: string,
+  lang?: string,
+  signal?: AbortSignal,
+): Promise<PublicShowcaseRosterResponse> {
+  const activeLang = lang || getCurrentLanguage()
+  const query = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
+  return request<PublicShowcaseRosterResponse>(`/showcase/${encodeURIComponent(uid)}/roster${query}`, {
+    signal,
+    skipAuthRedirect: true,
+  })
+}
+
+export function createRosterShare(id: string): Promise<{ token: string }> {
+  return request(`/accounts/${encodeURIComponent(id)}/roster-share`, { method: 'POST' })
+}
+
+export function createBuildShare(id: string): Promise<{ token: string }> {
+  return request(`/builds/${encodeURIComponent(id)}/share`, { method: 'POST' })
+}
+
+export function createTeamShare(id: string): Promise<{ token: string }> {
+  return request(`/teams/${encodeURIComponent(id)}/share`, { method: 'POST' })
+}
+
+export function createTeamsShare(id: string): Promise<{ token: string }> {
+  return request(`/accounts/${encodeURIComponent(id)}/teams-share`, { method: 'POST' })
+}
+
+export function fetchShareStatus(
+  kind: 'roster' | 'build' | 'team' | 'teams',
+  id: string,
+  signal?: AbortSignal,
+): Promise<{ active: boolean }> {
+  let path: string
+  switch (kind) {
+    case 'roster':
+      path = `/accounts/${encodeURIComponent(id)}/roster-share`
+      break
+    case 'build':
+      path = `/builds/${encodeURIComponent(id)}/share`
+      break
+    case 'team':
+      path = `/teams/${encodeURIComponent(id)}/share`
+      break
+    case 'teams':
+      path = `/accounts/${encodeURIComponent(id)}/teams-share`
+      break
+  }
+  return request(path, { signal })
+}
+
+export function revokeRosterShare(id: string): Promise<void> {
+  return request(`/accounts/${encodeURIComponent(id)}/roster-share`, { method: 'DELETE' })
+}
+
+export function revokeBuildShare(id: string): Promise<void> {
+  return request(`/builds/${encodeURIComponent(id)}/share`, { method: 'DELETE' })
+}
+
+export function revokeTeamShare(id: string): Promise<void> {
+  return request(`/teams/${encodeURIComponent(id)}/share`, { method: 'DELETE' })
+}
+
+export function revokeTeamsShare(id: string): Promise<void> {
+  return request(`/accounts/${encodeURIComponent(id)}/teams-share`, { method: 'DELETE' })
+}
+
+export function fetchSharedRoster(token: string, lang: string, signal?: AbortSignal): Promise<PublicShowcaseRosterResponse> {
+  return request(`/shared/rosters/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
+}
+
+export function fetchSharedBuild(token: string, lang: string, signal?: AbortSignal): Promise<PublicBuildResponse> {
+  return request(`/shared/builds/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
+}
+
+export function fetchSharedTeam(token: string, lang: string, signal?: AbortSignal): Promise<PublicTeamResponse> {
+  return request(`/shared/teams/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
+}
+
+export function fetchSharedSquads(token: string, lang: string, signal?: AbortSignal): Promise<PublicShowcaseRosterResponse> {
+  return request(`/shared/squads/${encodeURIComponent(token)}?lang=${encodeURIComponent(lang)}`, { signal, skipAuthRedirect: true })
 }
 
 export function fetchBuilds(
@@ -171,10 +301,40 @@ export function createBuild(body: CreateBuildRequest): Promise<Build> {
   return request<Build>('/builds', { method: 'POST', body })
 }
 
-export function renameBuild(id: string, name: string, description?: string | null): Promise<void> {
+export function updateBuild(id: string, body: UpdateBuildRequest): Promise<void> {
   return request<void>(`/builds/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    body: { name, description },
+    body,
+  })
+}
+
+export function renameBuild(id: string, name: string, description?: string | null): Promise<void> {
+  return updateBuild(id, { name, description })
+}
+
+export function fetchPublicBuild(
+  id: string,
+  lang?: string,
+  signal?: AbortSignal,
+): Promise<PublicBuildResponse> {
+  const activeLang = lang || getCurrentLanguage()
+  const langQuery = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
+  return request<PublicBuildResponse>(`/public/builds/${encodeURIComponent(id)}${langQuery}`, {
+    signal,
+    skipAuthRedirect: true,
+  })
+}
+
+export function fetchPublicTeam(
+  id: string,
+  lang?: string,
+  signal?: AbortSignal,
+): Promise<PublicTeamResponse> {
+  const activeLang = lang || getCurrentLanguage()
+  const langQuery = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
+  return request<PublicTeamResponse>(`/public/teams/${encodeURIComponent(id)}${langQuery}`, {
+    signal,
+    skipAuthRedirect: true,
   })
 }
 
@@ -238,6 +398,19 @@ export function createTeam(body: CreateTeamRequest): Promise<Team> {
 export function updateTeam(body: UpdateTeamRequest): Promise<Team> {
   const { id, ...rest } = body
   return request<Team>(`/teams/${encodeURIComponent(id)}`, { method: 'PUT', body: rest })
+}
+
+export function patchTeam(
+  id: string,
+  body: PatchTeamRequest,
+  lang?: string,
+): Promise<TeamSummary> {
+  const activeLang = lang || getCurrentLanguage()
+  const query = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
+  return request<TeamSummary>(`/teams/${encodeURIComponent(id)}${query}`, {
+    method: 'PATCH',
+    body,
+  })
 }
 
 export function deleteTeam(id: string): Promise<void> {

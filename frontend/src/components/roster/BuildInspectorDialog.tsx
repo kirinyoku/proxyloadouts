@@ -41,7 +41,7 @@ function MobileSectionTabs({
   ]
 
   return (
-    <div className="sticky top-0 z-30 -mx-3.5 sm:-mx-5 border-b border-white/[0.06] bg-popover/95 px-3.5 sm:px-5 py-1 backdrop-blur-md lg:hidden">
+    <div className="sticky top-0 z-30 -mx-3.5 sm:-mx-5 border-b border-white/[0.06] bg-card/96 px-3.5 sm:px-5 py-1 backdrop-blur-md lg:hidden">
       <div
         role="tablist"
         aria-label={t('showcase.agentSectionsAria')}
@@ -78,13 +78,18 @@ interface BuildInspectorDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   teamName?: string
+  isPublicView?: boolean
+  publicMode?: boolean
 }
 
 export function BuildInspectorDialog({
   build,
   open,
   onOpenChange,
+  isPublicView,
+  publicMode,
 }: BuildInspectorDialogProps) {
+  const isPublic = Boolean(publicMode ?? isPublicView)
   const { t } = useTranslation()
   const [mobileSection, setMobileSection] = useState<MobileInspectorSection>('discs')
   const [prevBuildId, setPrevBuildId] = useState(build?.id)
@@ -109,7 +114,7 @@ export function BuildInspectorDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-[calc(100vw-1.5rem)] sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden border border-white/10 bg-popover/95 p-3.5 sm:p-4 md:p-5 shadow-2xl backdrop-blur-2xl rounded-3xl"
+        className="max-w-[calc(100vw-1.5rem)] sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden border border-white/[0.08] bg-card/96 p-3.5 sm:p-4 md:p-5 shadow-2xl backdrop-blur-2xl rounded-3xl"
       >
         <div className="space-y-3 min-w-0">
           {/* Header */}
@@ -198,24 +203,26 @@ export function BuildInspectorDialog({
                 </div>
               </div>
 
-              {/* Actions: Open in Roster + Close Button */}
+              {/* Actions: Open in Roster (private mode) + Close Button */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-2.5 sm:px-3 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95 hover:border-primary/60 hover:bg-primary/15 hover:text-primary dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground dark:hover:border-primary/60 dark:hover:bg-primary/15 dark:hover:text-primary"
-                  asChild
-                >
-                  <Link
-                    to={`/roster?build=${encodeURIComponent(build.id)}&from=teams`}
-                    title={t('roster.openInRoster')}
-                    aria-label={t('roster.openInRoster')}
-                    className="inline-flex items-center gap-1.5"
+                {!isPublic && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-2.5 sm:px-3 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95 hover:border-primary/60 hover:bg-primary/15 hover:text-primary dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground dark:hover:border-primary/60 dark:hover:bg-primary/15 dark:hover:text-primary"
+                    asChild
                   >
-                    <span className="hidden min-[380px]:inline sm:inline">{t('roster.openInRoster')}</span>
-                    <ExternalLink className="size-3.5 shrink-0" />
-                  </Link>
-                </Button>
+                    <Link
+                      to={`/roster?build=${encodeURIComponent(build.id)}&from=teams`}
+                      title={t('roster.openInRoster')}
+                      aria-label={t('roster.openInRoster')}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <span className="hidden min-[380px]:inline sm:inline">{t('roster.openInRoster')}</span>
+                      <ExternalLink className="size-3.5 shrink-0" />
+                    </Link>
+                  </Button>
+                )}
 
                 <DialogClose asChild>
                   <Button

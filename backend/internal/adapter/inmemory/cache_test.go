@@ -252,6 +252,42 @@ func TestSingleflightService_FirstCallerCancelDoesNotAffectOthers(t *testing.T) 
 	}
 }
 
+func TestSingleflightService_Set(t *testing.T) {
+	svc := NewSingleflightService[string](10, time.Minute)
+	defer svc.Close()
+
+	svc.Set("manual_key", "manual_val", time.Minute)
+
+	res, err := svc.GetOrFetch(context.Background(), "manual_key", time.Minute, func(ctx context.Context) (string, time.Duration, error) {
+		t.Fatal("fetchFn should not be called for pre-cached entry")
+		return "", 0, nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !res.FromCache || res.Data != "manual_val" {
+		t.Errorf("expected cached manual_val, got %+v", res)
+	}
+}
+
+func TestProfileCache_Set(t *testing.T) {
+	pc := NewProfileCache[string](10, time.Minute)
+	defer pc.Close()
+
+	pc.Set("prof_1", "profile_payload", time.Minute)
+
+	data, fromCache, _, err := pc.GetOrFetch(context.Background(), "prof_1", time.Minute, func(ctx context.Context) (string, time.Duration, error) {
+		t.Fatal("fetchFn should not be called when profile is present")
+		return "", 0, nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !fromCache || data != "profile_payload" {
+		t.Errorf("expected cached profile_payload, got data=%q, fromCache=%v", data, fromCache)
+	}
+}
+
 func TestNegativeCache(t *testing.T) {
 	nc := NewNegativeCache(100, time.Minute)
 	defer nc.Close()

@@ -107,7 +107,7 @@ func newFixtureWithOpts(t *testing.T, opts Options) *fixture {
 	t.Cleanup(scanCache.Close)
 	scanner := scannersvc.New(scannerFetcher, scanCache)
 
-	accountSvc := accountsvc.New(accounts, accountsvc.WithUsers(users))
+	accountSvc := accountsvc.New(accounts, accountsvc.WithUsers(users), accountsvc.WithScanner(scanner), accountsvc.WithVerifier(scanner))
 
 	// Exercise the same memoizing localizer production wires, so the API tests
 	// cover the enrichment path as it actually runs.
@@ -131,13 +131,18 @@ func newFixtureWithOpts(t *testing.T, opts Options) *fixture {
 func strPtr(s string) *string { return &s }
 
 type fakeFetcher struct {
-	profile *fairy.Profile
-	ttl     time.Duration
+	rawProfile *zzz.Profile
+	profile    *fairy.Profile
+	agent      *fairy.Agent
+	ttl        time.Duration
 }
 
 func (f *fakeFetcher) FetchRawProfile(_ context.Context, uid string) (*zzz.Profile, time.Duration, error) {
 	if f.ttl == 0 {
 		f.ttl = 60 * time.Second
+	}
+	if f.rawProfile != nil {
+		return f.rawProfile, f.ttl, nil
 	}
 	return &zzz.Profile{UID: uid}, f.ttl, nil
 }
@@ -150,6 +155,14 @@ func (f *fakeFetcher) EnrichProfile(raw *zzz.Profile, lang fairy.Language) (*fai
 }
 
 func (f *fakeFetcher) EnrichAgent(raw *zzz.AvatarData, lang fairy.Language) (*fairy.Agent, error) {
+	if f.agent != nil {
+		copyAgent := *f.agent
+		copyAgent.ID = raw.ID
+		if lang == fairy.LangEN {
+			copyAgent.Name = "Agent EN"
+		}
+		return &copyAgent, nil
+	}
 	name := "Агент RU"
 	if lang == fairy.LangEN {
 		name = "Agent EN"
@@ -789,7 +802,7 @@ func TestShowcaseEndpointRateLimit(t *testing.T) {
 	scanCache := inmemory.NewProfileCache[*zzz.Profile](1000, time.Minute)
 	t.Cleanup(scanCache.Close)
 	scanner := scannersvc.New(scannerFetcher, scanCache)
-	accountSvc := accountsvc.New(accounts, accountsvc.WithUsers(users))
+	accountSvc := accountsvc.New(accounts, accountsvc.WithUsers(users), accountsvc.WithScanner(scanner), accountsvc.WithVerifier(scanner))
 	localizer := buildenrich.New(scanner, nil, 0)
 
 	router := NewRouter(

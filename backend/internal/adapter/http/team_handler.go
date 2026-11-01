@@ -28,6 +28,7 @@ type teamResponse struct {
 	GameAccountID string  `json:"game_account_id"`
 	Name          string  `json:"name"`
 	Description   *string `json:"description"`
+	IsPublic      bool    `json:"is_public"`
 	CreatedAt     string  `json:"created_at"`
 	UpdatedAt     string  `json:"updated_at"`
 }
@@ -38,6 +39,7 @@ func newTeamResponse(t *domain.Team) teamResponse {
 		GameAccountID: t.GameAccountID.String(),
 		Name:          t.Name,
 		Description:   t.Description,
+		IsPublic:      t.IsPublic,
 		CreatedAt:     t.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     t.UpdatedAt.UTC().Format(time.RFC3339),
 	}
@@ -117,6 +119,7 @@ type createTeamRequest struct {
 	GameAccountID uuid.UUID   `json:"game_account_id"`
 	Name          string      `json:"name"`
 	Description   *string     `json:"description"`
+	IsPublic      *bool       `json:"is_public,omitempty"`
 	BuildIDs      []uuid.UUID `json:"build_ids"`
 }
 
@@ -135,6 +138,7 @@ func (h *TeamHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		GameAccountID: req.GameAccountID,
 		Name:          req.Name,
 		Description:   req.Description,
+		IsPublic:      req.IsPublic,
 		BuildIDs:      req.BuildIDs,
 	})
 	if err != nil {
@@ -148,6 +152,7 @@ type updateTeamRequest struct {
 	GameAccountID uuid.UUID   `json:"game_account_id"`
 	Name          string      `json:"name"`
 	Description   *string     `json:"description"`
+	IsPublic      *bool       `json:"is_public,omitempty"`
 	BuildIDs      []uuid.UUID `json:"build_ids"`
 }
 
@@ -173,6 +178,7 @@ func (h *TeamHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		GameAccountID: req.GameAccountID,
 		Name:          req.Name,
 		Description:   req.Description,
+		IsPublic:      req.IsPublic,
 		BuildIDs:      req.BuildIDs,
 	})
 	if err != nil {
@@ -180,6 +186,25 @@ func (h *TeamHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, newTeamResponse(team))
+}
+
+func newTeamSummaryListResponse(summaries []*teamsvc.TeamSummary) []teamSummaryResponse {
+	out := make([]teamSummaryResponse, 0, len(summaries))
+	for _, s := range summaries {
+		members := make([]teamMemberResponse, 0, len(s.Members))
+		for _, m := range s.Members {
+			members = append(members, teamMemberResponse{
+				SlotNumber: m.Member.SlotNumber,
+				Build:      newBuildResponse(m.Build),
+			})
+		}
+		out = append(out, teamSummaryResponse{
+			Team:    newTeamResponse(s.Team),
+			Report:  s.Report,
+			Members: members,
+		})
+	}
+	return out
 }
 
 // handleList returns teams of an owned account with validity reports.
@@ -199,22 +224,7 @@ func (h *TeamHandler) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out := make([]teamSummaryResponse, 0, len(summaries))
-	for _, s := range summaries {
-		members := make([]teamMemberResponse, 0, len(s.Members))
-		for _, m := range s.Members {
-			members = append(members, teamMemberResponse{
-				SlotNumber: m.Member.SlotNumber,
-				Build:      newBuildResponse(m.Build),
-			})
-		}
-		out = append(out, teamSummaryResponse{
-			Team:    newTeamResponse(s.Team),
-			Report:  s.Report,
-			Members: members,
-		})
-	}
-	respondJSON(w, http.StatusOK, out)
+	respondJSON(w, http.StatusOK, newTeamSummaryListResponse(summaries))
 }
 
 // teamCountResponse reports how many teams exist on a game account along with the effective limit.
@@ -287,4 +297,53 @@ func (h *TeamHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type patchTeamRequest struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	IsPublic    *bool   `json:"is_public"`
+}
+
+// handlePatch partially updates team metadata or visibility.
+func (h *TeamHandler) handlePatch(w http.ResponseWriter, r *http.Request) {
+	user := MustUserFromContext(r.Context())
+
+	teamID, err := uuid.Parse(chi.URLParam(r, "teamID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid team id")
+		return
+	}
+
+	var req patchTeamRequest
+	if err := decodeJSON(r, &req); err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+
+	lang := extractLang(r)
+	summary, err := h.teams.Patch(r.Context(), teamsvc.PatchInput{
+		TeamID:      teamID,
+		UserID:      user.ID,
+		Name:        req.Name,
+		Description: req.Description,
+		IsPublic:    req.IsPublic,
+	}, lang)
+	if err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+
+	members := make([]teamMemberResponse, 0, len(summary.Members))
+	for _, m := range summary.Members {
+		members = append(members, teamMemberResponse{
+			SlotNumber: m.Member.SlotNumber,
+			Build:      newBuildResponse(m.Build),
+		})
+	}
+	respondJSON(w, http.StatusOK, teamSummaryResponse{
+		Team:    newTeamResponse(summary.Team),
+		Report:  summary.Report,
+		Members: members,
+	})
 }

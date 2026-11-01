@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -59,12 +60,13 @@ func (r *SQLiteBuildRepo) Create(ctx context.Context, build *domain.AgentBuild) 
 
 	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO agent_builds (id, user_id, game_account_id, agent_id, agent_name, name, description,
-		 weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+		 weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
 		build.ID.String(), build.UserID.String(), build.GameAccountID.String(),
 		build.AgentID, build.AgentName, build.Name, nullableString(build.Description),
 		nullableString(build.WeaponUID), nullableInt(build.WeaponID),
 		string(discUIDs), string(discSlots), string(build.RawData),
+		boolToInt(build.IsPublic),
 		formatTime(build.CreatedAt), formatTime(build.UpdatedAt),
 	)
 	if err != nil {
@@ -105,6 +107,83 @@ func (r *SQLiteBuildRepo) ListByAccount(ctx context.Context, accountID uuid.UUID
 		return nil, fmt.Errorf("failed to iterate agent builds: %w", err)
 	}
 	return builds, nil
+}
+
+// ListPublicByAccount returns all public builds of the game account, oldest first.
+func (r *SQLiteBuildRepo) ListPublicByAccount(ctx context.Context, accountID uuid.UUID) ([]*domain.AgentBuild, error) {
+	rows, err := r.db.QueryContext(ctx,
+		buildSelect+` WHERE game_account_id = ? AND is_public = 1 ORDER BY created_at, id;`,
+		accountID.String(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list public agent builds: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var builds []*domain.AgentBuild
+	for rows.Next() {
+		build, err := scanBuildRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		builds = append(builds, build)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate public agent builds: %w", err)
+	}
+	return builds, nil
+}
+
+// HasPublicByAccount reports whether the given account has at least one public build.
+func (r *SQLiteBuildRepo) HasPublicByAccount(ctx context.Context, accountID uuid.UUID) (bool, error) {
+	var exists int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM agent_builds WHERE game_account_id = ? AND is_public = 1);`,
+		accountID.String(),
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check public agent builds existence: %w", err)
+	}
+	return exists == 1, nil
+}
+
+// GetByIDs returns a map of builds keyed by their UUIDs for batch fetching.
+func (r *SQLiteBuildRepo) GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*domain.AgentBuild, error) {
+	if len(ids) == 0 {
+		return make(map[uuid.UUID]*domain.AgentBuild), nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id.String()
+	}
+
+	query := fmt.Sprintf(
+		`%s WHERE id IN (%s);`,
+		buildSelect,
+		strings.Join(placeholders, ", "),
+	)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query agent builds by IDs: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[uuid.UUID]*domain.AgentBuild, len(ids))
+	for rows.Next() {
+		build, err := scanBuildRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		result[build.ID] = build
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate agent builds by IDs: %w", err)
+	}
+	return result, nil
 }
 
 // CountByAccountAndAgent returns the number of builds saved for a specific agent on an account.
@@ -151,6 +230,81 @@ func (r *SQLiteBuildRepo) UpdateName(ctx context.Context, id uuid.UUID, name str
 	return nil
 }
 
+// UpdateVisibility updates the is_public flag of an agent build without modifying updated_at.
+func (r *SQLiteBuildRepo) UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE agent_builds SET is_public = ? WHERE id = ?;`,
+		boolToInt(isPublic), id.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update agent build visibility %s: %w", id, err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("%w: agent build %s", domain.ErrNotFound, id)
+	}
+	return nil
+}
+
+// GetPublicByID returns a public build and its owner info, or domain.ErrNotFound if
+// the build does not exist, is private (is_public = 0), or the owner is banned.
+func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*domain.AgentBuild, *domain.PublicOwnerInfo, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT b.id, b.user_id, b.game_account_id, b.agent_id, b.agent_name, b.name, b.description,
+		        b.weapon_uid, b.weapon_id, b.disc_uids, b.disc_slots, b.raw_data, b.is_public, b.created_at, b.updated_at,
+		        ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.show_discord,
+		        u.discord_id, u.username, u.avatar_url
+		 FROM agent_builds b
+		 JOIN game_accounts ga ON ga.id = b.game_account_id
+		 JOIN users u ON u.id = b.user_id
+		 WHERE b.id = ? AND b.is_public = 1 AND u.banned_at IS NULL;`,
+		id.String(),
+	)
+
+	var (
+		buildID          string
+		userID           string
+		accountID        string
+		agentID          int
+		agentName        string
+		name             string
+		description      sql.NullString
+		weaponUID        sql.NullString
+		weaponID         sql.NullInt64
+		discUIDs         string
+		discSlots        string
+		rawData          string
+		isPublic         int
+		createdAt        string
+		updatedAt        string
+		ownerUID         string
+		ownerRegion      string
+		ownerNickname    sql.NullString
+		ownerAvatarURL   sql.NullString
+		ownerShowDiscord int
+		discordID        string
+		discordUsername  string
+		discordAvatarURL sql.NullString
+	)
+
+	if err := row.Scan(
+		&buildID, &userID, &accountID, &agentID, &agentName, &name, &description,
+		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &createdAt, &updatedAt,
+		&ownerUID, &ownerRegion, &ownerNickname, &ownerAvatarURL, &ownerShowDiscord,
+		&discordID, &discordUsername, &discordAvatarURL,
+	); err != nil {
+		return nil, nil, notFound("agent build", err)
+	}
+
+	build, err := parseBuildFields(buildID, userID, accountID, agentID, agentName, name, description,
+		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, createdAt, updatedAt)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	owner := scanPublicOwnerInfo(ownerUID, ownerRegion, ownerNickname, ownerAvatarURL, ownerShowDiscord, discordID, discordUsername, discordAvatarURL)
+	return build, owner, nil
+}
+
 // Delete removes the build. Deleting a build referenced by a team member fails
 // with domain.ErrConflict (ON DELETE RESTRICT at the database level).
 func (r *SQLiteBuildRepo) Delete(ctx context.Context, id uuid.UUID) error {
@@ -168,29 +322,45 @@ func (r *SQLiteBuildRepo) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 const buildSelect = `SELECT id, user_id, game_account_id, agent_id, agent_name, name, description,
-	weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, created_at, updated_at
+	weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, created_at, updated_at
 	FROM agent_builds`
 
 func scanBuildRow(row rowScanner) (*domain.AgentBuild, error) {
 	var (
-		b           domain.AgentBuild
 		id          string
 		userID      string
 		accountID   string
+		agentID     int
+		agentName   string
+		name        string
 		description sql.NullString
 		weaponUID   sql.NullString
 		weaponID    sql.NullInt64
 		discUIDs    string
 		discSlots   string
 		rawData     string
+		isPublic    int
 		createdAt   string
 		updatedAt   string
 	)
-	if err := row.Scan(&id, &userID, &accountID, &b.AgentID, &b.AgentName, &b.Name, &description,
-		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&id, &userID, &accountID, &agentID, &agentName, &name, &description,
+		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &createdAt, &updatedAt); err != nil {
 		return nil, notFound("agent build", err)
 	}
 
+	return parseBuildFields(id, userID, accountID, agentID, agentName, name, description,
+		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, createdAt, updatedAt)
+}
+
+func parseBuildFields(
+	id, userID, accountID string,
+	agentID int, agentName, name string,
+	description, weaponUID sql.NullString,
+	weaponID sql.NullInt64,
+	discUIDs, discSlots, rawData string,
+	isPublic int,
+	createdAt, updatedAt string,
+) (*domain.AgentBuild, error) {
 	parsedIDs, err := parseUUID3("agent build", "id", id, "user_id", userID, "game_account_id", accountID)
 	if err != nil {
 		return nil, err
@@ -217,19 +387,25 @@ func scanBuildRow(row rowScanner) (*domain.AgentBuild, error) {
 		return nil, fmt.Errorf("failed to parse agent build updated_at: %w", err)
 	}
 
-	b.ID = parsedIDs[0]
-	b.UserID = parsedIDs[1]
-	b.GameAccountID = parsedIDs[2]
-	b.Description = nullStringPointer(description)
-	b.WeaponUID = nullStringPointer(weaponUID)
-	b.WeaponID = nullIntPointer(weaponID)
-	b.DiscUIDs = discs
-	b.DiscSlots = slotsMap
-	b.RawData = json.RawMessage(rawData)
+	b := &domain.AgentBuild{
+		ID:            parsedIDs[0],
+		UserID:        parsedIDs[1],
+		GameAccountID: parsedIDs[2],
+		AgentID:       agentID,
+		AgentName:     agentName,
+		Name:          name,
+		Description:   nullStringPointer(description),
+		WeaponUID:     nullStringPointer(weaponUID),
+		WeaponID:      nullIntPointer(weaponID),
+		DiscUIDs:      discs,
+		DiscSlots:     slotsMap,
+		RawData:       json.RawMessage(rawData),
+		IsPublic:      isPublic != 0,
+		CreatedAt:     createdAtParsed,
+		UpdatedAt:     updatedAtParsed,
+	}
 	if len(b.DiscSlots) == 0 && len(b.RawData) > 0 {
 		b.PopulateDiscSlotsFromRawData()
 	}
-	b.CreatedAt = createdAtParsed
-	b.UpdatedAt = updatedAtParsed
-	return &b, nil
+	return b, nil
 }

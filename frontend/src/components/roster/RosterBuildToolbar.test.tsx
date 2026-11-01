@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { RosterBuildToolbar } from './RosterBuildToolbar'
 import type { Build } from '@/types'
 
@@ -27,6 +28,7 @@ vi.mock('react-i18next', async (importOriginal) => {
 vi.mock('@/api/hooks', () => ({
   useRenameBuild: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteBuild: () => ({ mutate: vi.fn(), isPending: false }),
+  useToggleBuildVisibility: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 const mockBuilds: Build[] = [
@@ -40,6 +42,7 @@ const mockBuilds: Build[] = [
     weapon_uid: null,
     weapon_id: null,
     disc_uids: [],
+    is_public: false,
     created_at: '2026-09-25T20:00:00Z',
     updated_at: '2026-09-25T20:48:00Z',
     build_data: {
@@ -66,9 +69,12 @@ const mockBuilds: Build[] = [
   },
 ]
 
+const renderWithTooltip = (node: React.ReactElement) =>
+  renderToString(<TooltipProvider>{node}</TooltipProvider>)
+
 describe('RosterBuildToolbar', () => {
   it('renders "Удалить" text on the delete button', () => {
-    const html = renderToString(
+    const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
         builds={mockBuilds}
@@ -81,7 +87,7 @@ describe('RosterBuildToolbar', () => {
   })
 
   it('does not render trash icon on desktop delete button', () => {
-    const html = renderToString(
+    const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
         builds={mockBuilds}
@@ -101,7 +107,7 @@ describe('RosterBuildToolbar', () => {
   })
 
   it('does NOT render agent name, attribute, or specialty in the toolbar', () => {
-    const html = renderToString(
+    const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
         builds={mockBuilds}
@@ -117,7 +123,7 @@ describe('RosterBuildToolbar', () => {
   })
 
   it('renders note with w-fit, max-w-full, truncate and does not cap with max-w-[320px]', () => {
-    const html = renderToString(
+    const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
         builds={mockBuilds}
@@ -134,7 +140,7 @@ describe('RosterBuildToolbar', () => {
   })
 
   it('renders capacity meta indicator when provided', () => {
-    const html = renderToString(
+    const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
         builds={mockBuilds}
@@ -149,7 +155,7 @@ describe('RosterBuildToolbar', () => {
   })
 
   it('renders icon-only delete button on mobile without "Удалить" text', () => {
-    const html = renderToString(
+    const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
         builds={mockBuilds}
@@ -167,7 +173,7 @@ describe('RosterBuildToolbar', () => {
   })
 
   it('renders capacity meta indicator on mobile in row 1 before build list', () => {
-    const html = renderToString(
+    const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
         builds={mockBuilds}
@@ -186,7 +192,7 @@ describe('RosterBuildToolbar', () => {
   })
 
   it('does not render date in mobile build selector to maximize build name width', () => {
-    const html = renderToString(
+    const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
         builds={mockBuilds}
@@ -199,5 +205,106 @@ describe('RosterBuildToolbar', () => {
     expect(mobileToolbar).toBeDefined()
     expect(mobileToolbar).toContain('Основной билд')
     expect(mobileToolbar).not.toContain('text-[10px] text-muted-foreground/90')
+  })
+
+  it('renders a sharing menu trigger', () => {
+    const html = renderWithTooltip(
+      <RosterBuildToolbar
+        agentName="Ария"
+        builds={mockBuilds}
+        selectedBuildId="build-1"
+        onSelectBuildId={vi.fn()}
+      />,
+    )
+
+    expect(html).toContain('lucide-share-2')
+    expect(html).toContain('aria-haspopup="menu"')
+  })
+
+  describe('readOnly mode', () => {
+    it('renders single build chip instead of select combobox when builds.length <= 1', () => {
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={mockBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).toContain('Основной билд')
+      expect(html).not.toContain('role="combobox"')
+    })
+
+    it('renders select combobox when builds.length > 1', () => {
+      const multiBuilds = [
+        ...mockBuilds,
+        { ...mockBuilds[0]!, id: 'build-2', name: 'Второй билд' },
+      ]
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={multiBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).toContain('role="combobox"')
+      expect(html).toContain('Основной билд')
+    })
+
+    it('does NOT render rename, delete, or visibility toggle buttons', () => {
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={mockBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).not.toContain('Удалить')
+      expect(html).not.toContain('lucide-trash-2')
+      expect(html).not.toContain('Переименовать пресет')
+      expect(html).not.toContain('lucide-lock')
+      expect(html).not.toContain('lucide-globe')
+      // Still renders share button
+      expect(html).toContain('lucide-share-2')
+    })
+
+    it('renders note display without edit buttons in readOnly mode', () => {
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={mockBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).toContain('Заметка')
+      expect(html).toContain('Тактическая заметка с крит уроном')
+      expect(html).not.toContain('Добавить заметку')
+    })
+
+    it('renders a direct share button without dropdown menu in readOnly mode', () => {
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={mockBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          readOnly
+        />,
+      )
+
+      expect(html).toContain('lucide-share-2')
+      expect(html).not.toContain('aria-haspopup="menu"')
+    })
   })
 })

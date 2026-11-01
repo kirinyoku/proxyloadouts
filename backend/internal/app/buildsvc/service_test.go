@@ -827,3 +827,332 @@ func TestService_UpdateDescription(t *testing.T) {
 		t.Errorf("expected ErrInvalidInput for description too long, got %v", err)
 	}
 }
+
+func TestService_GetPublic_PrivateBuildReturnsNotFound(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	// Create private build
+	isPrivate := false
+	build, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Private Miyabi",
+		IsPublic:        &isPrivate,
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// Reading private build via GetPublic must return ErrNotFound
+	_, err = env.svc.GetPublic(ctx, build.ID)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound reading private build via GetPublic, got %v", err)
+	}
+}
+
+func TestService_Create_DefaultIsPublicTrue(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	build, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Default Public Miyabi",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if !build.IsPublic {
+		t.Errorf("expected build to default to is_public = true, got %v", build.IsPublic)
+	}
+}
+
+func TestService_GetPublic_PublicBuildSuccess(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	// Update account profile metadata
+	nick := "ProxyMaster"
+	avatar := "https://example.com/avatar.jpg"
+	if err := env.accounts.UpdateProfileMetadata(ctx, env.accountID, &nick, &avatar); err != nil {
+		t.Fatalf("UpdateProfileMetadata failed: %v", err)
+	}
+
+	isPublic := true
+	build, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Public Miyabi",
+		IsPublic:        &isPublic,
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", true),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	detail, err := env.svc.GetPublic(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("GetPublic failed: %v", err)
+	}
+	if detail.Build == nil || detail.Build.ID != build.ID {
+		t.Fatalf("expected build %s, got %v", build.ID, detail.Build)
+	}
+	if !detail.Build.IsPublic {
+		t.Errorf("expected build.IsPublic = true, got %v", detail.Build.IsPublic)
+	}
+	if detail.Owner == nil {
+		t.Fatal("expected non-nil Owner")
+	}
+	if detail.Owner.Nickname == nil || *detail.Owner.Nickname != nick {
+		t.Errorf("expected owner nickname %q, got %v", nick, detail.Owner.Nickname)
+	}
+	if detail.Owner.AvatarURL == nil || *detail.Owner.AvatarURL != avatar {
+		t.Errorf("expected owner avatar %q, got %v", avatar, detail.Owner.AvatarURL)
+	}
+}
+
+func TestService_SetVisibility_AndPatch(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	build, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Visibility Test",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// 1. Toggle public with SetVisibility
+	if err := env.svc.SetVisibility(ctx, env.ownerID, build.ID, true); err != nil {
+		t.Fatalf("SetVisibility(true) failed: %v", err)
+	}
+	pubDetail, err := env.svc.GetPublic(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("expected build to be public, got: %v", err)
+	}
+	if !pubDetail.Build.IsPublic {
+		t.Errorf("expected build.IsPublic = true")
+	}
+
+	// 2. Toggle back to private
+	if err := env.svc.SetVisibility(ctx, env.ownerID, build.ID, false); err != nil {
+		t.Fatalf("SetVisibility(false) failed: %v", err)
+	}
+	if _, err := env.svc.GetPublic(ctx, build.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for private build, got %v", err)
+	}
+
+	// 3. Foreign user cannot change visibility
+	if err := env.svc.SetVisibility(ctx, env.foreignID, build.ID, true); !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("expected ErrForbidden for foreign user, got %v", err)
+	}
+
+	// 4. Patch multiple fields simultaneously
+	newName := "Patched Name"
+	newDesc := "Patched Description"
+	makePublic := true
+	patched, err := env.svc.Patch(ctx, PatchInput{
+		UserID:      env.ownerID,
+		BuildID:     build.ID,
+		Name:        &newName,
+		Description: &newDesc,
+		IsPublic:    &makePublic,
+	})
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
+	if patched.Name != newName || patched.Description == nil || *patched.Description != newDesc || !patched.IsPublic {
+		t.Errorf("unexpected patched build: %+v", patched)
+	}
+}
+
+func TestService_Create_BackgroundProfileSync(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	scanner := &mockShowcaseScanner{
+		response: &scannersvc.ShowcaseResponse{
+			UID:       "1504687050",
+			Nickname:  "ScannedNick",
+			AvatarURL: "https://example.com/avatar_from_scanner.png",
+			Agents: []fairy.Agent{
+				{
+					ID:   1511,
+					Name: "Miyabi",
+					DriveDiscs: fairy.DriveDiscs{
+						Slots: []fairy.DriveDisc{
+							{UID: "33041_12345678", Slot: 1},
+							{UID: "32700_87654321", Slot: 2},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	svcWithScanner := New(env.builds, env.accounts, WithScanner(scanner))
+
+	// Verify account has nil nickname initially
+	accBefore, err := env.accounts.GetByID(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if accBefore.Nickname != nil {
+		t.Fatalf("expected nil nickname before sync, got %v", accBefore.Nickname)
+	}
+
+	// Create build via svcWithScanner
+	_, err = svcWithScanner.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Sync Test Build",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// Verify account now has synced nickname and avatar
+	accAfter, err := env.accounts.GetByID(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if accAfter.Nickname == nil || *accAfter.Nickname != "ScannedNick" {
+		t.Errorf("expected Nickname ScannedNick, got %v", accAfter.Nickname)
+	}
+	if accAfter.AvatarURL == nil || *accAfter.AvatarURL != "https://example.com/avatar_from_scanner.png" {
+		t.Errorf("expected AvatarURL https://example.com/avatar_from_scanner.png, got %v", accAfter.AvatarURL)
+	}
+}
+
+func TestService_ListPublicByAccount(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	// 1. Initially empty
+	publicBuilds, err := env.svc.ListPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("ListPublicByAccount failed: %v", err)
+	}
+	if len(publicBuilds) != 0 {
+		t.Fatalf("expected 0 builds, got %d", len(publicBuilds))
+	}
+
+	// 2. Create private build
+	isPrivate := false
+	b1, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Private Miyabi",
+		IsPublic:        &isPrivate,
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// Still 0 public builds
+	publicBuilds, _ = env.svc.ListPublicByAccount(ctx, env.accountID)
+	if len(publicBuilds) != 0 {
+		t.Fatalf("expected 0 public builds, got %d", len(publicBuilds))
+	}
+
+	// 3. Create public build
+	isPublic := true
+	b2, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Public Ellen",
+		IsPublic:        &isPublic,
+		RawAgentPayload: fairyAgentJSON(t, 1411, "Ellen", false),
+		RawData:         sampleRawAvatar(1411),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// Now returns 1 public build
+	publicBuilds, err = env.svc.ListPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("ListPublicByAccount failed: %v", err)
+	}
+	if len(publicBuilds) != 1 || publicBuilds[0].ID != b2.ID {
+		t.Fatalf("expected 1 public build with ID %s, got %v", b2.ID, publicBuilds)
+	}
+
+	// 4. Publish first build as well
+	if err := env.svc.SetVisibility(ctx, env.ownerID, b1.ID, true); err != nil {
+		t.Fatalf("SetVisibility failed: %v", err)
+	}
+	publicBuilds, err = env.svc.ListPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("ListPublicByAccount failed: %v", err)
+	}
+	if len(publicBuilds) != 2 {
+		t.Fatalf("expected 2 public builds, got %d", len(publicBuilds))
+	}
+}
+
+func TestService_HasPublicByAccount(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	// Nil account ID fails
+	_, err := env.svc.HasPublicByAccount(ctx, uuid.Nil)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput for nil account ID, got %v", err)
+	}
+
+	// Empty account -> false
+	has, err := env.svc.HasPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if has {
+		t.Errorf("expected false for empty account")
+	}
+
+	// Create private build -> still false
+	isPriv := false
+	b, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Private",
+		IsPublic:        &isPriv,
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", false),
+		RawData:         sampleRawAvatar(1511),
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	has, err = env.svc.HasPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if has {
+		t.Errorf("expected false for account with only private builds")
+	}
+
+	// Flip visibility to public -> true
+	if err := env.svc.SetVisibility(ctx, env.ownerID, b.ID, true); err != nil {
+		t.Fatalf("SetVisibility failed: %v", err)
+	}
+	has, err = env.svc.HasPublicByAccount(ctx, env.accountID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !has {
+		t.Errorf("expected true after making build public")
+	}
+}

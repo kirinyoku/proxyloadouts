@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -316,5 +317,344 @@ func TestTeamRepo_ConcurrentCreateAndUpdateNoDeadlock(t *testing.T) {
 	}
 	if count != concurrency {
 		t.Errorf("expected %d teams, got %d", concurrency, count)
+	}
+}
+
+func TestTeamRepo_CreateUpdatePreservesIsPublic(t *testing.T) {
+	ctx := context.Background()
+	user, account, buildsList, repo := seedTeamFixtures(t, ctx)
+
+	team := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Public Squad",
+		IsPublic:      true,
+	}
+	members := []domain.TeamMember{
+		{SlotNumber: 1, BuildID: buildsList[0].ID},
+	}
+
+	if err := repo.Create(ctx, team, members); err != nil {
+		t.Fatalf("failed to create public team: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("failed to get team: %v", err)
+	}
+	if !got.IsPublic {
+		t.Error("expected team.IsPublic == true after create")
+	}
+
+	got.IsPublic = false
+	if err := repo.Update(ctx, got, members); err != nil {
+		t.Fatalf("failed to update team to private: %v", err)
+	}
+
+	got2, err := repo.GetByID(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("failed to get team after update: %v", err)
+	}
+	if got2.IsPublic {
+		t.Error("expected team.IsPublic == false after update")
+	}
+}
+
+func TestTeamRepo_GetPublicByID(t *testing.T) {
+	db := newMigratedTestDB(t)
+	ctx := context.Background()
+
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	builds := NewBuildRepo(db)
+	teams := NewTeamRepo(db)
+
+	discordAvatar := "https://cdn.discordapp.com/avatars/teamowner.png"
+	user := &domain.User{
+		DiscordID: "777777777777777777",
+		Username:  "SquadCaptain",
+		AvatarURL: &discordAvatar,
+	}
+	if err := users.Create(ctx, user); err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	now := time.Now()
+	nick := "Captain"
+	account := &domain.GameAccount{
+		UserID:         user.ID,
+		UID:            "1504687077",
+		Region:         domain.RegionEurope,
+		Nickname:       &nick,
+		VerifiedAt:     &now,
+		IsPublicRoster: true,
+		IsPublicTeams:  true,
+		ShowDiscord:    true,
+	}
+	if err := accounts.Create(ctx, account); err != nil {
+		t.Fatalf("failed to create account: %v", err)
+	}
+
+	build := makeDomainBuild(user.ID, account.ID, "Member Build", 1511)
+	if err := builds.Create(ctx, build); err != nil {
+		t.Fatalf("failed to create build: %v", err)
+	}
+
+	desc := "Public Anomaly Comp"
+	team := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Anomaly Comp",
+		Description:   &desc,
+		IsPublic:      true,
+	}
+	members := []domain.TeamMember{
+		{SlotNumber: 1, BuildID: build.ID},
+	}
+	if err := teams.Create(ctx, team, members); err != nil {
+		t.Fatalf("failed to create team: %v", err)
+	}
+
+	// 1. Success with ShowDiscord = true
+	gotTeam, owner, err := teams.GetPublicByID(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("failed to get public team: %v", err)
+	}
+	if gotTeam.ID != team.ID || gotTeam.Name != "Anomaly Comp" || !gotTeam.IsPublic {
+		t.Errorf("team mismatch: %+v", gotTeam)
+	}
+	if owner.UID != "1504687077" || owner.Region != domain.RegionEurope {
+		t.Errorf("owner mismatch: %+v", owner)
+	}
+	if owner.DiscordUsername == nil || *owner.DiscordUsername != "SquadCaptain" {
+		t.Errorf("expected DiscordUsername %q, got %v", "SquadCaptain", owner.DiscordUsername)
+	}
+	if owner.DiscordAvatarURL == nil || *owner.DiscordAvatarURL != discordAvatar {
+		t.Errorf("expected DiscordAvatarURL %q, got %v", discordAvatar, owner.DiscordAvatarURL)
+	}
+
+	// 2. Account with ShowDiscord = false hides Discord identity
+	accountNoDiscord := &domain.GameAccount{
+		UserID:      user.ID,
+		UID:         "1504687078",
+		Region:      domain.RegionEurope,
+		ShowDiscord: false,
+	}
+	if err := accounts.Create(ctx, accountNoDiscord); err != nil {
+		t.Fatalf("failed to create second account: %v", err)
+	}
+	buildNoDiscord := makeDomainBuild(user.ID, accountNoDiscord.ID, "Member Build 2", 1511)
+	if err := builds.Create(ctx, buildNoDiscord); err != nil {
+		t.Fatalf("failed to create second build: %v", err)
+	}
+	teamNoDiscord := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: accountNoDiscord.ID,
+		Name:          "Anonymous Squad",
+		IsPublic:      true,
+	}
+	if err := teams.Create(ctx, teamNoDiscord, []domain.TeamMember{{SlotNumber: 1, BuildID: buildNoDiscord.ID}}); err != nil {
+		t.Fatalf("failed to create team without discord: %v", err)
+	}
+
+	_, ownerNoDiscord, err := teams.GetPublicByID(ctx, teamNoDiscord.ID)
+	if err != nil {
+		t.Fatalf("failed to get public team for account without discord: %v", err)
+	}
+	if ownerNoDiscord.DiscordUsername != nil || ownerNoDiscord.DiscordAvatarURL != nil {
+		t.Errorf("expected masked discord fields, got username=%v, avatar=%v", ownerNoDiscord.DiscordUsername, ownerNoDiscord.DiscordAvatarURL)
+	}
+
+	// 3. is_public = 0 -> domain.ErrNotFound
+	team.IsPublic = false
+	if err := teams.Update(ctx, team, members); err != nil {
+		t.Fatalf("failed to make team private: %v", err)
+	}
+	if _, _, err := teams.GetPublicByID(ctx, team.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for private team, got %v", err)
+	}
+
+	// 4. Banned owner -> domain.ErrNotFound
+	team.IsPublic = true
+	if err := teams.Update(ctx, team, members); err != nil {
+		t.Fatalf("failed to make team public again: %v", err)
+	}
+	reason := "Spam"
+	if err := users.SetBan(ctx, user.ID, true, &reason); err != nil {
+		t.Fatalf("failed to ban user: %v", err)
+	}
+	if _, _, err := teams.GetPublicByID(ctx, team.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for banned user's public team, got %v", err)
+	}
+
+	// 5. Unknown team ID -> domain.ErrNotFound
+	if _, _, err := teams.GetPublicByID(ctx, uuid.New()); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for non-existent team, got %v", err)
+	}
+}
+
+func TestTeamRepo_ListPublicByAccount(t *testing.T) {
+	ctx := context.Background()
+	user, account, buildsList, repo := seedTeamFixtures(t, ctx)
+
+	t1 := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Public Team 1",
+		IsPublic:      true,
+		CreatedAt:     time.Now().UTC().Add(-time.Second),
+	}
+	if err := repo.Create(ctx, t1, []domain.TeamMember{{SlotNumber: 1, BuildID: buildsList[0].ID}}); err != nil {
+		t.Fatalf("failed to create team 1: %v", err)
+	}
+
+	t2 := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Private Team",
+		IsPublic:      false,
+	}
+	if err := repo.Create(ctx, t2, []domain.TeamMember{{SlotNumber: 1, BuildID: buildsList[0].ID}}); err != nil {
+		t.Fatalf("failed to create team 2: %v", err)
+	}
+
+	t3 := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Public Team 2",
+		IsPublic:      true,
+	}
+	if err := repo.Create(ctx, t3, []domain.TeamMember{{SlotNumber: 1, BuildID: buildsList[0].ID}}); err != nil {
+		t.Fatalf("failed to create team 3: %v", err)
+	}
+
+	publicTeams, err := repo.ListPublicByAccount(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("failed to list public teams: %v", err)
+	}
+	if len(publicTeams) != 2 {
+		t.Fatalf("expected 2 public teams, got %d", len(publicTeams))
+	}
+	if publicTeams[0].ID != t1.ID || publicTeams[1].ID != t3.ID {
+		t.Errorf("expected public teams [%s, %s], got [%s, %s]", t1.ID, t3.ID, publicTeams[0].ID, publicTeams[1].ID)
+	}
+}
+
+func TestTeamRepo_UpdateVisibility(t *testing.T) {
+	db := newMigratedTestDB(t)
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	builds := NewBuildRepo(db)
+	repo := NewTeamRepo(db)
+	ctx := context.Background()
+
+	user := seedUser(t, ctx, users, "787878787878787878")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687079")
+	b := makeDomainBuild(user.ID, account.ID, "Preset 1", 1511)
+	if err := builds.Create(ctx, b); err != nil {
+		t.Fatalf("failed to create build: %v", err)
+	}
+
+	team := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Initial Private Team",
+		IsPublic:      false,
+	}
+	if err := repo.Create(ctx, team, []domain.TeamMember{{SlotNumber: 1, BuildID: b.ID}}); err != nil {
+		t.Fatalf("failed to create team: %v", err)
+	}
+
+	createdTeam, err := repo.GetByID(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("failed to get created team: %v", err)
+	}
+
+	time.Sleep(10 * time.Millisecond)
+
+	// Update visibility to true
+	if err := repo.UpdateVisibility(ctx, team.ID, true); err != nil {
+		t.Fatalf("failed to update visibility to true: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("failed to get team after update: %v", err)
+	}
+	if !got.IsPublic {
+		t.Errorf("expected team.IsPublic == true after update")
+	}
+	assertTimeEqual(t, createdTeam.UpdatedAt, got.UpdatedAt)
+
+	// Update visibility to false
+	if err := repo.UpdateVisibility(ctx, team.ID, false); err != nil {
+		t.Fatalf("failed to update visibility to false: %v", err)
+	}
+	got2, _ := repo.GetByID(ctx, team.ID)
+	if got2.IsPublic {
+		t.Errorf("expected team.IsPublic == false after second update")
+	}
+
+	// Missing team
+	if err := repo.UpdateVisibility(ctx, uuid.New(), true); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected ErrNotFound for non-existent team, got %v", err)
+	}
+}
+
+func TestTeamRepo_HasPublicByAccount(t *testing.T) {
+	db := newMigratedTestDB(t)
+	ctx := context.Background()
+
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	builds := NewBuildRepo(db)
+	repo := NewTeamRepo(db)
+
+	user := seedUser(t, ctx, users, "727272727272727272")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687072")
+
+	// 1. No teams -> false
+	has, err := repo.HasPublicByAccount(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if has {
+		t.Errorf("expected HasPublicByAccount=false for account without teams")
+	}
+
+	// 2. Private team -> false
+	b := makeDomainBuild(user.ID, account.ID, "Member Build", 1511)
+	if err := builds.Create(ctx, b); err != nil {
+		t.Fatalf("failed to create build: %v", err)
+	}
+
+	team := &domain.Team{
+		UserID:        user.ID,
+		GameAccountID: account.ID,
+		Name:          "Private Team",
+		IsPublic:      false,
+	}
+	if err := repo.Create(ctx, team, []domain.TeamMember{{SlotNumber: 1, BuildID: b.ID}}); err != nil {
+		t.Fatalf("failed to create team: %v", err)
+	}
+
+	has, err = repo.HasPublicByAccount(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if has {
+		t.Errorf("expected HasPublicByAccount=false when all teams are private")
+	}
+
+	// 3. Make public -> true
+	if err := repo.UpdateVisibility(ctx, team.ID, true); err != nil {
+		t.Fatalf("failed to update visibility: %v", err)
+	}
+	has, err = repo.HasPublicByAccount(ctx, account.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !has {
+		t.Errorf("expected HasPublicByAccount=true after making team public")
 	}
 }
