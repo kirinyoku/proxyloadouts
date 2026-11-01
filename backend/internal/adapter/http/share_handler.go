@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -139,7 +140,7 @@ func (h *shareHandler) status(w http.ResponseWriter, r *http.Request, target sha
 	}
 	var active bool
 	err = h.db.QueryRowContext(r.Context(), query, id.String(), MustUserFromContext(r.Context()).ID.String()).Scan(&active)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		respondError(w, http.StatusNotFound, "not found")
 		return
 	}

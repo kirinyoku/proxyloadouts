@@ -7,7 +7,10 @@ export function useShareStatus(kind: 'roster' | 'build' | 'team' | 'teams', id: 
   const [state, setState] = useState<{ id: string | undefined; status: ShareStatus }>({ id, status: 'loading' })
   const revision = useRef(0)
   const currentId = useRef(id)
-  currentId.current = id
+
+  useEffect(() => {
+    currentId.current = id
+  }, [id])
 
   const refresh = useCallback(() => {
     if (!id) return
@@ -24,9 +27,28 @@ export function useShareStatus(kind: 'roster' | 'build' | 'team' | 'teams', id: 
   }, [id, kind])
 
   useEffect(() => {
-    refresh()
-    return () => { revision.current++ }
-  }, [refresh])
+    let cancelled = false
+    const current = ++revision.current
+
+    if (!id) return
+
+    void fetchShareStatus(kind, id).then(
+      ({ active }) => {
+        if (!cancelled && revision.current === current) {
+          setState({ id, status: active ? 'active' : 'inactive' })
+        }
+      },
+      () => {
+        if (!cancelled && revision.current === current) {
+          setState({ id, status: 'error' })
+        }
+      },
+    )
+
+    return () => {
+      cancelled = true
+    }
+  }, [id, kind])
 
   const setActive = useCallback((active: boolean) => {
     if (currentId.current !== id) return
