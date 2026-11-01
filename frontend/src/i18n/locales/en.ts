@@ -56,7 +56,7 @@ const en: TranslationSchema = {
     title1: 'Agent Build Manager',
     title2: 'Zenless Zone Zero',
     pageTitle: 'Agent Build Manager for Zenless Zone Zero',
-    subtitle: 'Keep swap-ready equipment loadouts for every agent. Build combat squads for any content without gear conflicts.',
+    subtitle: 'Keep swap-ready equipment loadouts, build combat squads without gear conflicts, and share builds and squads with a single link.',
     searchPlaceholder: 'Game UID',
     clearInput: 'Clear input',
     uidAria: 'Game UID',

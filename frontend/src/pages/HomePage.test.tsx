@@ -43,8 +43,8 @@ describe('HomePage', () => {
     expect(html).toContain(ru.home.title2)
     // Full subtitle / description text
     expect(html).toContain(ru.home.subtitle)
-    expect(html).toContain('Храните сменные комплекты экипировки для каждого агента.')
-    expect(html).toContain('Собирайте боевые отряды под разный боевой контент без коллизий.')
+    expect(html).toContain('Храните сменные комплекты экипировки')
+    expect(html).toContain('делитесь сборками и отрядами в один клик')
   })
 
   it('renders UID search input and scan button', () => {
