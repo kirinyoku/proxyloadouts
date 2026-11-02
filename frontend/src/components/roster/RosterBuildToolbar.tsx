@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button'
 import { createBuildShare, revokeBuildShare } from '@/api/client'
 import { toast } from '@/components/ui/sonner'
 import { formatDateTime } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { useDeleteBuild, useRenameBuild, useToggleBuildVisibility } from '@/api/hooks'
 import type { Build } from '@/types'
 import { RevokeShareDialog } from './RevokeShareDialog'
@@ -38,6 +39,7 @@ interface RosterBuildToolbarProps {
   onSelectBuildId: (id: string) => void
   /** Saved-builds capacity chip merged into the toolbar. */
   meta?: ReactNode
+  faeBadge?: ReactNode
   readOnly?: boolean
 }
 
@@ -53,6 +55,7 @@ export function RosterBuildToolbar({
   selectedBuildId,
   onSelectBuildId,
   meta,
+  faeBadge,
   readOnly = false,
 }: RosterBuildToolbarProps) {
   const { t } = useTranslation()
@@ -415,8 +418,18 @@ export function RosterBuildToolbar({
           )}
         </div>
 
+        {faeBadge && (
+          <div className="ml-auto flex shrink-0 items-center">{faeBadge}</div>
+        )}
+
         {/* Zone separator between the build cluster and the destructive action */}
-        <div className="ml-auto hidden h-6 w-px shrink-0 bg-white/[0.12] sm:block" aria-hidden="true" />
+        <div
+          className={cn(
+            !faeBadge && 'ml-auto',
+            'hidden h-6 w-px shrink-0 bg-white/[0.12] sm:block',
+          )}
+          aria-hidden="true"
+        />
 
         {/* Zone 3: actions (visibility toggle, share, delete) */}
         <div className="flex shrink-0 items-center gap-1.5">
@@ -685,6 +698,8 @@ export function RosterBuildToolbar({
             )}
           </div>
         )}
+
+        {faeBadge}
       </div>
     </div>
   )

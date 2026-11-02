@@ -5,8 +5,10 @@ import {
   FaeTooltipContent,
 } from './FaeBadge'
 import {
+  getZfaeUrl,
   formatFaePercentile,
   formatFaeRank,
+  formatFaeRankParts,
   resolveFaeBadgeState,
 } from '@/lib/fae'
 import type { FaeRating } from '@/types'
@@ -19,8 +21,10 @@ vi.mock('react-i18next', () => ({
         'fae.scoreLabel': 'Score',
         'fae.topPrefix': 'Top',
         'fae.unassessed': 'Unassessed',
-        'fae.liveStatus': 'Live leaderboard rating matching current showcase gear',
-        'fae.outdatedStatus': 'Snapshot rating from {{date}} — in-game equipment has changed',
+        'fae.liveStatus': 'Leaderboard rating matches the gear in your showcase',
+        'fae.savedRating': 'Saved rating',
+        'fae.outdatedStatus': 'Saved on {{date}} — the gear in your showcase has changed',
+        'fae.outdatedStatusNoDate': 'The gear in your showcase has changed since this rating was saved',
         'fae.unassessedHint': 'Not yet assessed on zfae.net leaderboards',
         'fae.openProfile': 'Open profile on zfae.net',
         'fae.weaponChoice': 'W-Engine choice',
@@ -60,6 +64,17 @@ describe('formatFaeRank', () => {
 
   it('formats rank alone when total is missing', () => {
     expect(formatFaeRank(5)).toBe('#5')
+  })
+})
+
+describe('formatFaeRankParts', () => {
+  it('formats rank and total with thousand separators', () => {
+    expect(formatFaeRankParts(14, 41147)).toEqual({ rank: '#14', total: '41,147' })
+  })
+
+  it('formats rank alone when total is missing or zero', () => {
+    expect(formatFaeRankParts(5)).toEqual({ rank: '#5', total: null })
+    expect(formatFaeRankParts(5, 0)).toEqual({ rank: '#5', total: null })
   })
 })
 
@@ -130,6 +145,7 @@ describe('FaeBadge rendering', () => {
   it('renders unassessed badge when showUnassessed is true', () => {
     const html = renderToString(<FaeBadge rating={null} showUnassessed />)
     expect(html).toContain('data-testid="fae-badge-unassessed"')
+    expect(html).toContain('FAE')
     expect(html).toContain('Unassessed')
   })
 
@@ -138,30 +154,37 @@ describe('FaeBadge rendering', () => {
       <FaeBadge rating={liveRating} uid="1503562965" showUnassessed />,
     )
     expect(html).toContain('data-testid="fae-badge-live"')
-    expect(html).toContain('href="https://zfae.net/profile/1503562965/claret"')
+    expect(html).toContain('aria-haspopup="dialog"')
+    expect(html).toContain('FAE')
     expect(html).toContain('Top 0.04%')
-    expect(html).toContain('#14 / 41,147')
-    expect(html).toContain('82.6')
+    expect(html).toContain('#14')
   })
 
-  it('renders tooltip content with breakdown, bracket, and status', () => {
+  it('renders tooltip content with rating, version, and breakdown', () => {
     const html = renderToString(
       <FaeTooltipContent rating={liveRating} isOutdated={false} dateStr={null} />,
     )
     expect(html).toContain('data-testid="fae-tooltip-content"')
-    expect(html).toContain('S Rank Limited W-Engines')
-    expect(html).toContain('Live')
+    expect(html).not.toContain('S Rank Limited W-Engines')
+    expect(html).toContain('V1')
+    expect(html).toContain('Leaderboard rating matches the gear in your showcase')
+    expect(html).not.toContain('Saved rating')
     expect(html).toContain('100%')
     expect(html).toContain('95%')
     expect(html).toContain('90%')
     expect(html).toContain('85%')
   })
 
+  it('shows a saved rating warning with a date when available', () => {
+    const dated = renderToString(<FaeTooltipContent rating={liveRating} isOutdated dateStr="11/2/2026" />)
+    expect(dated).toContain('Saved rating')
+    expect(dated).toContain('Saved on 11/2/2026')
+    const undated = renderToString(<FaeTooltipContent rating={liveRating} isOutdated dateStr={null} />)
+    expect(undated).toContain('changed since this rating was saved')
+  })
+
   it('falls back to leaderboard URL when uid is missing', () => {
-    const html = renderToString(
-      <FaeBadge rating={liveRating} showUnassessed />,
-    )
-    expect(html).toContain('href="https://zfae.net/leaderboard/claret"')
+    expect(getZfaeUrl(undefined, liveRating.slug)).toBe('https://zfae.net/leaderboard/claret')
   })
 
   it('renders snapshot_outdated badge with outdated styling', () => {
@@ -175,7 +198,7 @@ describe('FaeBadge rendering', () => {
     )
     expect(html).toContain('data-testid="fae-badge-outdated"')
     expect(html).toContain('lucide-clock')
-    expect(html).toContain('#14 / 41,147')
-    expect(html).toContain('82.6')
+    expect(html).toContain('FAE')
+    expect(html).toContain('#14')
   })
 })

@@ -443,6 +443,14 @@ export function RosterPage({
                         handleSelectBuildId(currentGroup.agentId, buildId)
                       }
                       meta={capacityChip}
+                      faeBadge={
+                        <FaeBadge
+                          rating={currentBuild.fae_rating}
+                          uid={activeAccount?.uid}
+                          showUnassessed
+                          className="w-full sm:w-auto"
+                        />
+                      }
                     />
 
                     {/* On mobile screens: W-Engine card is displayed above the section tabs */}
@@ -460,11 +468,6 @@ export function RosterPage({
                         <div className="hidden lg:block">
                           <WEngineCard wEngine={currentBuild.build_data.w_engine} headingLevel={2} />
                         </div>
-                        <FaeBadge
-                          rating={currentBuild.fae_rating}
-                          uid={activeAccount?.uid}
-                          showUnassessed
-                        />
                         <AgentStatsPanel
                           uiStats={currentBuild.build_data.ui_stats}
                           specialty={currentBuild.build_data.specialty}

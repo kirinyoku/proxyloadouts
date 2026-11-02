@@ -151,8 +151,8 @@ function AgentShowcaseSection({
   return (
     <div className="relative rounded-3xl border border-white/[0.08] bg-card/96 p-3 shadow-xl backdrop-blur-sm md:p-4">
       <div className="space-y-3">
-        {/* Agent identity and the primary build action */}
-        <div className="flex items-center justify-between gap-2 border-b border-white/[0.08] pb-2">
+        {/* Agent identity, FAE rank badge, and the primary build action */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] pb-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <h2 className="truncate font-heading text-[15px] font-bold leading-none tracking-wide text-foreground sm:text-xl">
               {agent.name}
@@ -165,10 +165,18 @@ function AgentShowcaseSection({
           </div>
 
           {saveButton && (
-            <div className="shrink-0">
+            <div className="shrink-0 sm:order-3">
               {saveButton}
             </div>
           )}
+
+          <FaeBadge
+            isLoading={isFaeLoading}
+            rating={faeRating}
+            uid={uid}
+            showUnassessed
+            className="order-3 w-full sm:order-2 sm:w-auto"
+          />
         </div>
 
         {/* On mobile screens: W-Engine card is displayed above the section tabs */}
@@ -185,13 +193,6 @@ function AgentShowcaseSection({
             <div className="hidden lg:block">
               <WEngineCard wEngine={agent.w_engine} />
             </div>
-
-            <FaeBadge
-              isLoading={isFaeLoading}
-              rating={faeRating}
-              uid={uid}
-              showUnassessed
-            />
 
             <AgentStatsPanel
               uiStats={agent.ui_stats}
@@ -686,7 +687,7 @@ export function ShowcasePage() {
                 <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
               </div>
             ) : (
-              <ShowcaseSavedPresets builds={rosterQuery.data?.builds ?? []} />
+              <ShowcaseSavedPresets builds={rosterQuery.data?.builds ?? []} uid={showcase?.uid || scannedUid} />
             )
           )}
 

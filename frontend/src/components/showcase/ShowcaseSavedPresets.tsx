@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useMe } from '@/api/hooks'
 import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
+import { FaeBadge } from '@/components/showcase/FaeBadge'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -66,9 +67,10 @@ function MobileSectionTabs({
 export interface ShowcaseSavedPresetsProps {
   builds: Build[]
   profile?: ReactNode
+  uid?: string
 }
 
-export function ShowcaseSavedPresets({ builds, profile }: ShowcaseSavedPresetsProps) {
+export function ShowcaseSavedPresets({ builds, profile, uid }: ShowcaseSavedPresetsProps) {
   const { t } = useTranslation()
   const { data: me } = useMe()
 
@@ -297,6 +299,14 @@ export function ShowcaseSavedPresets({ builds, profile }: ShowcaseSavedPresetsPr
                   selectedBuildId={activeBuild.id}
                   onSelectBuildId={handleSelectBuild}
                   meta={capacityChip}
+                  faeBadge={
+                    <FaeBadge
+                      rating={activeBuild.fae_rating}
+                      uid={uid}
+                      showUnassessed={false}
+                      className="w-full sm:w-auto"
+                    />
+                  }
                   readOnly
                 />
 

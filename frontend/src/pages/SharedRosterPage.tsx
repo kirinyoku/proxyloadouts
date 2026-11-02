@@ -53,6 +53,7 @@ export default function SharedRosterPage() {
         <ShowcaseSavedPresets
           builds={data.builds}
           profile={profileHeader}
+          uid={data.owner?.uid}
         />
       )}
     </div>

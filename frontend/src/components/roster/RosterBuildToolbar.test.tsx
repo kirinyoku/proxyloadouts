@@ -306,5 +306,20 @@ describe('RosterBuildToolbar', () => {
       expect(html).toContain('lucide-share-2')
       expect(html).not.toContain('aria-haspopup="menu"')
     })
+
+    it('renders faeBadge in both desktop and mobile layouts when provided', () => {
+      const html = renderWithTooltip(
+        <RosterBuildToolbar
+          agentName="Ария"
+          builds={mockBuilds}
+          selectedBuildId="build-1"
+          onSelectBuildId={vi.fn()}
+          faeBadge={<div data-testid="custom-fae-badge">FAE #14</div>}
+        />,
+      )
+
+      expect(html).toContain('data-testid="custom-fae-badge"')
+      expect(html).toContain('FAE #14')
+    })
   })
 })

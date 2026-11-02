@@ -30,12 +30,25 @@ export function formatFaePercentile(topPercentile: number): string {
   return `${Number(pct.toFixed(decimals))}%`
 }
 
-export function formatFaeRank(rank: number, rankOf?: number): string {
-  const formattedRank = new Intl.NumberFormat().format(rank)
+export interface FaeRankParts {
+  rank: string
+  total: string | null
+}
+
+export function formatFaeRankParts(rank: number, rankOf?: number): FaeRankParts {
+  const formattedRank = `#${new Intl.NumberFormat().format(rank)}`
   if (rankOf != null && rankOf > 0) {
-    return `#${formattedRank} / ${new Intl.NumberFormat().format(rankOf)}`
+    return {
+      rank: formattedRank,
+      total: new Intl.NumberFormat().format(rankOf),
+    }
   }
-  return `#${formattedRank}`
+  return { rank: formattedRank, total: null }
+}
+
+export function formatFaeRank(rank: number, rankOf?: number): string {
+  const parts = formatFaeRankParts(rank, rankOf)
+  return parts.total ? `${parts.rank} / ${parts.total}` : parts.rank
 }
 
 export function getZfaeUrl(uid?: string, slug?: string): string {

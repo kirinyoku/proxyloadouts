@@ -223,8 +223,14 @@ export function PublicBuildPage() {
                 </div>
               </div>
 
-              {/* Actions: Separator + Share Button */}
+              {/* Actions: FAE Badge (desktop) + Separator + Share Button */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <FaeBadge
+                  rating={build.fae_rating}
+                  uid={owner.uid}
+                  showUnassessed={false}
+                  className="hidden sm:inline-flex w-auto"
+                />
                 <div className="hidden h-6 w-px shrink-0 bg-white/[0.12] sm:block" aria-hidden="true" />
                 <ShareIconButton
                   onClick={handleShare}
@@ -235,6 +241,14 @@ export function PublicBuildPage() {
                 />
               </div>
             </div>
+
+            {/* Mobile FAE Badge: full-width sub-row in header */}
+            <FaeBadge
+              rating={build.fae_rating}
+              uid={owner.uid}
+              showUnassessed={false}
+              className="sm:hidden w-full mt-2.5"
+            />
 
             {/* Mobile Note: full-width sub-row in header */}
             {build.description?.trim() && (
@@ -266,11 +280,6 @@ export function PublicBuildPage() {
               <div className="hidden lg:block">
                 <WEngineCard wEngine={agent.w_engine} headingLevel={2} />
               </div>
-              <FaeBadge
-                rating={build.fae_rating}
-                uid={owner.uid}
-                showUnassessed={false}
-              />
               <AgentStatsPanel
                 uiStats={agent.ui_stats}
                 specialty={agent.specialty}
