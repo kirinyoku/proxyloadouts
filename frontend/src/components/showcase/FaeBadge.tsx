@@ -3,12 +3,6 @@ import { ExternalLink, Clock, ChevronRight } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import {
   formatFaePercentile,
   formatFaeRankParts,
   getZfaeUrl,
@@ -158,29 +152,47 @@ export function FaeBadge({
         return null
       }
       return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                data-testid="fae-badge-unassessed"
-                className={cn(
-                  'inline-flex h-7.5 items-center gap-1.5 rounded-lg sm:h-8 border border-border bg-muted/30 px-3 py-1 text-xs text-muted-foreground select-none',
-                  className,
-                )}
-              >
-                <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
-                <span className="font-heading text-[10px] font-bold uppercase tracking-wider text-muted-foreground/75">
-                  FAE
-                </span>
-                <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden="true" />
-                <span className="text-[11px]">{t('fae.unassessed')}</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p className="text-xs">{t('fae.unassessedHint')}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Dialog>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              data-testid="fae-badge-unassessed"
+              className={cn(
+                'inline-flex h-7.5 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-[#636AF2] hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none sm:h-8',
+                className,
+              )}
+            >
+              <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/40" aria-hidden="true" />
+              <span className="font-heading text-[10px] font-bold uppercase tracking-wider text-muted-foreground/75">
+                FAE
+              </span>
+              <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden="true" />
+              <span className="text-[11px]">{t('fae.unassessed')}</span>
+              <ChevronRight className="size-3 shrink-0" aria-hidden="true" />
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-card-foreground sm:max-w-[420px] sm:p-6">
+            <DialogTitle className="pr-8 text-lg font-semibold">{t('fae.guideTitle')}</DialogTitle>
+            <DialogDescription className="mt-2 text-sm leading-relaxed">{t('fae.guideDescription')}</DialogDescription>
+            <ol className="mt-5 list-decimal space-y-3 pl-5 text-sm leading-relaxed marker:font-semibold marker:text-muted-foreground">
+              <li className="pl-1">{t('fae.guideEquip')}</li>
+              <li className="pl-1">
+                <a
+                  href={getZfaeUrl(uid)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-sm font-medium text-violet-700 underline underline-offset-4 hover:text-violet-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-violet-300 dark:hover:text-violet-200"
+                >
+                  {t(uid ? 'fae.openProfile' : 'fae.openSite')}
+                  <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
+                </a>
+                <p className="mt-1">{t('fae.guideUpdate')}</p>
+              </li>
+              <li className="pl-1">{t('fae.guideReload')}</li>
+            </ol>
+            <p className="mt-5 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">{t('fae.guideDelay')}</p>
+          </DialogContent>
+        </Dialog>
       )
     }
 

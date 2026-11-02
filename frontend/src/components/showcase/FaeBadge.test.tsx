@@ -25,7 +25,6 @@ vi.mock('react-i18next', () => ({
         'fae.savedRating': 'Saved rating',
         'fae.outdatedStatus': 'Saved on {{date}} — the gear in your showcase has changed',
         'fae.outdatedStatusNoDate': 'The gear in your showcase has changed since this rating was saved',
-        'fae.unassessedHint': 'Not yet assessed on zfae.net leaderboards',
         'fae.openProfile': 'Open profile on zfae.net',
         'fae.weaponChoice': 'W-Engine choice',
         'fae.discSets': 'Drive Disc sets',
@@ -142,9 +141,10 @@ describe('FaeBadge rendering', () => {
     expect(html).toBe('')
   })
 
-  it('renders unassessed badge when showUnassessed is true', () => {
+  it('renders an unassessed button that opens a dialog when showUnassessed is true', () => {
     const html = renderToString(<FaeBadge rating={null} showUnassessed />)
-    expect(html).toContain('data-testid="fae-badge-unassessed"')
+    expect(html).toMatch(/<button[^>]*data-testid="fae-badge-unassessed"[^>]*>/)
+    expect(html).toContain('aria-haspopup="dialog"')
     expect(html).toContain('FAE')
     expect(html).toContain('Unassessed')
   })
