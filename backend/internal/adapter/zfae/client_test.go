@@ -2,12 +2,17 @@ package zfae
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/kirinyoku/enkanetwork-go/client/zzz"
@@ -443,4 +448,183 @@ func TestClient_ExistingProfileSurvivesRefreshFailure(t *testing.T) {
 	if got := refreshCount.Load(); got != 1 {
 		t.Errorf("FetchProfileRatings(%q, false) showcase requests = %d, want 1", uid, got)
 	}
+}
+
+func TestClient_ForcedRefreshReturnsShowcaseFailure(t *testing.T) {
+	const uid = "1504687050"
+	const cardHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
+	for _, tc := range []struct {
+		status  int
+		wantErr error
+	}{
+		{status: 0},
+		{status: http.StatusBadRequest},
+		{status: http.StatusTooManyRequests, wantErr: domain.ErrRateLimited},
+		{status: http.StatusServiceUnavailable, wantErr: domain.ErrSourceUnavailable},
+	} {
+		t.Run(fmt.Sprint(tc.status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet {
+					_, _ = w.Write([]byte(cardHTML))
+					return
+				}
+				if tc.status == 0 {
+					panic(http.ErrAbortHandler)
+				}
+				w.WriteHeader(tc.status)
+			}))
+			t.Cleanup(server.Close)
+			client := NewClient(WithBaseURL(server.URL))
+
+			_, err := client.FetchProfileRatings(context.Background(), uid, true)
+			if err == nil {
+				t.Errorf("FetchProfileRatings(%q, true) error = nil, want refresh failure for status %d", uid, tc.status)
+			} else if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+				t.Errorf("FetchProfileRatings(%q, true) error = %v, want %v", uid, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestClient_ProfileRereadFailure(t *testing.T) {
+	const uid = "1504687050"
+	const cardHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
+	for _, tc := range []struct {
+		status  int
+		wantErr error
+	}{
+		{status: 0},
+		{status: http.StatusNotFound, wantErr: domain.ErrNotFound},
+		{status: http.StatusTooManyRequests, wantErr: domain.ErrRateLimited},
+		{status: http.StatusServiceUnavailable, wantErr: domain.ErrSourceUnavailable},
+	} {
+		for _, forceRefresh := range []bool{false, true} {
+			t.Run(fmt.Sprintf("status_%d/force_%t", tc.status, forceRefresh), func(t *testing.T) {
+				var getCount atomic.Int32
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.Method == http.MethodPost {
+						w.WriteHeader(http.StatusOK)
+						return
+					}
+					if getCount.Add(1) == 1 {
+						_, _ = w.Write([]byte(cardHTML))
+						return
+					}
+					if tc.status == 0 {
+						panic(http.ErrAbortHandler)
+					}
+					w.WriteHeader(tc.status)
+				}))
+				t.Cleanup(server.Close)
+				client := NewClient(WithBaseURL(server.URL))
+
+				ratings, err := client.FetchProfileRatings(context.Background(), uid, forceRefresh)
+				if forceRefresh {
+					if err == nil {
+						t.Errorf("FetchProfileRatings(%q, true) error = nil, want reread failure for status %d", uid, tc.status)
+					} else if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+						t.Errorf("FetchProfileRatings(%q, true) error = %v, want %v", uid, err, tc.wantErr)
+					}
+					return
+				}
+				if err != nil {
+					t.Fatalf("FetchProfileRatings(%q, false) error = %v, want nil", uid, err)
+				}
+				if ratings[1611] == nil || ratings[1611].Rank == nil || *ratings[1611].Rank != 4 {
+					t.Errorf("FetchProfileRatings(%q, false)[1611] = %+v, want existing Claret rank 4", uid, ratings[1611])
+				}
+			})
+		}
+	}
+}
+
+func TestClient_MixedRefreshFailure(t *testing.T) {
+	const uid = "1504687050"
+	const cardHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
+	for _, forceLeader := range []bool{false, true} {
+		t.Run(fmt.Sprintf("force_leader_%t", forceLeader), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				postStarted := make(chan struct{})
+				releasePost := make(chan struct{})
+				var postCount int
+				client := NewClient(WithHTTPClient(&http.Client{Transport: refreshTestTransport(func(r *http.Request) (*http.Response, error) {
+					if r.Method == http.MethodGet {
+						return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(cardHTML))}, nil
+					}
+					postCount++
+					close(postStarted)
+					<-releasePost
+					return &http.Response{StatusCode: http.StatusServiceUnavailable, Body: http.NoBody}, nil
+				})}))
+				type fetchResult struct {
+					force   bool
+					ratings map[int]*domain.FaeRating
+					err     error
+				}
+				results := make(chan fetchResult, 2)
+				fetch := func(force bool) {
+					ratings, err := client.FetchProfileRatings(context.Background(), uid, force)
+					results <- fetchResult{force: force, ratings: ratings, err: err}
+				}
+				go fetch(forceLeader)
+				<-postStarted
+				go fetch(!forceLeader)
+				synctest.Wait()
+				close(releasePost)
+				synctest.Wait()
+				for range 2 {
+					result := <-results
+					if result.force {
+						if !errors.Is(result.err, domain.ErrSourceUnavailable) {
+							t.Errorf("FetchProfileRatings(%q, true) error = %v, want %v", uid, result.err, domain.ErrSourceUnavailable)
+						}
+					} else if result.err != nil {
+						t.Errorf("FetchProfileRatings(%q, false) error = %v, want nil", uid, result.err)
+					} else if rating := result.ratings[1611]; rating == nil || rating.Rank == nil || *rating.Rank != 4 {
+						t.Errorf("FetchProfileRatings(%q, false)[1611] = %+v, want existing Claret rank 4", uid, rating)
+					}
+				}
+				if postCount != 1 {
+					t.Errorf("FetchProfileRatings mixed refresh showcase requests = %d, want 1", postCount)
+				}
+			})
+		})
+	}
+}
+
+func TestClient_MissingProfileRefreshFailure(t *testing.T) {
+	const uid = "1504687050"
+	for _, tc := range []struct {
+		status  int
+		wantErr error
+	}{
+		{status: http.StatusTooManyRequests, wantErr: domain.ErrRateLimited},
+		{status: http.StatusServiceUnavailable, wantErr: domain.ErrSourceUnavailable},
+	} {
+		for _, forceRefresh := range []bool{false, true} {
+			t.Run(fmt.Sprintf("status_%d/force_%t", tc.status, forceRefresh), func(t *testing.T) {
+				client := NewClient(WithHTTPClient(&http.Client{Transport: refreshTestTransport(func(r *http.Request) (*http.Response, error) {
+					status := http.StatusNotFound
+					if r.Method == http.MethodPost {
+						status = tc.status
+					}
+					return &http.Response{StatusCode: status, Body: http.NoBody}, nil
+				})}))
+				_, err := client.FetchProfileRatings(context.Background(), uid, forceRefresh)
+				wantErr := domain.ErrNotFound
+				if forceRefresh {
+					wantErr = tc.wantErr
+				}
+				if !errors.Is(err, wantErr) {
+					t.Errorf("FetchProfileRatings(%q, %t) error = %v, want %v", uid, forceRefresh, err, wantErr)
+				}
+			})
+		}
+	}
+}
+
+type refreshTestTransport func(*http.Request) (*http.Response, error)
+
+func (f refreshTestTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
 }
