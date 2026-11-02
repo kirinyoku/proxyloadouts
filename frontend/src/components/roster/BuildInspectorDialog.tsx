@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { MindscapeBadge } from '@/components/ui/MindscapeBadge'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
+import { FaeBadge } from '@/components/showcase/FaeBadge'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import {
@@ -272,6 +273,10 @@ export function BuildInspectorDialog({
               <div className="hidden lg:block">
                 <WEngineCard wEngine={agent.w_engine} />
               </div>
+              <FaeBadge
+                rating={build.fae_rating}
+                showUnassessed={false}
+              />
               <AgentStatsPanel
                 uiStats={agent.ui_stats}
                 specialty={agent.specialty}

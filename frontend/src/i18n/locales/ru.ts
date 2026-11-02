@@ -909,6 +909,21 @@ const ru = {
       teamsDesc: 'Конструктор отрядов без коллизий дисков',
     },
   },
+  fae: {
+    rankLabel: 'Ранг',
+    scoreLabel: 'Оценка',
+    topPrefix: 'Топ',
+    unassessed: 'Не оценён',
+    liveStatus: 'Актуальный рейтинг лидерборда, совпадает со снаряжением в витрине',
+    outdatedStatus: 'Снимок рейтинга от {{date}} — снаряжение в игре изменилось',
+    unassessedHint: 'Ещё не оценён в лидербордах zfae.net',
+    openProfile: 'Открыть профиль на zfae.net',
+    assessedAt: 'Дата оценки',
+    weaponChoice: 'Выбор амплификатора',
+    discSets: 'Комплекты драйв-дисков',
+    mainstats: 'Основные характеристики',
+    substats: 'Дополнительные характеристики',
+  },
 } as const
 
 export type DeepString<T> = {

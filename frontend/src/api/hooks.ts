@@ -24,6 +24,7 @@ import * as api from './client'
 const AUTH_STALE_TIME = 60_000
 const COLLECTION_STALE_TIME = 2 * 60_000
 const SHOWCASE_STALE_TIME = 60_000
+const FAE_STALE_TIME = 15 * 60 * 1000
 const VALIDATION_DEBOUNCE_MS = 300
 
 // Stable empty reference so consumers do not re-render on every render while
@@ -52,6 +53,7 @@ export const queryKeys = {
   me: ['auth', 'me'] as const,
   showcase: (uid: string, lang?: string) =>
     lang ? (['showcase', uid, lang] as const) : (['showcase', uid] as const),
+  showcaseFae: (uid: string) => ['showcase', 'fae', uid] as const,
   showcaseRoster: (uid: string, lang?: string) =>
     lang ? (['showcase', 'roster', uid, lang] as const) : (['showcase', 'roster', uid] as const),
   builds: (gameAccountId: string, lang?: string) =>
@@ -131,6 +133,16 @@ export function useShowcase(uid: string) {
     queryFn: ({ signal }) => api.fetchShowcase(uid, langKey, signal),
     enabled: uid.trim().length > 0,
     staleTime: SHOWCASE_STALE_TIME,
+  })
+}
+
+export function useShowcaseFae(uid: string, fresh?: boolean) {
+  return useQuery({
+    queryKey: queryKeys.showcaseFae(uid),
+    queryFn: ({ signal }) => api.getShowcaseFae(uid, fresh, signal),
+    enabled: uid.trim().length > 0,
+    staleTime: FAE_STALE_TIME,
+    retry: 1,
   })
 }
 

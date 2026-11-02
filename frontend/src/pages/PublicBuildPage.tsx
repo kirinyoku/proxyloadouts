@@ -8,6 +8,7 @@ import { PageLoader } from '@/components/common/PageLoader'
 import { ShareIconButton } from '@/components/common/ShareIconButton'
 import { SharedUnavailableState } from '@/components/common/SharedUnavailableState'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
+import { FaeBadge } from '@/components/showcase/FaeBadge'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
@@ -265,6 +266,11 @@ export function PublicBuildPage() {
               <div className="hidden lg:block">
                 <WEngineCard wEngine={agent.w_engine} headingLevel={2} />
               </div>
+              <FaeBadge
+                rating={build.fae_rating}
+                uid={owner.uid}
+                showUnassessed={false}
+              />
               <AgentStatsPanel
                 uiStats={agent.ui_stats}
                 specialty={agent.specialty}

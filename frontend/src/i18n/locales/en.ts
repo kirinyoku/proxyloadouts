@@ -911,6 +911,21 @@ const en: TranslationSchema = {
       teamsDesc: 'Build squads with automatic conflict detection',
     },
   },
+  fae: {
+    rankLabel: 'Rank',
+    scoreLabel: 'Score',
+    topPrefix: 'Top',
+    unassessed: 'Unassessed',
+    liveStatus: 'Live leaderboard rating matching current showcase gear',
+    outdatedStatus: 'Snapshot rating from {{date}} — in-game equipment has changed',
+    unassessedHint: 'Not yet assessed on zfae.net leaderboards',
+    openProfile: 'Open profile on zfae.net',
+    assessedAt: 'Assessed on',
+    weaponChoice: 'W-Engine choice',
+    discSets: 'Drive Disc sets',
+    mainstats: 'Main stats',
+    substats: 'Substats',
+  },
 }
 
 export default en

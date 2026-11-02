@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Check, Layers, RefreshCw, ScanLine, Users } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useBuilds, useMe, useShowcase, useShowcaseRoster } from '@/api/hooks'
+import { useBuilds, useMe, useShowcase, useShowcaseFae, useShowcaseRoster } from '@/api/hooks'
+import { getShowcaseFae } from '@/api/client'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
 import { findMatchingSavedBuild, getAgentEquipmentFingerprint } from '@/lib/builds'
 import { persistLastUid, readLastUid, UID_PATTERN } from '@/lib/uid'
 import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
+import { FaeBadge } from '@/components/showcase/FaeBadge'
 import { ShowcaseProfileHeader } from '@/components/showcase/ShowcaseProfileHeader'
 import { ShowcaseSavedPresets } from '@/components/showcase/ShowcaseSavedPresets'
 import { ShowcaseSquads } from '@/components/showcase/ShowcaseSquads'
@@ -23,7 +25,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { getAttributeLabel, getSpecialtyLabel } from '@/lib/design-tokens'
 import { useTranslation } from 'react-i18next'
-import type { Agent, ShowcaseResponse } from '@/types'
+import type { Agent, FaeRating, ShowcaseResponse } from '@/types'
 
 const SaveBuildDialog = lazy(() =>
   import('@/components/showcase/SaveBuildDialog').then((module) => ({
@@ -55,6 +57,9 @@ interface AgentShowcaseSectionProps {
   matchingBuildName?: string | null
   canSave: boolean
   onSaveClick: () => void
+  faeRating?: FaeRating | null
+  isFaeLoading?: boolean
+  uid?: string
 }
 
 function MobileSectionTabs({
@@ -109,6 +114,9 @@ function AgentShowcaseSection({
   matchingBuildName,
   canSave,
   onSaveClick,
+  faeRating,
+  isFaeLoading,
+  uid,
 }: AgentShowcaseSectionProps) {
   const { t, i18n } = useTranslation()
   const [mobileSection, setMobileSection] = useState<MobileAgentSection>('discs')
@@ -177,6 +185,13 @@ function AgentShowcaseSection({
             <div className="hidden lg:block">
               <WEngineCard wEngine={agent.w_engine} />
             </div>
+
+            <FaeBadge
+              isLoading={isFaeLoading}
+              rating={faeRating}
+              uid={uid}
+              showUnassessed
+            />
 
             <AgentStatsPanel
               uiStats={agent.ui_stats}
@@ -312,6 +327,7 @@ export function ShowcasePage() {
   const buildsQuery = useBuilds(isAuthed && matchingAccount ? matchingAccount.id : undefined)
   const showcaseQuery = useShowcase(scannedUid)
   const rosterQuery = useShowcaseRoster(scannedUid)
+  const faeQuery = useShowcaseFae(scannedUid)
 
   const hasPublicBuilds = Boolean(
     (rosterQuery.data?.is_public_roster ?? rosterQuery.data?.is_public_showcase) &&
@@ -401,6 +417,7 @@ export function ShowcasePage() {
     if (uid === scannedUid) {
       void showcaseQuery.refetch()
       void rosterQuery.refetch()
+      void faeQuery.refetch()
     } else {
       setSearchParams((previous) => {
         const next = new URLSearchParams(previous)
@@ -475,6 +492,7 @@ export function ShowcasePage() {
           onRetry={() => {
             void showcaseQuery.refetch()
             void rosterQuery.refetch()
+            void faeQuery.refetch()
           }}
           isRetrying={showcaseQuery.isFetching}
           className="w-full mx-auto"
@@ -547,6 +565,8 @@ export function ShowcasePage() {
               onRefresh={() => {
                 void showcaseQuery.refetch()
                 void rosterQuery.refetch()
+                void getShowcaseFae(scannedUid, true).catch(() => {})
+                void faeQuery.refetch()
               }}
               className="flex-1 min-w-0 w-full"
             />
@@ -649,6 +669,9 @@ export function ShowcasePage() {
                       matchingBuildName={matchingSavedBuild?.name}
                       canSave={isAuthed && isOwnedUid}
                       onSaveClick={() => setSavingAgent(selectedAgent)}
+                      faeRating={faeQuery.data?.agents?.[String(selectedAgent.id)]}
+                      isFaeLoading={faeQuery.isPending}
+                      uid={showcase.uid}
                     />
                   </div>
                 </div>

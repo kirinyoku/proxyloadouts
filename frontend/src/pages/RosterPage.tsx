@@ -8,6 +8,7 @@ import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { RosterBuildToolbar } from '@/components/roster/RosterBuildToolbar'
 import { RosterToolbar } from '@/components/roster/RosterToolbar'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
+import { FaeBadge } from '@/components/showcase/FaeBadge'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import { Button } from '@/components/ui/button'
@@ -459,6 +460,11 @@ export function RosterPage({
                         <div className="hidden lg:block">
                           <WEngineCard wEngine={currentBuild.build_data.w_engine} headingLevel={2} />
                         </div>
+                        <FaeBadge
+                          rating={currentBuild.fae_rating}
+                          uid={activeAccount?.uid}
+                          showUnassessed
+                        />
                         <AgentStatsPanel
                           uiStats={currentBuild.build_data.ui_stats}
                           specialty={currentBuild.build_data.specialty}
