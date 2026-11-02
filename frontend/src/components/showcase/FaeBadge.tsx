@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { ExternalLink, Clock, ChevronRight } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -177,15 +178,13 @@ export function FaeBadge({
             <ol className="mt-5 list-decimal space-y-3 pl-5 text-sm leading-relaxed marker:font-semibold marker:text-muted-foreground">
               <li className="pl-1">{t('fae.guideEquip')}</li>
               <li className="pl-1">
-                <a
-                  href={getZfaeUrl(uid)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to={uid ? `/showcase?uid=${encodeURIComponent(uid)}` : '/showcase'}
                   className="inline-flex items-center gap-1 rounded-sm font-medium text-violet-700 underline underline-offset-4 hover:text-violet-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-violet-300 dark:hover:text-violet-200"
                 >
-                  {t(uid ? 'fae.openProfile' : 'fae.openSite')}
-                  <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
-                </a>
+                  {t('fae.openShowcase')}
+                  <ChevronRight className="size-3 shrink-0" aria-hidden="true" />
+                </Link>
                 <p className="mt-1">{t('fae.guideUpdate')}</p>
               </li>
               <li className="pl-1">{t('fae.guideReload')}</li>

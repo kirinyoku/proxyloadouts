@@ -146,6 +146,34 @@ export function useShowcaseFae(uid: string, fresh?: boolean) {
   })
 }
 
+interface RefreshShowcaseFaeVariables {
+  uid: string
+  gameAccountId?: string
+}
+
+export function useRefreshShowcaseFae() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async ({ uid }: RefreshShowcaseFaeVariables) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.showcaseFae(uid), exact: true })
+      return api.getShowcaseFae(uid, true)
+    },
+    onSuccess: async (data, { uid, gameAccountId }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.showcaseFae(uid), exact: true })
+      queryClient.setQueryData(queryKeys.showcaseFae(uid), data)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.showcaseRoster(uid) }),
+        ...(gameAccountId
+          ? [queryClient.invalidateQueries({ queryKey: queryKeys.builds(gameAccountId) })]
+          : []),
+      ])
+    },
+    onError: (_error, { uid }) => toast.error(t('fae.refreshError', { uid })),
+  })
+}
+
 export function useShowcaseRoster(uid: string, options?: QueryOptions) {
   const { i18n: i18nInstance } = useTranslation()
   const langKey = i18nInstance.language?.slice(0, 2) === 'en' ? 'en' : 'ru'

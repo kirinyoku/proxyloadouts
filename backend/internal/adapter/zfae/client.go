@@ -80,6 +80,7 @@ type ProfileResult struct {
 	ByFingerprint         map[string]*domain.FaeRating
 	ByAgentAndFingerprint map[string]*domain.FaeRating
 	FetchedAt             time.Time
+	refreshErr            error
 }
 
 type cachedProfile struct {
@@ -172,15 +173,19 @@ func (c *Client) FetchProfileDetailed(ctx context.Context, uid string, forceRefr
 			c.mu.RUnlock()
 		}
 
-		return c.doFetchProfile(ctx, uid, forceRefresh)
+		return c.doFetchProfile(ctx, uid)
 	})
+	result, _ := val.(*ProfileResult)
+	if forceRefresh && result != nil && result.refreshErr != nil {
+		return nil, result.refreshErr
+	}
 	if err != nil {
 		return nil, err
 	}
-	return val.(*ProfileResult), nil
+	return result, nil
 }
 
-func (c *Client) doFetchProfile(ctx context.Context, uid string, forceRefresh bool) (*ProfileResult, error) {
+func (c *Client) doFetchProfile(ctx context.Context, uid string) (*ProfileResult, error) {
 	preHTML, preStatusCode, err := c.getProfileHTML(ctx, uid)
 	if err != nil && preStatusCode != http.StatusNotFound {
 		return nil, err
@@ -198,16 +203,20 @@ func (c *Client) doFetchProfile(ctx context.Context, uid string, forceRefresh bo
 	}
 	c.mu.Unlock()
 
+	var refreshErr error
 	if canRefresh {
-		if postErr := c.postFetchShowcase(ctx, uid); postErr == nil {
-			didRefresh = true
-		}
+		refreshErr = c.postFetchShowcase(ctx, uid)
+		didRefresh = refreshErr == nil
 	}
 
 	cardsToProcess := preCards
 	var postCards []CardParseResult
 	if didRefresh {
 		postHTML, postStatus, postErr := c.getProfileHTML(ctx, uid)
+		refreshErr = postErr
+		if postStatus == http.StatusNotFound {
+			refreshErr = fmt.Errorf("%w: zfae profile %s", domain.ErrNotFound, uid)
+		}
 		if postErr == nil && postStatus == http.StatusOK {
 			postCards = ParseProfileCards(postHTML)
 			if len(postCards) > 0 {
@@ -217,7 +226,7 @@ func (c *Client) doFetchProfile(ctx context.Context, uid string, forceRefresh bo
 	}
 
 	if len(cardsToProcess) == 0 && preStatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("%w: zfae profile %s", domain.ErrNotFound, uid)
+		return &ProfileResult{refreshErr: refreshErr}, fmt.Errorf("%w: zfae profile %s", domain.ErrNotFound, uid)
 	}
 
 	c.normalizeCardsLeaderboard(ctx, cardsToProcess)
@@ -230,6 +239,7 @@ func (c *Client) doFetchProfile(ctx context.Context, uid string, forceRefresh bo
 		ByFingerprint:         make(map[string]*domain.FaeRating),
 		ByAgentAndFingerprint: make(map[string]*domain.FaeRating),
 		FetchedAt:             now,
+		refreshErr:            refreshErr,
 	}
 
 	for _, card := range preCards {

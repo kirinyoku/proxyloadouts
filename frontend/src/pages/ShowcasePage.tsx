@@ -1,8 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Check, Layers, RefreshCw, ScanLine, Users } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useBuilds, useMe, useShowcase, useShowcaseFae, useShowcaseRoster } from '@/api/hooks'
-import { getShowcaseFae } from '@/api/client'
+import { useBuilds, useMe, useRefreshShowcaseFae, useShowcase, useShowcaseFae, useShowcaseRoster } from '@/api/hooks'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
 import { findMatchingSavedBuild, getAgentEquipmentFingerprint } from '@/lib/builds'
 import { persistLastUid, readLastUid, UID_PATTERN } from '@/lib/uid'
@@ -329,6 +328,14 @@ export function ShowcasePage() {
   const showcaseQuery = useShowcase(scannedUid)
   const rosterQuery = useShowcaseRoster(scannedUid)
   const faeQuery = useShowcaseFae(scannedUid)
+  const refreshFae = useRefreshShowcaseFae()
+  const isFaeRefreshing = refreshFae.isPending && refreshFae.variables.uid === scannedUid
+
+  function refreshShowcase() {
+    if (isFaeRefreshing) return
+    void showcaseQuery.refetch()
+    refreshFae.mutate({ uid: scannedUid, gameAccountId: matchingAccount?.id })
+  }
 
   const hasPublicBuilds = Boolean(
     (rosterQuery.data?.is_public_roster ?? rosterQuery.data?.is_public_showcase) &&
@@ -416,9 +423,7 @@ export function ShowcasePage() {
     setUidInput(uid)
     persistLastUid(uid)
     if (uid === scannedUid) {
-      void showcaseQuery.refetch()
-      void rosterQuery.refetch()
-      void faeQuery.refetch()
+      refreshShowcase()
     } else {
       setSearchParams((previous) => {
         const next = new URLSearchParams(previous)
@@ -490,12 +495,8 @@ export function ShowcasePage() {
           error={showcaseQuery.error}
           uid={scannedUid}
           onScanUid={scan}
-          onRetry={() => {
-            void showcaseQuery.refetch()
-            void rosterQuery.refetch()
-            void faeQuery.refetch()
-          }}
-          isRetrying={showcaseQuery.isFetching}
+          onRetry={refreshShowcase}
+          isRetrying={showcaseQuery.isFetching || isFaeRefreshing}
           className="w-full mx-auto"
         />
       </div>
@@ -560,15 +561,10 @@ export function ShowcasePage() {
               verifiedOwner={rosterQuery.data?.owner ?? showcase.verified_owner}
               uidInput={uidInput}
               isUidValid={isInputValid}
-              isRefetching={showcaseQuery.isRefetching}
+              isRefetching={showcaseQuery.isRefetching || isFaeRefreshing}
               onScan={scan}
               onUidInputChange={setUidInput}
-              onRefresh={() => {
-                void showcaseQuery.refetch()
-                void rosterQuery.refetch()
-                void getShowcaseFae(scannedUid, true).catch(() => {})
-                void faeQuery.refetch()
-              }}
+              onRefresh={refreshShowcase}
               className="flex-1 min-w-0 w-full"
             />
 
@@ -626,11 +622,11 @@ export function ShowcasePage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => void showcaseQuery.refetch()}
-                      loading={showcaseQuery.isRefetching}
+                      onClick={refreshShowcase}
+                      loading={showcaseQuery.isRefetching || isFaeRefreshing}
                       className="gap-1.5"
                     >
-                      {!showcaseQuery.isRefetching && <RefreshCw className="size-3.5" />}
+                      {!(showcaseQuery.isRefetching || isFaeRefreshing) && <RefreshCw className="size-3.5" />}
                       {t('showcase.refreshShowcase')}
                     </Button>
                   }
@@ -671,7 +667,7 @@ export function ShowcasePage() {
                       canSave={isAuthed && isOwnedUid}
                       onSaveClick={() => setSavingAgent(selectedAgent)}
                       faeRating={faeQuery.data?.agents?.[String(selectedAgent.id)]}
-                      isFaeLoading={faeQuery.isPending}
+                      isFaeLoading={faeQuery.isPending || isFaeRefreshing}
                       uid={showcase.uid}
                     />
                   </div>
