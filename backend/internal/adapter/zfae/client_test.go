@@ -341,3 +341,106 @@ func TestClient_ColdProfileAndCooldown(t *testing.T) {
 		t.Errorf("expected 2 fetchShowcase calls after cooldown, got %d", fetchShowcaseCount.Load())
 	}
 }
+
+func TestClient_ExistingProfileRefreshesShowcase(t *testing.T) {
+	const uid = "1504687050"
+	const claretHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
+	const phoenixHTML = `<div class="agent-card" data-agent-slug="phoenix" data-assessment-id="5511556" data-rank="352"><span class="rank-of">5667</span></div>`
+	var getCount, refreshCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/profile/"+uid {
+			getCount.Add(1)
+			html := claretHTML
+			if refreshCount.Load() > 0 {
+				html += phoenixHTML
+			}
+			_, _ = w.Write([]byte(html))
+			return
+		}
+		if r.Method == http.MethodPost && r.URL.Path == "/profile" {
+			if err := r.ParseForm(); err != nil {
+				t.Errorf("ParseForm() = %v, want nil", err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			if r.FormValue("task") == "fetchShowcase" && r.FormValue("userUid") == uid {
+				refreshCount.Add(1)
+				_, _ = w.Write([]byte("success"))
+				return
+			}
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(server.Close)
+	client := NewClient(WithBaseURL(server.URL), WithCooldown(time.Hour))
+
+	ratings, err := client.FetchProfileRatings(context.Background(), uid, false)
+	if err != nil {
+		t.Fatalf("FetchProfileRatings(%q, false) error = %v, want nil", uid, err)
+	}
+	if ratings[1641] == nil {
+		t.Errorf("FetchProfileRatings(%q, false)[1641] = nil, want Phoenix rating after showcase refresh", uid)
+	}
+	if ratings[1611] == nil {
+		t.Errorf("FetchProfileRatings(%q, false)[1611] = nil, want existing Claret rating", uid)
+	}
+	if got := refreshCount.Load(); got != 1 {
+		t.Errorf("FetchProfileRatings(%q, false) showcase requests = %d, want 1", uid, got)
+	}
+
+	_, err = client.FetchProfileRatings(context.Background(), uid, false)
+	if err != nil {
+		t.Fatalf("FetchProfileRatings(%q, false) cached error = %v, want nil", uid, err)
+	}
+	if got := getCount.Load(); got != 2 {
+		t.Errorf("FetchProfileRatings(%q, false) cached profile requests = %d, want 2", uid, got)
+	}
+	if got := refreshCount.Load(); got != 1 {
+		t.Errorf("FetchProfileRatings(%q, false) cached showcase requests = %d, want 1", uid, got)
+	}
+
+	client.mu.Lock()
+	client.cache[uid].expiresAt = time.Now().Add(-time.Second)
+	client.mu.Unlock()
+	_, err = client.FetchProfileRatings(context.Background(), uid, false)
+	if err != nil {
+		t.Fatalf("FetchProfileRatings(%q, false) expired cache error = %v, want nil", uid, err)
+	}
+	if got := getCount.Load(); got != 3 {
+		t.Errorf("FetchProfileRatings(%q, false) expired cache profile requests = %d, want 3", uid, got)
+	}
+	if got := refreshCount.Load(); got != 1 {
+		t.Errorf("FetchProfileRatings(%q, false) during cooldown showcase requests = %d, want 1", uid, got)
+	}
+}
+
+func TestClient_ExistingProfileSurvivesRefreshFailure(t *testing.T) {
+	const uid = "1504687050"
+	const cardHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
+	var refreshCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/profile/"+uid {
+			_, _ = w.Write([]byte(cardHTML))
+			return
+		}
+		if r.Method == http.MethodPost && r.URL.Path == "/profile" {
+			refreshCount.Add(1)
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(server.Close)
+	client := NewClient(WithBaseURL(server.URL))
+
+	ratings, err := client.FetchProfileRatings(context.Background(), uid, false)
+	if err != nil {
+		t.Fatalf("FetchProfileRatings(%q, false) error = %v, want nil after refresh failure", uid, err)
+	}
+	if ratings[1611] == nil || ratings[1611].Rank == nil || *ratings[1611].Rank != 4 {
+		t.Errorf("FetchProfileRatings(%q, false)[1611] = %+v, want existing Claret rank 4", uid, ratings[1611])
+	}
+	if got := refreshCount.Load(); got != 1 {
+		t.Errorf("FetchProfileRatings(%q, false) showcase requests = %d, want 1", uid, got)
+	}
+}

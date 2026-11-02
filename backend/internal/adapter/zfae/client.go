@@ -188,22 +188,19 @@ func (c *Client) doFetchProfile(ctx context.Context, uid string, forceRefresh bo
 
 	preCards := ParseProfileCards(preHTML)
 
-	shouldRefresh := forceRefresh || len(preCards) == 0
 	didRefresh := false
 
-	if shouldRefresh {
-		c.mu.Lock()
-		last, hasCooldown := c.lastFetchShowcase[uid]
-		canRefresh := !hasCooldown || time.Since(last) >= c.cooldown
-		if canRefresh {
-			c.lastFetchShowcase[uid] = time.Now()
-		}
-		c.mu.Unlock()
+	c.mu.Lock()
+	last, hasCooldown := c.lastFetchShowcase[uid]
+	canRefresh := !hasCooldown || time.Since(last) >= c.cooldown
+	if canRefresh {
+		c.lastFetchShowcase[uid] = time.Now()
+	}
+	c.mu.Unlock()
 
-		if canRefresh {
-			if postErr := c.postFetchShowcase(ctx, uid); postErr == nil {
-				didRefresh = true
-			}
+	if canRefresh {
+		if postErr := c.postFetchShowcase(ctx, uid); postErr == nil {
+			didRefresh = true
 		}
 	}
 
