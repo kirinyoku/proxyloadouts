@@ -151,6 +151,7 @@ func NewRouter(opts Options, deps Deps) *chi.Mux {
 		api.With(authLimiter.Handler).Get("/auth/discord/callback", authHandler.handleCallback)
 		api.With(checkOrigin, authLimiter.Handler).Post("/auth/logout", authHandler.handleLogout)
 		api.With(showcaseLimiter.Handler).Get("/showcase/{uid}", showcaseHandler.handle)
+		api.With(showcaseLimiter.Handler).Get("/showcase/{uid}/fae", showcaseHandler.handleFae)
 		api.With(publicLimiter.Handler).Get("/showcase/{uid}/roster", showcaseHandler.handleRoster)
 
 		api.With(publicLimiter.Handler).Get("/public/builds/{buildID}", publicHandler.handleGetBuild)

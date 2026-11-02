@@ -23,19 +23,20 @@ func NewBuildHandler(builds *buildsvc.Service) *BuildHandler {
 }
 
 type buildResponse struct {
-	ID            string          `json:"id"`
-	GameAccountID string          `json:"game_account_id"`
-	AgentID       int             `json:"agent_id"`
-	AgentName     string          `json:"agent_name"`
-	Name          string          `json:"name"`
-	Description   *string         `json:"description"`
-	WeaponUID     *string         `json:"weapon_uid"`
-	WeaponID      *int            `json:"weapon_id"`
-	DiscUIDs      []string        `json:"disc_uids"`
-	BuildData     json.RawMessage `json:"build_data"`
-	IsPublic      bool            `json:"is_public"`
-	CreatedAt     string          `json:"created_at"`
-	UpdatedAt     string          `json:"updated_at"`
+	ID            string            `json:"id"`
+	GameAccountID string            `json:"game_account_id"`
+	AgentID       int               `json:"agent_id"`
+	AgentName     string            `json:"agent_name"`
+	Name          string            `json:"name"`
+	Description   *string           `json:"description"`
+	WeaponUID     *string           `json:"weapon_uid"`
+	WeaponID      *int              `json:"weapon_id"`
+	DiscUIDs      []string          `json:"disc_uids"`
+	BuildData     json.RawMessage   `json:"build_data"`
+	IsPublic      bool              `json:"is_public"`
+	FaeRating     *domain.FaeRating `json:"fae_rating,omitempty"`
+	CreatedAt     string            `json:"created_at"`
+	UpdatedAt     string            `json:"updated_at"`
 }
 
 func newBuildResponse(b *domain.AgentBuild) buildResponse {
@@ -55,6 +56,7 @@ func newBuildResponse(b *domain.AgentBuild) buildResponse {
 		DiscUIDs:      discUIDs,
 		BuildData:     b.BuildData,
 		IsPublic:      b.IsPublic,
+		FaeRating:     b.FaeRating,
 		CreatedAt:     b.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     b.UpdatedAt.UTC().Format(time.RFC3339),
 	}

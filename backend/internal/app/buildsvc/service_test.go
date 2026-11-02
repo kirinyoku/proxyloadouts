@@ -1156,3 +1156,309 @@ func TestService_HasPublicByAccount(t *testing.T) {
 		t.Errorf("expected true after making build public")
 	}
 }
+
+type testFaeFetcher struct {
+	ratings map[int]*domain.FaeRating
+	lookup  map[string]*domain.FaeRating
+	err     error
+}
+
+func (m *testFaeFetcher) FetchProfileRatings(_ context.Context, _ string, _ bool) (map[int]*domain.FaeRating, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.ratings, nil
+}
+
+func (m *testFaeFetcher) LookupByFingerprint(_ string, _ int, fingerprint string) (*domain.FaeRating, bool) {
+	if m.lookup != nil {
+		r, ok := m.lookup[fingerprint]
+		return r, ok
+	}
+	return nil, false
+}
+
+func sampleFullRawAvatar(agentID int) (*zzz.AvatarData, string) {
+	raw := &zzz.AvatarData{
+		ID:     agentID,
+		Level:  60,
+		Weapon: &zzz.Weapon{UpgradeLevel: 1},
+		EquippedList: []zzz.EquippedItem{
+			{
+				Slot: 1,
+				Equipment: &zzz.Equipment{
+					RandomPropertyList: []zzz.Property{
+						{PropertyID: 20103, PropertyLevel: 2},
+					},
+				},
+			},
+			{Slot: 2, Equipment: &zzz.Equipment{}},
+			{Slot: 3, Equipment: &zzz.Equipment{}},
+			{Slot: 4, Equipment: &zzz.Equipment{}},
+			{Slot: 5, Equipment: &zzz.Equipment{}},
+			{Slot: 6, Equipment: &zzz.Equipment{}},
+		},
+	}
+	fp := domain.ComputeEquipmentFingerprint(raw)
+	return raw, fp
+}
+
+func TestCreate_AttachesFaeRating(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	rawAvatar, fp := sampleFullRawAvatar(1511)
+	rawBytes, _ := json.Marshal(rawAvatar)
+
+	rank := 12
+	rankOf := 5000
+	score := 85.5
+	fetcher := &testFaeFetcher{
+		ratings: map[int]*domain.FaeRating{
+			1511: {
+				Rank:                 &rank,
+				RankOf:               &rankOf,
+				Score:                &score,
+				EquipmentFingerprint: &fp,
+			},
+		},
+	}
+	env.svc.WithFaeFetcher(fetcher)
+
+	build, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Miyabi Live",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", true),
+		RawData:         rawBytes,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	if build.FaeRating == nil {
+		t.Fatal("expected FaeRating attached to created build")
+	}
+	if build.FaeRating.Status != domain.FaeStatusLive {
+		t.Errorf("expected status %s, got %s", domain.FaeStatusLive, build.FaeRating.Status)
+	}
+	if build.FaeRating.Outdated {
+		t.Errorf("expected outdated false")
+	}
+	if build.FaeRating.Rank == nil || *build.FaeRating.Rank != 12 {
+		t.Errorf("expected rank 12, got %v", build.FaeRating.Rank)
+	}
+	if build.FaeRating.EquipmentFingerprint == nil || *build.FaeRating.EquipmentFingerprint != fp {
+		t.Errorf("expected fingerprint %s, got %v", fp, build.FaeRating.EquipmentFingerprint)
+	}
+}
+
+func TestReconcile_ScenarioA_LiveMatchBackfill(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	rawAvatar, fp := sampleFullRawAvatar(1511)
+	rawBytes, _ := json.Marshal(rawAvatar)
+
+	build, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Unrated Initial",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", true),
+		RawData:         rawBytes,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if build.FaeRating != nil {
+		t.Fatal("expected initial build to have nil FaeRating")
+	}
+
+	rank := 5
+	fetcher := &testFaeFetcher{
+		ratings: map[int]*domain.FaeRating{
+			1511: {
+				Rank:                 &rank,
+				EquipmentFingerprint: &fp,
+			},
+		},
+	}
+	env.svc.WithFaeFetcher(fetcher)
+
+	builds, err := env.svc.ListByAccount(ctx, env.ownerID, env.accountID)
+	if err != nil {
+		t.Fatalf("ListByAccount failed: %v", err)
+	}
+	if len(builds) != 1 {
+		t.Fatalf("expected 1 build, got %d", len(builds))
+	}
+
+	b := builds[0]
+	if b.FaeRating == nil {
+		t.Fatal("expected FaeRating backfilled")
+	}
+	if b.FaeRating.Status != domain.FaeStatusLive || b.FaeRating.Outdated {
+		t.Errorf("expected live not-outdated status, got status=%s outdated=%v", b.FaeRating.Status, b.FaeRating.Outdated)
+	}
+	if b.FaeRating.Rank == nil || *b.FaeRating.Rank != 5 {
+		t.Errorf("expected rank 5, got %v", b.FaeRating.Rank)
+	}
+
+	persisted, err := env.builds.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if persisted.FaeRating == nil || persisted.FaeRating.Rank == nil || *persisted.FaeRating.Rank != 5 {
+		t.Errorf("expected backfill persisted to database: %+v", persisted.FaeRating)
+	}
+}
+
+func TestReconcile_ScenarioB_PreRefreshLookupBackfill(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	rawAvatar, fp := sampleFullRawAvatar(1511)
+	rawBytes, _ := json.Marshal(rawAvatar)
+
+	build, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Pre-refresh",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", true),
+		RawData:         rawBytes,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	rank := 20
+	fetcher := &testFaeFetcher{
+		ratings: map[int]*domain.FaeRating{},
+		lookup: map[string]*domain.FaeRating{
+			fp: {
+				Rank:                 &rank,
+				EquipmentFingerprint: &fp,
+			},
+		},
+	}
+	env.svc.WithFaeFetcher(fetcher)
+
+	got, err := env.svc.Get(ctx, env.ownerID, build.ID)
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	if got.FaeRating == nil {
+		t.Fatal("expected pre-refresh card backfilled")
+	}
+	if got.FaeRating.Status != domain.FaeStatusSnapshotOutdated || !got.FaeRating.Outdated {
+		t.Errorf("expected snapshot_outdated, got status=%s outdated=%v", got.FaeRating.Status, got.FaeRating.Outdated)
+	}
+	if got.FaeRating.Rank == nil || *got.FaeRating.Rank != 20 {
+		t.Errorf("expected rank 20, got %v", got.FaeRating.Rank)
+	}
+
+	persisted, err := env.builds.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if persisted.FaeRating == nil || !persisted.FaeRating.Outdated {
+		t.Errorf("expected persisted rating outdated=true, got %+v", persisted.FaeRating)
+	}
+}
+
+func TestReconcile_ScenarioSection42_SnapshotOutdated(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	rawAvatar, fp := sampleFullRawAvatar(1511)
+	rawBytes, _ := json.Marshal(rawAvatar)
+
+	rank := 10
+	fetcher := &testFaeFetcher{
+		ratings: map[int]*domain.FaeRating{
+			1511: {
+				Rank:                 &rank,
+				EquipmentFingerprint: &fp,
+			},
+		},
+	}
+	env.svc.WithFaeFetcher(fetcher)
+
+	build, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Live Then Changed",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", true),
+		RawData:         rawBytes,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if build.FaeRating == nil || build.FaeRating.Status != domain.FaeStatusLive {
+		t.Fatalf("expected initial live status, got %+v", build.FaeRating)
+	}
+
+	newFP := fp + "-diff"
+	fetcher.ratings[1511] = &domain.FaeRating{
+		Rank:                 &rank,
+		EquipmentFingerprint: &newFP,
+	}
+
+	got, err := env.svc.Get(ctx, env.ownerID, build.ID)
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	if got.FaeRating.Status != domain.FaeStatusSnapshotOutdated || !got.FaeRating.Outdated {
+		t.Errorf("expected transition to snapshot_outdated, got status=%s outdated=%v", got.FaeRating.Status, got.FaeRating.Outdated)
+	}
+	if got.FaeRating.Rank == nil || *got.FaeRating.Rank != 10 {
+		t.Errorf("expected historical rank 10 preserved, got %v", got.FaeRating.Rank)
+	}
+
+	persisted, err := env.builds.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("GetByID failed: %v", err)
+	}
+	if persisted.FaeRating.Status != domain.FaeStatusSnapshotOutdated || !persisted.FaeRating.Outdated {
+		t.Errorf("expected persisted snapshot_outdated, got %+v", persisted.FaeRating)
+	}
+}
+
+func TestReconcile_ScenarioC_UnassessedRemainsNil(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+
+	rawAvatar, _ := sampleFullRawAvatar(1511)
+	rawBytes, _ := json.Marshal(rawAvatar)
+
+	_, err := env.svc.Create(ctx, CreateInput{
+		UserID:          env.ownerID,
+		GameAccountID:   env.accountID,
+		Name:            "Mismatched",
+		RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", true),
+		RawData:         rawBytes,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	otherFP := "w:r5|s1:|s2:|s3:|s4:|s5:|s6:"
+	rank := 1
+	fetcher := &testFaeFetcher{
+		ratings: map[int]*domain.FaeRating{
+			1511: {
+				Rank:                 &rank,
+				EquipmentFingerprint: &otherFP,
+			},
+		},
+	}
+	env.svc.WithFaeFetcher(fetcher)
+
+	builds, err := env.svc.ListByAccount(ctx, env.ownerID, env.accountID)
+	if err != nil {
+		t.Fatalf("ListByAccount failed: %v", err)
+	}
+	if builds[0].FaeRating != nil {
+		t.Errorf("expected FaeRating to remain nil for mismatched build, got %+v", builds[0].FaeRating)
+	}
+}

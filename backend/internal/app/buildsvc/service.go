@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -33,12 +34,13 @@ type AgentLocalizer = buildenrich.Localizer
 
 // Service implements build use cases.
 type Service struct {
-	builds   domain.BuildRepository
-	accounts domain.AccountRepository
-	users    domain.UserRepository
-	scanner  ShowcaseValidator
-	enricher AgentLocalizer
-	now      func() time.Time
+	builds     domain.BuildRepository
+	accounts   domain.AccountRepository
+	users      domain.UserRepository
+	scanner    ShowcaseValidator
+	enricher   AgentLocalizer
+	faeFetcher domain.FaeFetcher
+	now        func() time.Time
 }
 
 // Option configures optional Service dependencies.
@@ -64,6 +66,18 @@ func WithEnricher(enricher AgentLocalizer) Option {
 	return func(s *Service) {
 		s.enricher = enricher
 	}
+}
+
+// WithFae configures an optional FaeFetcher for ZFAE leaderboard ratings.
+func WithFae(fetcher domain.FaeFetcher) Option {
+	return func(s *Service) {
+		s.faeFetcher = fetcher
+	}
+}
+
+func (s *Service) WithFaeFetcher(fetcher domain.FaeFetcher) *Service {
+	s.faeFetcher = fetcher
+	return s
 }
 
 // New creates the build service.
@@ -213,8 +227,10 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 	}
 
 	var rawData json.RawMessage
+	var rawAvatar *zzz.AvatarData
 	if s.scanner != nil {
-		rawAvatar, err := s.scanner.GetRawAvatar(ctx, account.UID, extracted.agentID)
+		var err error
+		rawAvatar, err = s.scanner.GetRawAvatar(ctx, account.UID, extracted.agentID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get raw avatar for UID %s: %w", account.UID, err)
 		}
@@ -227,14 +243,34 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 		}
 		rawData = rawBytes
 	} else if len(input.RawData) > 0 {
-		var rawAvatar zzz.AvatarData
-		if err := json.Unmarshal(input.RawData, &rawAvatar); err != nil {
+		var av zzz.AvatarData
+		if err := json.Unmarshal(input.RawData, &av); err != nil {
 			return nil, fmt.Errorf("%w: invalid raw avatar data: %w", domain.ErrInvalidInput, err)
 		}
+		rawAvatar = &av
 		rawData = input.RawData
 	}
 	if len(rawData) == 0 {
 		return nil, fmt.Errorf("%w: raw avatar data is required to save a build", domain.ErrInvalidInput)
+	}
+
+	fp := domain.ComputeEquipmentFingerprint(rawAvatar)
+	var faeRating *domain.FaeRating
+	if s.faeFetcher != nil && fp != "" {
+		ratings, _ := s.faeFetcher.FetchProfileRatings(ctx, account.UID, false)
+		if liveCard, ok := ratings[extracted.agentID]; ok && liveCard != nil && liveCard.Rank != nil && liveCard.EquipmentFingerprint != nil && *liveCard.EquipmentFingerprint == fp {
+			cloned := liveCard.Clone()
+			cloned.Status = domain.FaeStatusLive
+			cloned.Outdated = false
+			cloned.EquipmentFingerprint = &fp
+			faeRating = cloned
+		} else if matched, found := s.faeFetcher.LookupByFingerprint(account.UID, extracted.agentID, fp); found && matched != nil && matched.Rank != nil {
+			cloned := matched.Clone()
+			cloned.Status = domain.FaeStatusLive
+			cloned.Outdated = false
+			cloned.EquipmentFingerprint = &fp
+			faeRating = cloned
+		}
 	}
 
 	isPublic := true
@@ -256,6 +292,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 		DiscSlots:     extracted.discSlots,
 		BuildData:     input.RawAgentPayload,
 		RawData:       rawData,
+		FaeRating:     faeRating,
 	}
 	if err := s.builds.Create(ctx, build); err != nil {
 		return nil, err
@@ -267,12 +304,27 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 // domain.ErrForbidden. When lang is supplied and raw_data is available, the
 // build payload and agent name are dynamically localized.
 func (s *Service) Get(ctx context.Context, userID, buildID uuid.UUID, lang ...string) (*domain.AgentBuild, error) {
-	build, err := s.builds.GetByID(ctx, buildID)
+	build, err := s.GetByID(ctx, buildID, lang...)
 	if err != nil {
 		return nil, err
 	}
 	if build.UserID != userID {
 		return nil, fmt.Errorf("%w: build %s", domain.ErrForbidden, buildID)
+	}
+	return build, nil
+}
+
+// GetByID returns the build by ID regardless of owner, running FAE reconciliation
+// and enrichment when applicable.
+func (s *Service) GetByID(ctx context.Context, buildID uuid.UUID, lang ...string) (*domain.AgentBuild, error) {
+	build, err := s.builds.GetByID(ctx, buildID)
+	if err != nil {
+		return nil, err
+	}
+	if s.faeFetcher != nil {
+		if acc, err := s.accounts.GetByID(ctx, build.GameAccountID); err == nil && acc != nil {
+			s.reconcileFaeRatings(ctx, acc.UID, []*domain.AgentBuild{build})
+		}
 	}
 	requestedLang := ""
 	if len(lang) > 0 {
@@ -291,6 +343,11 @@ func (s *Service) ListByAccount(ctx context.Context, userID, accountID uuid.UUID
 	builds, err := s.builds.ListByAccount(ctx, accountID)
 	if err != nil {
 		return nil, err
+	}
+	if s.faeFetcher != nil && len(builds) > 0 {
+		if acc, err := s.accounts.GetByID(ctx, accountID); err == nil && acc != nil {
+			s.reconcileFaeRatings(ctx, acc.UID, builds)
+		}
 	}
 	requestedLang := ""
 	if len(lang) > 0 {
@@ -311,6 +368,11 @@ func (s *Service) ListPublicByAccount(ctx context.Context, accountID uuid.UUID, 
 	builds, err := s.builds.ListPublicByAccount(ctx, accountID)
 	if err != nil {
 		return nil, err
+	}
+	if s.faeFetcher != nil && len(builds) > 0 {
+		if acc, err := s.accounts.GetByID(ctx, accountID); err == nil && acc != nil {
+			s.reconcileFaeRatings(ctx, acc.UID, builds)
+		}
 	}
 	requestedLang := ""
 	if len(lang) > 0 {
@@ -495,6 +557,9 @@ func (s *Service) GetPublic(ctx context.Context, buildID uuid.UUID, lang ...stri
 	if err != nil {
 		return nil, err
 	}
+	if s.faeFetcher != nil && owner != nil && owner.UID != "" {
+		s.reconcileFaeRatings(ctx, owner.UID, []*domain.AgentBuild{build})
+	}
 
 	requestedLang := ""
 	if len(lang) > 0 {
@@ -506,6 +571,86 @@ func (s *Service) GetPublic(ctx context.Context, buildID uuid.UUID, lang ...stri
 		Build: build,
 		Owner: owner,
 	}, nil
+}
+
+// GetPublicByID is an alias for GetPublic.
+func (s *Service) GetPublicByID(ctx context.Context, buildID uuid.UUID, lang ...string) (*PublicBuildDetail, error) {
+	return s.GetPublic(ctx, buildID, lang...)
+}
+
+func (s *Service) reconcileFaeRatings(ctx context.Context, uid string, builds []*domain.AgentBuild) {
+	if s.faeFetcher == nil || uid == "" || len(builds) == 0 {
+		return
+	}
+
+	ratings, err := s.faeFetcher.FetchProfileRatings(ctx, uid, false)
+	if err != nil {
+		slog.Warn("failed to fetch zfae ratings during reconciliation", "uid", uid, "error", err)
+	}
+
+	for _, b := range builds {
+		fp := domain.ComputeEquipmentFingerprintFromRawJSON(b.RawData)
+		var liveCard *domain.FaeRating
+		if ratings != nil {
+			liveCard = ratings[b.AgentID]
+		}
+
+		if fp != "" && liveCard != nil && liveCard.Rank != nil && liveCard.EquipmentFingerprint != nil && *liveCard.EquipmentFingerprint == fp {
+			updated := liveCard.Clone()
+			updated.Status = domain.FaeStatusLive
+			updated.Outdated = false
+			if ratingDiffers(b.FaeRating, updated) {
+				_ = s.builds.UpdateFaeRating(ctx, b.ID, updated)
+			}
+			b.FaeRating = updated
+			continue
+		}
+
+		if b.FaeRating == nil && fp != "" {
+			if matchedCard, ok := s.faeFetcher.LookupByFingerprint(uid, b.AgentID, fp); ok && matchedCard != nil && matchedCard.Rank != nil {
+				backfilled := matchedCard.Clone()
+				backfilled.Status = domain.FaeStatusSnapshotOutdated
+				backfilled.Outdated = true
+				_ = s.builds.UpdateFaeRating(ctx, b.ID, backfilled)
+				b.FaeRating = backfilled
+				continue
+			}
+		}
+
+		if b.FaeRating != nil && b.FaeRating.Rank != nil && ratings != nil {
+			liveMatches := liveCard != nil && liveCard.Rank != nil && liveCard.EquipmentFingerprint != nil && fp != "" && *liveCard.EquipmentFingerprint == fp
+			if !liveMatches {
+				needUpdate := b.FaeRating.Status != domain.FaeStatusSnapshotOutdated || !b.FaeRating.Outdated
+				b.FaeRating.Status = domain.FaeStatusSnapshotOutdated
+				b.FaeRating.Outdated = true
+				if needUpdate {
+					_ = s.builds.UpdateFaeRating(ctx, b.ID, b.FaeRating)
+				}
+			}
+		}
+	}
+}
+
+func ratingDiffers(a, b *domain.FaeRating) bool {
+	if a == nil || b == nil {
+		return a != b
+	}
+	if a.Status != b.Status || a.Outdated != b.Outdated {
+		return true
+	}
+	if (a.Rank == nil) != (b.Rank == nil) || (a.Rank != nil && *a.Rank != *b.Rank) {
+		return true
+	}
+	if (a.RankOf == nil) != (b.RankOf == nil) || (a.RankOf != nil && *a.RankOf != *b.RankOf) {
+		return true
+	}
+	if (a.Score == nil) != (b.Score == nil) || (a.Score != nil && *a.Score != *b.Score) {
+		return true
+	}
+	if (a.TimeAssessed == nil) != (b.TimeAssessed == nil) || (a.TimeAssessed != nil && *a.TimeAssessed != *b.TimeAssessed) {
+		return true
+	}
+	return false
 }
 
 func (s *Service) ensureAccountOwnership(ctx context.Context, userID, accountID uuid.UUID) error {

@@ -37,6 +37,7 @@ type fixture struct {
 	router  http.Handler
 	db      *sql.DB
 	fetcher *fakeFetcher
+	scanner *scannersvc.Service
 	opts    Options
 }
 
@@ -125,7 +126,7 @@ func newFixtureWithOpts(t *testing.T, opts Options) *fixture {
 			Teams:    teamsvc.New(teamsRepo, buildsRepo, accounts, teamsvc.WithEnricher(localizer), teamsvc.WithUsers(users)),
 		},
 	)
-	return &fixture{router: router, db: db, fetcher: scannerFetcher, opts: opts}
+	return &fixture{router: router, db: db, fetcher: scannerFetcher, scanner: scanner, opts: opts}
 }
 
 func strPtr(s string) *string { return &s }
@@ -777,6 +778,66 @@ func TestShowcaseEndpointPublic(t *testing.T) {
 	if badRec.Code != http.StatusBadRequest {
 		t.Errorf("expected invalid uid 400, got %d", badRec.Code)
 	}
+}
+
+type fakeRouterFaeFetcher struct {
+	ratings map[int]*domain.FaeRating
+	err     error
+}
+
+func (f *fakeRouterFaeFetcher) FetchProfileRatings(_ context.Context, _ string, _ bool) (map[int]*domain.FaeRating, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.ratings, nil
+}
+
+func (f *fakeRouterFaeFetcher) LookupByFingerprint(_ string, _ int, _ string) (*domain.FaeRating, bool) {
+	return nil, false
+}
+
+func TestShowcaseFaeEndpoint(t *testing.T) {
+	t.Run("public GET /api/v1/showcase/{uid}/fae returns ratings", func(t *testing.T) {
+		f := newFixture(t)
+		rank := 14
+		score := 82.6
+		f.scanner.WithFaeFetcher(&fakeRouterFaeFetcher{
+			ratings: map[int]*domain.FaeRating{
+				1091: {
+					Status: domain.FaeStatusLive,
+					Rank:   &rank,
+					Score:  &score,
+				},
+			},
+		})
+
+		rec := f.do(t, http.MethodGet, "/api/v1/showcase/1504687050/fae?fresh=true", nil)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+		var resp struct {
+			UID       string                       `json:"uid"`
+			Agents    map[string]*domain.FaeRating `json:"agents"`
+			FetchedAt string                       `json:"fetched_at"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+		if resp.UID != "1504687050" {
+			t.Errorf("expected uid 1504687050, got %s", resp.UID)
+		}
+		if resp.Agents["1091"] == nil || *resp.Agents["1091"].Rank != 14 {
+			t.Errorf("expected agent 1091 rank 14, got %+v", resp.Agents["1091"])
+		}
+	})
+
+	t.Run("invalid UID returns 400", func(t *testing.T) {
+		f := newFixture(t)
+		rec := f.do(t, http.MethodGet, "/api/v1/showcase/invalid-uid/fae", nil)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", rec.Code)
+		}
+	})
 }
 
 func TestShowcaseEndpointRateLimit(t *testing.T) {

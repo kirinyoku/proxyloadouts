@@ -631,3 +631,73 @@ func TestFetchFreshRawProfile_FetcherError(t *testing.T) {
 		t.Fatalf("expected fetcher error, got: %v", err)
 	}
 }
+
+type fakeFaeFetcher struct {
+	ratings map[int]*domain.FaeRating
+	err     error
+	byFP    map[string]*domain.FaeRating
+}
+
+func (f *fakeFaeFetcher) FetchProfileRatings(_ context.Context, _ string, _ bool) (map[int]*domain.FaeRating, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.ratings, nil
+}
+
+func (f *fakeFaeFetcher) LookupByFingerprint(_ string, _ int, fingerprint string) (*domain.FaeRating, bool) {
+	if f.byFP != nil {
+		r, ok := f.byFP[fingerprint]
+		return r, ok
+	}
+	return nil, false
+}
+
+func TestFetchFaeByUID(t *testing.T) {
+	t.Run("invalid UID returns ErrInvalidInput", func(t *testing.T) {
+		svc, cache := newTestService(&fakeFetcher{}, time.Minute)
+		defer cache.Close()
+
+		_, err := svc.FetchFaeByUID(context.Background(), "short", false)
+		if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Fatalf("expected ErrInvalidInput, got: %v", err)
+		}
+	})
+
+	t.Run("nil faeFetcher returns empty map and nil error", func(t *testing.T) {
+		svc, cache := newTestService(&fakeFetcher{}, time.Minute)
+		defer cache.Close()
+
+		ratings, err := svc.FetchFaeByUID(context.Background(), "1301806568", false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(ratings) != 0 {
+			t.Fatalf("expected empty map, got %d items", len(ratings))
+		}
+	})
+
+	t.Run("returns ratings when fetcher configured", func(t *testing.T) {
+		svc, cache := newTestService(&fakeFetcher{}, time.Minute)
+		defer cache.Close()
+
+		rank := 10
+		fae := &fakeFaeFetcher{
+			ratings: map[int]*domain.FaeRating{
+				1091: {
+					Status: domain.FaeStatusLive,
+					Rank:   &rank,
+				},
+			},
+		}
+		svc.WithFaeFetcher(fae)
+
+		ratings, err := svc.FetchFaeByUID(context.Background(), "1301806568", false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(ratings) != 1 || *ratings[1091].Rank != 10 {
+			t.Fatalf("unexpected ratings returned: %+v", ratings)
+		}
+	})
+}

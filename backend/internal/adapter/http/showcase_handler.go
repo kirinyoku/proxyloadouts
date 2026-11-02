@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -209,5 +210,39 @@ func (h *ShowcaseHandler) handleRoster(w http.ResponseWriter, r *http.Request) {
 		IsPublicShowcase: account.IsPublicShowcase(),
 		Builds:           newBuildListResponse(buildsList),
 		Teams:            newTeamSummaryListResponse(teamsList),
+	})
+}
+
+type showcaseFaeResponse struct {
+	UID       string                       `json:"uid"`
+	Agents    map[string]*domain.FaeRating `json:"agents"`
+	FetchedAt string                       `json:"fetched_at"`
+}
+
+func (h *ShowcaseHandler) handleFae(w http.ResponseWriter, r *http.Request) {
+	if h.scanner == nil {
+		respondError(w, http.StatusNotFound, "scanner service unavailable")
+		return
+	}
+
+	uid := chi.URLParam(r, "uid")
+	freshParam := r.URL.Query().Get("fresh")
+	forceRefresh := freshParam == "true" || freshParam == "1"
+
+	ratings, err := h.scanner.FetchFaeByUID(r.Context(), uid, forceRefresh)
+	if err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+
+	agentsMap := make(map[string]*domain.FaeRating, len(ratings))
+	for agentID, rating := range ratings {
+		agentsMap[strconv.Itoa(agentID)] = rating
+	}
+
+	respondJSON(w, http.StatusOK, showcaseFaeResponse{
+		UID:       uid,
+		Agents:    agentsMap,
+		FetchedAt: time.Now().UTC().Format(time.RFC3339),
 	})
 }

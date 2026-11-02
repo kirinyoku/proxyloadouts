@@ -24,6 +24,7 @@ import (
 	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/inmemory"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/sqlite"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/telegram"
+	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/zfae"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/accountsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/authsvc"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/app/buildenrich"
@@ -145,10 +146,11 @@ func run() error {
 	negCache := inmemory.NewNegativeCache(cfg.NegativeCacheMaxItems, time.Minute)
 	defer negCache.Close()
 
+	faeClient := zfae.NewClient()
 	scanner := scannersvc.New(fairyClient, scanCache, scannersvc.Options{
 		NegativeCache: negCache,
 		NegativeTTL:   60 * time.Second,
-	})
+	}).WithFaeFetcher(faeClient)
 
 	// 6. Initialize Discord adapter and application services
 	discordClient := discordadapter.NewClient(discordadapter.Options{
@@ -182,7 +184,7 @@ func run() error {
 		return inmemory.GetOrFetchValue(ctx, enrichStore, key, cfg.BuildEnrichTTL, compute)
 	}, cfg.BuildEnrichTTL)
 
-	buildSvc := buildsvc.New(buildsRepo, accounts, buildsvc.WithScanner(scanner), buildsvc.WithEnricher(localizer), buildsvc.WithUsers(users))
+	buildSvc := buildsvc.New(buildsRepo, accounts, buildsvc.WithScanner(scanner), buildsvc.WithEnricher(localizer), buildsvc.WithUsers(users), buildsvc.WithFae(faeClient))
 	teamSvc := teamsvc.New(teamsRepo, buildsRepo, accounts, teamsvc.WithEnricher(localizer), teamsvc.WithUsers(users))
 	slog.Info("application services initialized",
 		"build_enrich_cache_items", cfg.BuildEnrichMaxItems,

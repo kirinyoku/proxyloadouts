@@ -65,6 +65,7 @@ type BuildRepository interface {
 
 type FaeFetcher interface {
 	FetchProfileRatings(ctx context.Context, uid string, forceRefresh bool) (map[int]*FaeRating, error)
+	LookupByFingerprint(uid string, agentID int, fingerprint string) (*FaeRating, bool)
 }
 
 // TeamRepository manages teams and their member slots.

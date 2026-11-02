@@ -74,11 +74,12 @@ func WithMaxConcurrentSwitches(n int) Option {
 }
 
 type ProfileResult struct {
-	UID           string
-	Ratings       map[int]*domain.FaeRating
-	AllRatings    []*domain.FaeRating
-	ByFingerprint map[string]*domain.FaeRating
-	FetchedAt     time.Time
+	UID                   string
+	Ratings               map[int]*domain.FaeRating
+	AllRatings            []*domain.FaeRating
+	ByFingerprint         map[string]*domain.FaeRating
+	ByAgentAndFingerprint map[string]*domain.FaeRating
+	FetchedAt             time.Time
 }
 
 type cachedProfile struct {
@@ -126,6 +127,28 @@ func (c *Client) FetchProfileRatings(ctx context.Context, uid string, forceRefre
 		return nil, err
 	}
 	return res.Ratings, nil
+}
+
+func (c *Client) LookupByFingerprint(uid string, agentID int, fingerprint string) (*domain.FaeRating, bool) {
+	if uid == "" || fingerprint == "" {
+		return nil, false
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	cached, ok := c.cache[uid]
+	if !ok || cached == nil || cached.result == nil {
+		return nil, false
+	}
+	if agentID > 0 {
+		key := fmt.Sprintf("%d:%s", agentID, fingerprint)
+		if r, ok := cached.result.ByAgentAndFingerprint[key]; ok && r != nil {
+			return r, true
+		}
+	}
+	if r, ok := cached.result.ByFingerprint[fingerprint]; ok && r != nil {
+		return r, true
+	}
+	return nil, false
 }
 
 func (c *Client) FetchProfileDetailed(ctx context.Context, uid string, forceRefresh bool) (*ProfileResult, error) {
@@ -204,11 +227,12 @@ func (c *Client) doFetchProfile(ctx context.Context, uid string, forceRefresh bo
 
 	now := time.Now()
 	res := &ProfileResult{
-		UID:           uid,
-		Ratings:       make(map[int]*domain.FaeRating),
-		AllRatings:    make([]*domain.FaeRating, 0, len(cardsToProcess)+len(preCards)),
-		ByFingerprint: make(map[string]*domain.FaeRating),
-		FetchedAt:     now,
+		UID:                   uid,
+		Ratings:               make(map[int]*domain.FaeRating),
+		AllRatings:            make([]*domain.FaeRating, 0, len(cardsToProcess)+len(preCards)),
+		ByFingerprint:         make(map[string]*domain.FaeRating),
+		ByAgentAndFingerprint: make(map[string]*domain.FaeRating),
+		FetchedAt:             now,
 	}
 
 	for _, card := range preCards {
@@ -216,6 +240,9 @@ func (c *Client) doFetchProfile(ctx context.Context, uid string, forceRefresh bo
 			res.AllRatings = append(res.AllRatings, card.Rating)
 			if card.Rating.EquipmentFingerprint != nil && *card.Rating.EquipmentFingerprint != "" {
 				res.ByFingerprint[*card.Rating.EquipmentFingerprint] = card.Rating
+				if card.AgentID > 0 {
+					res.ByAgentAndFingerprint[fmt.Sprintf("%d:%s", card.AgentID, *card.Rating.EquipmentFingerprint)] = card.Rating
+				}
 			}
 		}
 	}
@@ -226,6 +253,9 @@ func (c *Client) doFetchProfile(ctx context.Context, uid string, forceRefresh bo
 			res.AllRatings = append(res.AllRatings, card.Rating)
 			if card.Rating.EquipmentFingerprint != nil && *card.Rating.EquipmentFingerprint != "" {
 				res.ByFingerprint[*card.Rating.EquipmentFingerprint] = card.Rating
+				if card.AgentID > 0 {
+					res.ByAgentAndFingerprint[fmt.Sprintf("%d:%s", card.AgentID, *card.Rating.EquipmentFingerprint)] = card.Rating
+				}
 			}
 		}
 	}

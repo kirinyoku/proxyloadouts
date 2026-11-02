@@ -48,6 +48,66 @@ type FaeRating struct {
 	Breakdown            *FaeScoreBreakdown `json:"breakdown,omitempty"`
 }
 
+func (r *FaeRating) Clone() *FaeRating {
+	if r == nil {
+		return nil
+	}
+	cp := *r
+	if r.Rank != nil {
+		v := *r.Rank
+		cp.Rank = &v
+	}
+	if r.RankOf != nil {
+		v := *r.RankOf
+		cp.RankOf = &v
+	}
+	if r.TopPercentile != nil {
+		v := *r.TopPercentile
+		cp.TopPercentile = &v
+	}
+	if r.Score != nil {
+		v := *r.Score
+		cp.Score = &v
+	}
+	if r.TimeAssessed != nil {
+		v := *r.TimeAssessed
+		cp.TimeAssessed = &v
+	}
+	if r.Slug != nil {
+		v := *r.Slug
+		cp.Slug = &v
+	}
+	if r.BracketName != nil {
+		v := *r.BracketName
+		cp.BracketName = &v
+	}
+	if r.EquipmentFingerprint != nil {
+		v := *r.EquipmentFingerprint
+		cp.EquipmentFingerprint = &v
+	}
+	if r.Breakdown != nil {
+		bd := *r.Breakdown
+		if r.Breakdown.WeaponPercent != nil {
+			v := *r.Breakdown.WeaponPercent
+			bd.WeaponPercent = &v
+		}
+		if r.Breakdown.DiscSetPercent != nil {
+			v := *r.Breakdown.DiscSetPercent
+			bd.DiscSetPercent = &v
+		}
+		if r.Breakdown.MainstatPercent != nil {
+			v := *r.Breakdown.MainstatPercent
+			bd.MainstatPercent = &v
+		}
+		if r.Breakdown.SubstatPercent != nil {
+			v := *r.Breakdown.SubstatPercent
+			bd.SubstatPercent = &v
+		}
+		cp.Breakdown = &bd
+	}
+	return &cp
+}
+
 // AgentBuild is a saved snapshot of an agent's equipment from the showcase:
 // the W-Engine, the Drive Discs (tracked by their string UIDs) and the full
 // enriched fairy payload for display.

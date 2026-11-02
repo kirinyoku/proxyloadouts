@@ -138,8 +138,14 @@ type Service struct {
 	fetcher     Fetcher
 	cache       Cache
 	negCache    NegativeCache
+	faeFetcher  domain.FaeFetcher
 	fallbackTTL time.Duration
 	negativeTTL time.Duration
+}
+
+func (s *Service) WithFaeFetcher(fetcher domain.FaeFetcher) *Service {
+	s.faeFetcher = fetcher
+	return s
 }
 
 // New creates a scanner service.
@@ -433,6 +439,23 @@ func (s *Service) GetRawAvatar(ctx context.Context, uid string, agentID int) (*z
 // EnrichAgent delegates to the fetcher to enrich a single raw avatar data payload in the given language.
 func (s *Service) EnrichAgent(raw *zzz.AvatarData, lang fairy.Language) (*fairy.Agent, error) {
 	return s.fetcher.EnrichAgent(raw, lang)
+}
+
+func (s *Service) FetchFaeByUID(ctx context.Context, uid string, forceRefresh bool) (map[int]*domain.FaeRating, error) {
+	if err := domain.ValidateUID(uid); err != nil {
+		return nil, fmt.Errorf("%w: %w", domain.ErrInvalidInput, err)
+	}
+	if s.faeFetcher == nil {
+		return map[int]*domain.FaeRating{}, nil
+	}
+	ratings, err := s.faeFetcher.FetchProfileRatings(ctx, uid, forceRefresh)
+	if err != nil {
+		return nil, err
+	}
+	if ratings == nil {
+		return map[int]*domain.FaeRating{}, nil
+	}
+	return ratings, nil
 }
 
 func scanCacheKey(uid string) string {
