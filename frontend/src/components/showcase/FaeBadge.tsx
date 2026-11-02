@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { ExternalLink, Clock, ChevronRight } from 'lucide-react'
+import { ExternalLink, History, ChevronRight } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import {
@@ -56,12 +56,6 @@ export function FaeTooltipContent({
           <FaeLogo className="w-20" />
           <span className="inline-flex h-5 items-center rounded-full border border-white/65 px-1.5 font-tech text-[13px] font-bold leading-none tracking-wide">V1</span>
         </span>
-        {isOutdated && (
-          <span className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">
-            <Clock className="size-3 shrink-0" aria-hidden="true" />
-            {t('fae.savedRating')}
-          </span>
-        )}
       </div>
 
       <dl className={cn(
@@ -116,11 +110,19 @@ export function FaeTooltipContent({
           ))}
         </dl>
       )}
-      <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        {isOutdated
-          ? dateStr ? t('fae.outdatedStatus', { date: dateStr }) : t('fae.outdatedStatusNoDate')
-          : t('fae.liveStatus')}
-      </p>
+      {isOutdated ? (
+        <div className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 font-medium">
+            <History className="size-3 shrink-0" aria-hidden="true" />
+            {t('fae.savedRating')}
+          </div>
+          <p className="mt-1 leading-relaxed">
+            {dateStr ? t('fae.outdatedStatus', { date: dateStr }) : t('fae.outdatedStatusNoDate')}
+          </p>
+        </div>
+      ) : (
+        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{t('fae.liveStatus')}</p>
+      )}
     </div>
   )
 }
@@ -159,17 +161,15 @@ export function FaeBadge({
               type="button"
               data-testid="fae-badge-unassessed"
               className={cn(
-                'inline-flex h-7.5 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-[#636AF2] hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none sm:h-8',
+                'inline-flex h-8 min-w-0 max-w-full cursor-pointer items-center overflow-hidden rounded-lg border border-border bg-card pr-2 text-left text-foreground transition-colors hover:border-[#636AF2] hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none',
                 className,
               )}
             >
-              <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/40" aria-hidden="true" />
-              <span className="font-heading text-[10px] font-bold uppercase tracking-wider text-muted-foreground/75">
-                FAE
+              <span className="flex shrink-0 self-stretch items-center rounded-l-[7px] bg-linear-to-r from-[#24208C] via-[#363ED9] to-[#636AF2] px-2 text-white">
+                <FaeLogo className="w-13" />
               </span>
-              <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden="true" />
-              <span className="text-[11px]">{t('fae.unassessed')}</span>
-              <ChevronRight className="size-3 shrink-0" aria-hidden="true" />
+              <span className="ml-2 min-w-0 truncate text-xs font-medium text-muted-foreground">{t('fae.unassessed')}</span>
+              <ChevronRight className="ml-auto box-content size-3 shrink-0 pl-2 text-muted-foreground" aria-hidden="true" />
             </button>
           </DialogTrigger>
           <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-card-foreground sm:max-w-[420px] sm:p-6">
@@ -224,7 +224,10 @@ export function FaeBadge({
               <span className="ml-1.5 min-w-0 truncate font-tech text-[15px] font-semibold leading-none tabular-nums">{rankParts?.rank}</span>
               {percentileText && <span className="ml-2 shrink-0 text-[11px] leading-none text-muted-foreground">{`${t('fae.topPrefix')} ${percentileText}`}</span>}
               {isOutdated ? (
-                <Clock className="ml-auto box-content size-3 shrink-0 pl-2 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+                <>
+                  <span className="sr-only">{t('fae.savedRating')}</span>
+                  <History className="ml-auto box-content size-3 shrink-0 pl-2 text-muted-foreground" aria-hidden="true" />
+                </>
               ) : (
                 <ChevronRight className="ml-auto box-content size-3 shrink-0 pl-2 text-muted-foreground" aria-hidden="true" />
               )}
@@ -234,14 +237,16 @@ export function FaeBadge({
             <DialogTitle className="sr-only">FAE</DialogTitle>
             <DialogDescription className="sr-only">{r.bracket_name || 'ZFAE Leaderboard'}</DialogDescription>
             <FaeTooltipContent rating={r} isOutdated={isOutdated} dateStr={dateStr} />
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-            >
-              {t('fae.openProfile')} <ExternalLink className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            </a>
+            {!isOutdated && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border border-[#636AF2]/50 bg-[#636AF2]/15 px-3 py-2.5 text-sm font-medium transition-colors hover:border-[#636AF2]/80 hover:bg-[#636AF2]/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none"
+              >
+                {t('fae.openBuild')} <ExternalLink className="size-4 shrink-0 text-[#636AF2] dark:text-[#a5b4fc]" aria-hidden="true" />
+              </a>
+            )}
           </DialogContent>
         </Dialog>
       )

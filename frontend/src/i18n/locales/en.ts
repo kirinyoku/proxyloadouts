@@ -928,7 +928,7 @@ const en: TranslationSchema = {
     guideUpdate: 'Press the refresh button in Showcase. This requests a new FAE assessment automatically.',
     guideReload: 'Return to your roster to see the rating saved with this build.',
     guideDelay: 'Game showcase updates and ZFAE rate limits can delay new ratings. If no rating appears, wait and refresh the showcase again. Some builds may not have a supported leaderboard.',
-    openProfile: 'Open profile on zfae.net',
+    openBuild: 'Open build on zfae.net',
     assessedAt: 'Assessed on',
     weaponChoice: 'W-Engine choice',
     discSets: 'Drive Disc sets',

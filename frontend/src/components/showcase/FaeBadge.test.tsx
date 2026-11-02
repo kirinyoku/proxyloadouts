@@ -25,7 +25,7 @@ vi.mock('react-i18next', () => ({
         'fae.savedRating': 'Saved rating',
         'fae.outdatedStatus': 'Saved on {{date}} — the gear in your showcase has changed',
         'fae.outdatedStatusNoDate': 'The gear in your showcase has changed since this rating was saved',
-        'fae.openProfile': 'Open profile on zfae.net',
+        'fae.openBuild': 'Open build on zfae.net',
         'fae.weaponChoice': 'W-Engine choice',
         'fae.discSets': 'Drive Disc sets',
         'fae.mainstats': 'Main stats',
@@ -175,7 +175,7 @@ describe('FaeBadge rendering', () => {
     expect(html).toContain('85%')
   })
 
-  it('shows a saved rating warning with a date when available', () => {
+  it('shows saved rating metadata with a date when available', () => {
     const dated = renderToString(<FaeTooltipContent rating={liveRating} isOutdated dateStr="11/2/2026" />)
     expect(dated).toContain('Saved rating')
     expect(dated).toContain('Saved on 11/2/2026')
@@ -187,7 +187,7 @@ describe('FaeBadge rendering', () => {
     expect(getZfaeUrl(undefined, liveRating.slug)).toBe('https://zfae.net/leaderboard/claret')
   })
 
-  it('renders snapshot_outdated badge with outdated styling', () => {
+  it('renders snapshot_outdated badge with an accessible saved rating indicator', () => {
     const outdatedRating: FaeRating = {
       ...liveRating,
       status: 'snapshot_outdated',
@@ -197,7 +197,8 @@ describe('FaeBadge rendering', () => {
       <FaeBadge rating={outdatedRating} uid="1503562965" showUnassessed />,
     )
     expect(html).toContain('data-testid="fae-badge-outdated"')
-    expect(html).toContain('lucide-clock')
+    expect(html).toContain('lucide-rotate-ccw-clock')
+    expect(html).toContain('<span class="sr-only">Saved rating</span>')
     expect(html).toContain('FAE')
     expect(html).toContain('#14')
   })
