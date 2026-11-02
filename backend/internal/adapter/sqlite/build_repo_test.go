@@ -494,3 +494,93 @@ func TestBuildRepo_HasPublicByAccount(t *testing.T) {
 		t.Errorf("expected HasPublicByAccount=true after making build public")
 	}
 }
+
+func TestBuildRepo_FaeRatingRoundtrip(t *testing.T) {
+	db := newMigratedTestDB(t)
+	ctx := context.Background()
+
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	repo := NewBuildRepo(db)
+
+	user := seedUser(t, ctx, users, "626262626262626262")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687072")
+
+	build := makeDomainBuild(user.ID, account.ID, "Fae Rated", 1611)
+	rank := 4
+	rankOf := 10556
+	pct := 0.00038
+	score := 85.1
+	timeAssessed := int64(1793393915)
+	slug := "claret"
+	bracket := "S Rank Limited W-Engines"
+	fp := "w:r1|s1:CDMG+1,CR+2,DEF%+1,PEN+0|s2:|s3:|s4:|s5:|s6:"
+	wPct := 100
+	sPct := 86
+
+	build.FaeRating = &domain.FaeRating{
+		Status:               domain.FaeStatusLive,
+		Outdated:             false,
+		Rank:                 &rank,
+		RankOf:               &rankOf,
+		TopPercentile:        &pct,
+		Score:                &score,
+		TimeAssessed:         &timeAssessed,
+		Slug:                 &slug,
+		BracketName:          &bracket,
+		EquipmentFingerprint: &fp,
+		Breakdown: &domain.FaeScoreBreakdown{
+			WeaponPercent:  &wPct,
+			SubstatPercent: &sPct,
+		},
+	}
+
+	if err := repo.Create(ctx, build); err != nil {
+		t.Fatalf("failed to create build with fae rating: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("failed to get build: %v", err)
+	}
+	if got.FaeRating == nil {
+		t.Fatal("expected non-nil FaeRating")
+	}
+	if got.FaeRating.Status != domain.FaeStatusLive || *got.FaeRating.Rank != 4 || *got.FaeRating.Score != 85.1 {
+		t.Errorf("fae rating mismatch: %+v", got.FaeRating)
+	}
+	if got.FaeRating.Breakdown == nil || *got.FaeRating.Breakdown.WeaponPercent != 100 {
+		t.Errorf("breakdown mismatch: %+v", got.FaeRating.Breakdown)
+	}
+
+	// Update to snapshot_outdated
+	newRank := 5
+	updatedRating := &domain.FaeRating{
+		Status:   domain.FaeStatusSnapshotOutdated,
+		Outdated: true,
+		Rank:     &newRank,
+	}
+	if err := repo.UpdateFaeRating(ctx, build.ID, updatedRating); err != nil {
+		t.Fatalf("failed to update fae rating: %v", err)
+	}
+
+	gotUpdated, err := repo.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("failed to get updated build: %v", err)
+	}
+	if gotUpdated.FaeRating.Status != domain.FaeStatusSnapshotOutdated || *gotUpdated.FaeRating.Rank != 5 || !gotUpdated.FaeRating.Outdated {
+		t.Errorf("expected updated fae rating, got %+v", gotUpdated.FaeRating)
+	}
+
+	// Clear fae rating
+	if err := repo.UpdateFaeRating(ctx, build.ID, nil); err != nil {
+		t.Fatalf("failed to clear fae rating: %v", err)
+	}
+	gotCleared, err := repo.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("failed to get cleared build: %v", err)
+	}
+	if gotCleared.FaeRating != nil {
+		t.Errorf("expected nil fae rating after clearing, got %+v", gotCleared.FaeRating)
+	}
+}

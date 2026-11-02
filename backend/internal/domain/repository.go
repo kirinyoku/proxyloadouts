@@ -59,7 +59,12 @@ type BuildRepository interface {
 	UpdateDetails(ctx context.Context, id uuid.UUID, name string, description *string) error
 	UpdateName(ctx context.Context, id uuid.UUID, name string) error
 	UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error
+	UpdateFaeRating(ctx context.Context, id uuid.UUID, rating *FaeRating) error
 	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+type FaeFetcher interface {
+	FetchProfileRatings(ctx context.Context, uid string, forceRefresh bool) (map[int]*FaeRating, error)
 }
 
 // TeamRepository manages teams and their member slots.

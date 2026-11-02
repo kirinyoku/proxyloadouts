@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kirinyoku/enkanetwork-go/client/zzz"
 )
 
 func TestSession_Valid(t *testing.T) {
@@ -248,5 +249,67 @@ func TestGameAccount_IsVerified(t *testing.T) {
 	account.VerifiedAt = &now
 	if !account.IsVerified() {
 		t.Error("expected account with non-nil VerifiedAt to be verified")
+	}
+}
+
+func TestComputeEquipmentFingerprint(t *testing.T) {
+	if fp := ComputeEquipmentFingerprint(nil); fp != "" {
+		t.Errorf("expected empty fingerprint for nil, got %q", fp)
+	}
+
+	raw := &zzz.AvatarData{
+		Weapon: &zzz.Weapon{UpgradeLevel: 1},
+		EquippedList: []zzz.EquippedItem{
+			{Slot: 1, Equipment: &zzz.Equipment{}},
+			{Slot: 2, Equipment: &zzz.Equipment{}},
+		},
+	}
+	if fp := ComputeEquipmentFingerprint(raw); fp != "" {
+		t.Errorf("expected empty fingerprint for partial slots, got %q", fp)
+	}
+
+	rawFull := &zzz.AvatarData{
+		Weapon: &zzz.Weapon{UpgradeLevel: 1},
+		EquippedList: []zzz.EquippedItem{
+			{
+				Slot: 1,
+				Equipment: &zzz.Equipment{
+					RandomPropertyList: []zzz.Property{
+						{PropertyID: 13102, PropertyLevel: 2}, // DEF% +1
+						{PropertyID: 23203, PropertyLevel: 1}, // PEN +0
+						{PropertyID: 21103, PropertyLevel: 2}, // CDMG +1
+						{PropertyID: 20103, PropertyLevel: 3}, // CR +2
+					},
+				},
+			},
+			{
+				Slot: 2,
+				Equipment: &zzz.Equipment{
+					RandomPropertyList: []zzz.Property{
+						{PropertyID: 11103, PropertyLevel: 1}, // HP +0
+					},
+				},
+			},
+			{Slot: 3, Equipment: &zzz.Equipment{}},
+			{Slot: 4, Equipment: &zzz.Equipment{}},
+			{Slot: 5, Equipment: &zzz.Equipment{}},
+			{Slot: 6, Equipment: &zzz.Equipment{}},
+		},
+	}
+
+	fp := ComputeEquipmentFingerprint(rawFull)
+	expectedPrefix := "w:r1|s1:CDMG+1,CR+2,DEF%+1,PEN+0|s2:HP+0|s3:|s4:|s5:|s6:"
+	if fp != expectedPrefix {
+		t.Errorf("expected fingerprint %q, got %q", expectedPrefix, fp)
+	}
+
+	rawBytes, _ := json.Marshal(rawFull)
+	fpJSON := ComputeEquipmentFingerprintFromRawJSON(rawBytes)
+	if fpJSON != expectedPrefix {
+		t.Errorf("expected fingerprint from JSON %q, got %q", expectedPrefix, fpJSON)
+	}
+
+	if emptyFP := ComputeEquipmentFingerprintFromRawJSON([]byte("invalid json")); emptyFP != "" {
+		t.Errorf("expected empty string for invalid json, got %q", emptyFP)
 	}
 }

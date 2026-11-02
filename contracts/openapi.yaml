@@ -665,6 +665,45 @@ paths:
         '502':
           $ref: '#/components/responses/BadGatewayError'
 
+  /showcase/{uid}/fae:
+    get:
+      summary: Get ZFAE leaderboard ratings for player showcase
+      description: Returns community leaderboard rankings and gear ratings from zfae.net for agents in the showcase.
+      operationId: getShowcaseFae
+      tags:
+        - Showcase
+      security: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{9,10}$'
+            example: "1500000000"
+        - name: fresh
+          in: query
+          required: false
+          description: Force refresh leaderboard data from zfae.net
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Showcase ZFAE leaderboard ratings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseFaeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '502':
+          $ref: '#/components/responses/BadGatewayError'
+
   /showcase/{uid}/roster:
     get:
       summary: Get verified public showcase roster
@@ -1854,6 +1893,8 @@ components:
         updated_at:
           type: string
           format: date-time
+        fae_rating:
+          $ref: '#/components/schemas/FaeRating'
 
     CreateBuildRequest:
       type: object
@@ -2229,6 +2270,86 @@ components:
         has_public_roster:
           type: boolean
           description: True if verified owner has published presets and squads
+
+    FaeScoreBreakdown:
+      type: object
+      properties:
+        weapon_percent:
+          type: integer
+          example: 100
+        disc_set_percent:
+          type: integer
+          example: 100
+        mainstat_percent:
+          type: integer
+          example: 100
+        substat_percent:
+          type: integer
+          example: 86
+
+    FaeRating:
+      type: object
+      required:
+        - status
+        - outdated
+      properties:
+        status:
+          type: string
+          enum:
+            - live
+            - snapshot_outdated
+            - unassessed
+          example: live
+        outdated:
+          type: boolean
+          example: false
+        rank:
+          type: integer
+          example: 4
+        rank_of:
+          type: integer
+          example: 10556
+        top_percentile:
+          type: number
+          format: double
+          example: 0.00038
+        score:
+          type: number
+          format: double
+          example: 85.1
+        time_assessed:
+          type: integer
+          format: int64
+          example: 1793393915
+        slug:
+          type: string
+          example: claret
+        bracket_name:
+          type: string
+          example: S Rank Limited W-Engines
+        equipment_fingerprint:
+          type: string
+          example: w:r1|s1:CR+3,DEF%+1,HP+0,PEN+0|s2:CDMG+1,CR+2,DEF%+2,PEN+0|s3:CDMG+1,CR+3,DEF%+1,PEN+0|s4:CDMG+2,DEF%+2,HP%+0,PEN+0|s5:CR+1,DEF+0,DEF%+3,HP%+1|s6:CDMG+0,CR+3,DEF+1,PEN+1
+        breakdown:
+          $ref: '#/components/schemas/FaeScoreBreakdown'
+
+    ShowcaseFaeResponse:
+      type: object
+      required:
+        - uid
+        - agents
+        - fetched_at
+      properties:
+        uid:
+          type: string
+          example: "1503562965"
+        agents:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/FaeRating'
+        fetched_at:
+          type: string
+          format: date-time
 
     # ---------------------------------------------------------------------
     # Admin (see docs/product/PRD-admin-dashboard.md)
