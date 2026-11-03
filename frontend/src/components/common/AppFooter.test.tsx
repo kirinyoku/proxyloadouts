@@ -12,6 +12,8 @@ vi.mock('react-i18next', () => ({
         'footer.alphaNoticeTrailing': '.',
         'footer.poweredBy': 'Данные профилей и экипировки предоставлены',
         'footer.enkaNetwork': 'EnkaNetwork',
+        'footer.ratingsBy': 'Рейтинги сборок —',
+        'footer.fae': 'FAE',
         'footer.disclaimer': 'ProxyLoadouts — независимый фанатский проект, не связанный с COGNOSPHERE PTE. LTD. и miHoYo.',
         'footer.about': 'О проекте',
         'footer.privacy': 'Конфиденциальность и условия',
@@ -69,6 +71,14 @@ describe('AppFooter', () => {
     expect(html).toContain('EnkaNetwork')
   })
 
+  it('renders FAE attribution link', () => {
+    const html = renderToString(<AppFooter />)
+    expect(html).toContain('href="https://zfae.net"')
+    expect(html).toContain('FAE')
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain('rel="noopener noreferrer"')
+  })
+
   it('renders about, settings, and privacy links', () => {
     const html = renderToString(<AppFooter />)
     expect(html).toContain('href="/about"')
@@ -83,11 +93,12 @@ describe('AppFooter', () => {
     expect(cleanText).toContain(`© ${currentYear} ProxyLoadouts`)
   })
 
-  it('renders elements in bottom bar in correct order: enka -> about -> settings -> privacy -> copyright -> createdBy', () => {
+  it('renders elements in bottom bar in correct order: enka -> fae -> about -> settings -> privacy -> copyright -> createdBy', () => {
     const html = renderToString(<AppFooter />)
     const cleanText = html.replace(/<!--.*?-->/g, '')
     const currentYear = new Date().getFullYear().toString()
     const enkaIndex = cleanText.indexOf('https://enka.network')
+    const faeIndex = cleanText.indexOf('https://zfae.net')
     const aboutIndex = cleanText.indexOf('href="/about"')
     const settingsIndex = cleanText.indexOf('href="/settings"')
     const privacyIndex = cleanText.indexOf('href="/privacy"')
@@ -95,7 +106,8 @@ describe('AppFooter', () => {
     const createdByIndex = cleanText.indexOf('created by')
 
     expect(enkaIndex).toBeGreaterThan(-1)
-    expect(aboutIndex).toBeGreaterThan(enkaIndex)
+    expect(faeIndex).toBeGreaterThan(enkaIndex)
+    expect(aboutIndex).toBeGreaterThan(faeIndex)
     expect(settingsIndex).toBeGreaterThan(aboutIndex)
     expect(privacyIndex).toBeGreaterThan(settingsIndex)
     expect(copyrightIndex).toBeGreaterThan(privacyIndex)

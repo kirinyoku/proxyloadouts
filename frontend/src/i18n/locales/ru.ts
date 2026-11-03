@@ -726,6 +726,8 @@ const ru = {
     alphaNoticeTrailing: '.',
     poweredBy: 'Данные профилей и экипировки предоставлены',
     enkaNetwork: 'EnkaNetwork',
+    ratingsBy: 'Рейтинги сборок —',
+    fae: 'FAE',
     disclaimer: 'ProxyLoadouts — независимый фанатский проект, не связанный с COGNOSPHERE PTE. LTD. и miHoYo. Zenless Zone Zero™, персонажи, названия и игровые ассеты являются собственностью COGNOSPHERE PTE. LTD.',
     about: 'О проекте',
     privacy: 'Конфиденциальность и условия',

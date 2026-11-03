@@ -728,6 +728,8 @@ const en: TranslationSchema = {
     alphaNoticeTrailing: '.',
     poweredBy: 'Game showcase and gear data powered by',
     enkaNetwork: 'EnkaNetwork',
+    ratingsBy: 'Build ratings by',
+    fae: 'FAE',
     disclaimer: 'ProxyLoadouts is an independent fan-made project not affiliated with COGNOSPHERE PTE. LTD. or miHoYo. Zenless Zone Zero™, characters, names, and game assets are the property of COGNOSPHERE PTE. LTD.',
     about: 'About',
     privacy: 'Privacy & Terms',
