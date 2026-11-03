@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, Check, Layers, RefreshCw, ScanLine, Users } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useBuilds, useMe, useRefreshShowcaseFae, useShowcase, useShowcaseFae, useShowcaseRoster } from '@/api/hooks'
@@ -7,7 +7,7 @@ import { findMatchingSavedBuild, getAgentEquipmentFingerprint } from '@/lib/buil
 import { persistLastUid, readLastUid, UID_PATTERN } from '@/lib/uid'
 import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
-import { FaeBadge } from '@/components/showcase/FaeBadge'
+import { FaeRefreshControl } from '@/components/showcase/FaeRefreshControl'
 import { ShowcaseProfileHeader } from '@/components/showcase/ShowcaseProfileHeader'
 import { ShowcaseSavedPresets } from '@/components/showcase/ShowcaseSavedPresets'
 import { ShowcaseSquads } from '@/components/showcase/ShowcaseSquads'
@@ -24,7 +24,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { getAttributeLabel, getSpecialtyLabel } from '@/lib/design-tokens'
 import { useTranslation } from 'react-i18next'
-import type { Agent, FaeRating, ShowcaseResponse } from '@/types'
+import type { Agent, ShowcaseResponse } from '@/types'
 
 const SaveBuildDialog = lazy(() =>
   import('@/components/showcase/SaveBuildDialog').then((module) => ({
@@ -56,9 +56,7 @@ interface AgentShowcaseSectionProps {
   matchingBuildName?: string | null
   canSave: boolean
   onSaveClick: () => void
-  faeRating?: FaeRating | null
-  isFaeLoading?: boolean
-  uid?: string
+  faeBadge: ReactNode
 }
 
 function MobileSectionTabs({
@@ -113,9 +111,7 @@ function AgentShowcaseSection({
   matchingBuildName,
   canSave,
   onSaveClick,
-  faeRating,
-  isFaeLoading,
-  uid,
+  faeBadge,
 }: AgentShowcaseSectionProps) {
   const { t, i18n } = useTranslation()
   const [mobileSection, setMobileSection] = useState<MobileAgentSection>('discs')
@@ -169,13 +165,7 @@ function AgentShowcaseSection({
             </div>
           )}
 
-          <FaeBadge
-            isLoading={isFaeLoading}
-            rating={faeRating}
-            uid={uid}
-            showUnassessed
-            className="order-3 w-full sm:order-2 sm:w-auto"
-          />
+          {faeBadge}
         </div>
 
         {/* On mobile screens: W-Engine card is displayed above the section tabs */}
@@ -332,9 +322,7 @@ export function ShowcasePage() {
   const isFaeRefreshing = refreshFae.isPending && refreshFae.variables.uid === scannedUid
 
   function refreshShowcase() {
-    if (isFaeRefreshing) return
     void showcaseQuery.refetch()
-    refreshFae.mutate({ uid: scannedUid, gameAccountId: matchingAccount?.id })
   }
 
   const hasPublicBuilds = Boolean(
@@ -496,7 +484,7 @@ export function ShowcasePage() {
           uid={scannedUid}
           onScanUid={scan}
           onRetry={refreshShowcase}
-          isRetrying={showcaseQuery.isFetching || isFaeRefreshing}
+          isRetrying={showcaseQuery.isFetching}
           className="w-full mx-auto"
         />
       </div>
@@ -544,6 +532,14 @@ export function ShowcasePage() {
   ]
 
   const showModeSwitcher = modeOptions.length > 1
+  const faeRefreshProps = {
+    profile: faeQuery.data,
+    pending: isFaeRefreshing,
+    failed: refreshFae.isError && refreshFae.variables.uid === scannedUid,
+    onRefresh: () => refreshFae.mutate({ uid: scannedUid, gameAccountId: matchingAccount?.id }),
+    uid: scannedUid,
+    isLoading: faeQuery.isPending,
+  }
 
   return (
     <div className="space-y-3">
@@ -561,7 +557,7 @@ export function ShowcasePage() {
               verifiedOwner={rosterQuery.data?.owner ?? showcase.verified_owner}
               uidInput={uidInput}
               isUidValid={isInputValid}
-              isRefetching={showcaseQuery.isRefetching || isFaeRefreshing}
+              isRefetching={showcaseQuery.isRefetching}
               onScan={scan}
               onUidInputChange={setUidInput}
               onRefresh={refreshShowcase}
@@ -603,10 +599,11 @@ export function ShowcasePage() {
           {isEnkaDownWithRosterFallback && (
             <div
               role="alert"
-              className="flex items-center gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200 shadow-sm"
+              className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200 shadow-sm"
             >
               <AlertCircle className="size-4 shrink-0 text-amber-400" />
-              <span>{t('showcase.enkaUnavailableNotice')}</span>
+              <span className="min-w-0 flex-1">{t('showcase.enkaUnavailableNotice')}</span>
+              {!showModeSwitcher && effectiveMode !== 'live' && <FaeRefreshControl {...faeRefreshProps} className="shrink-0" />}
             </div>
           )}
 
@@ -619,16 +616,19 @@ export function ShowcasePage() {
                   title={t('showcase.emptyTitle')}
                   description={t('showcase.emptyDesc')}
                   action={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={refreshShowcase}
-                      loading={showcaseQuery.isRefetching || isFaeRefreshing}
-                      className="gap-1.5"
-                    >
-                      {!(showcaseQuery.isRefetching || isFaeRefreshing) && <RefreshCw className="size-3.5" />}
-                      {t('showcase.refreshShowcase')}
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <FaeRefreshControl {...faeRefreshProps} />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshShowcase}
+                        loading={showcaseQuery.isRefetching}
+                        className="gap-1.5"
+                      >
+                        {!showcaseQuery.isRefetching && <RefreshCw className="size-3.5" />}
+                        {t('showcase.refreshShowcase')}
+                      </Button>
+                    </div>
                   }
                 />
               )}
@@ -666,9 +666,13 @@ export function ShowcasePage() {
                       matchingBuildName={matchingSavedBuild?.name}
                       canSave={isAuthed && isOwnedUid}
                       onSaveClick={() => setSavingAgent(selectedAgent)}
-                      faeRating={faeQuery.data?.agents?.[String(selectedAgent.id)]}
-                      isFaeLoading={faeQuery.isPending || isFaeRefreshing}
-                      uid={showcase.uid}
+                      faeBadge={
+                        <FaeRefreshControl
+                          {...faeRefreshProps}
+                          rating={faeQuery.data?.agents?.[String(selectedAgent.id)]}
+                          className="order-3 sm:order-2"
+                        />
+                      }
                     />
                   </div>
                 </div>

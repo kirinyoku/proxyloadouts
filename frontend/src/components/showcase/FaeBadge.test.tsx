@@ -21,10 +21,19 @@ vi.mock('react-i18next', () => ({
         'fae.scoreLabel': 'Score',
         'fae.topPrefix': 'Top',
         'fae.unassessed': 'Unassessed',
-        'fae.liveStatus': 'Leaderboard rating matches the gear in your showcase',
-        'fae.savedRating': 'Saved rating',
-        'fae.outdatedStatus': 'Saved on {{date}} — the gear in your showcase has changed',
-        'fae.outdatedStatusNoDate': 'The gear in your showcase has changed since this rating was saved',
+        'fae.observedAt': 'Rating observed on {{date}}',
+        'fae.observedUnknown': 'Evaluation date unavailable.',
+        'fae.ratingInfoTitle': 'About this rating',
+        'fae.ratingInfoDescription': 'This rating reflects the build at the time of evaluation and may not be up to date due to leaderboard shifts. To get the latest version, click the refresh button next to the rating.',
+        'fae.outdatedRatingTitle': 'Outdated rating',
+        'fae.outdatedRatingDescription': 'To update the rating, equip this build in game and rescan the agent on the Showcase page.',
+        'fae.outdatedRating': 'Outdated',
+        'fae.howToUpdate': 'How to update',
+        'fae.updateGuideEquip': 'In game, equip the agent with this build and place them on your profile showcase.',
+        'fae.updateGuideRefreshBefore': 'On the Showcase page, refresh your profile, then click',
+        'fae.updateGuideRefreshAfter': 'next to the FAE rating.',
+        'fae.refreshRating': 'Refresh FAE rating',
+        'fae.updateGuideOpenShowcase': 'Go to Showcase',
         'fae.openBuild': 'Open build on zfae.net',
         'fae.weaponChoice': 'W-Engine choice',
         'fae.discSets': 'Drive Disc sets',
@@ -88,8 +97,8 @@ describe('resolveFaeBadgeState', () => {
     slug: 'claret',
   }
 
-  it('resolves loading state when isLoading is true', () => {
-    const state = resolveFaeBadgeState(true, liveRating, '1500000000', true)
+  it('resolves loading state when no previous rating exists', () => {
+    const state = resolveFaeBadgeState(true, null, '1500000000', true)
     expect(state.kind).toBe('loading')
   })
 
@@ -106,9 +115,9 @@ describe('resolveFaeBadgeState', () => {
     expect(state.kind).toBe('snapshot_outdated')
   })
 
-  it('resolves live state for ranked live rating', () => {
+  it('treats legacy live ratings as saved observations', () => {
     const state = resolveFaeBadgeState(false, liveRating, '1500000000', true)
-    expect(state.kind).toBe('live')
+    expect(state.kind).toBe('snapshot')
   })
 })
 
@@ -147,47 +156,111 @@ describe('FaeBadge rendering', () => {
     expect(html).toContain('aria-haspopup="dialog"')
     expect(html).toContain('FAE')
     expect(html).toContain('Unassessed')
+    expect(html).not.toContain('lucide-chevron-right')
   })
 
   it('renders live badge with correct score, rank, percentile, and profile link', () => {
     const html = renderToString(
       <FaeBadge rating={liveRating} uid="1503562965" showUnassessed />,
     )
-    expect(html).toContain('data-testid="fae-badge-live"')
+    expect(html).toContain('data-testid="fae-badge-snapshot"')
     expect(html).toContain('aria-haspopup="dialog"')
     expect(html).toContain('FAE')
     expect(html).toContain('Top 0.04%')
+    expect(html).not.toContain('Outdated')
     expect(html).toContain('#14')
+    expect(html).not.toContain('lucide-chevron-right')
   })
 
   it('renders tooltip content with rating, version, and breakdown', () => {
     const html = renderToString(
-      <FaeTooltipContent rating={liveRating} isOutdated={false} dateStr={null} />,
+      <FaeTooltipContent rating={liveRating} dateStr={null} />,
     )
     expect(html).toContain('data-testid="fae-tooltip-content"')
     expect(html).not.toContain('S Rank Limited W-Engines')
     expect(html).toContain('V1')
-    expect(html).toContain('Leaderboard rating matches the gear in your showcase')
-    expect(html).not.toContain('Saved rating')
+    expect(html).toContain('Evaluation date unavailable.')
     expect(html).toContain('100%')
     expect(html).toContain('95%')
     expect(html).toContain('90%')
     expect(html).toContain('85%')
   })
 
-  it('shows saved rating metadata with a date when available', () => {
-    const dated = renderToString(<FaeTooltipContent rating={liveRating} isOutdated dateStr="11/2/2026" />)
-    expect(dated).toContain('Saved rating')
-    expect(dated).toContain('Saved on 11/2/2026')
-    const undated = renderToString(<FaeTooltipContent rating={liveRating} isOutdated dateStr={null} />)
-    expect(undated).toContain('changed since this rating was saved')
+  it.each(['11/2/2026', null])('shows current rating information with date %s', (dateStr) => {
+    const html = renderToString(<FaeTooltipContent rating={liveRating} dateStr={dateStr} />)
+    expect(html).toContain('About this rating')
+    expect(html).toContain('This rating reflects the build at the time of evaluation and may not be up to date due to leaderboard shifts. To get the latest version, click the refresh button next to the rating.')
+    expect(html).not.toContain('Outdated rating')
+    expect(html).not.toContain('To update the rating')
+    expect(html).not.toContain('<details')
+    expect(html).not.toContain('How to update')
+    expect(html).not.toContain('Go to Showcase')
+    expect(html).toContain(dateStr ? `Rating observed on ${dateStr}` : 'Evaluation date unavailable.')
+    expect(html).not.toContain('Saved rating')
+    expect(html).not.toContain('lucide-history')
+    expect(html).not.toContain('lucide-clock')
+  })
+
+  it.each([
+    { status: 'snapshot_outdated', outdated: false },
+    { status: 'snapshot', outdated: true },
+  ] satisfies Pick<FaeRating, 'status' | 'outdated'>[])(
+    'explains outdated rating for $status with outdated=$outdated regardless of date',
+    (outdatedState) => {
+      for (const dateStr of ['11/2/2026', null]) {
+        const html = renderToString(
+          <FaeTooltipContent rating={{ ...liveRating, ...outdatedState }} dateStr={dateStr} />,
+        )
+        expect(html).toContain('Outdated rating')
+        expect(html).toContain('To update the rating, equip this build in game and rescan the agent on the Showcase page.')
+        expect(html).not.toContain('About this rating')
+        expect(html).not.toContain('This rating reflects the build at the time of evaluation and may not be up to date due to leaderboard shifts. To get the latest version, click the refresh button next to the rating.')
+        expect(html).not.toContain('To get the latest version, click the refresh button next to the rating.')
+        expect(html).toContain(dateStr ? `Rating observed on ${dateStr}` : 'Evaluation date unavailable.')
+        expect(html).not.toContain('Saved rating')
+        expect(html).not.toContain('lucide-history')
+        expect(html).not.toContain('lucide-clock')
+      }
+    },
+  )
+
+  it.each([
+    { uid: '1500 /?', href: '/showcase?uid=1500%20%2F%3F' },
+    { uid: undefined, href: '/showcase' },
+  ])('provides a closed native update guide linking to $href', ({ uid, href }) => {
+    const html = renderToString(
+      <FaeTooltipContent
+        rating={{ ...liveRating, status: 'snapshot_outdated', outdated: true }}
+        dateStr="11/2/2026"
+        uid={uid}
+      />,
+    )
+    const details = html.match(/<details\b[^>]*>[\s\S]*?<\/details>/)?.[0]
+    expect(details).toBeDefined()
+    expect(details).not.toMatch(/<details\b[^>]*\bopen(?:=|\s|>)/)
+    expect(details).toMatch(/<summary\b[^>]*>[\s\S]*?How to update<\/summary>/)
+    expect(details?.match(/<li\b/g)).toHaveLength(2)
+    expect(details).toContain('In game, equip the agent with this build and place them on your profile showcase.')
+    expect(details).toContain('On the Showcase page, refresh your profile, then click')
+    expect(details).toContain('next to the FAE rating.')
+    expect(details).toMatch(/<span role="img" aria-label="Refresh FAE rating"[^>]*><svg[^>]*aria-hidden="true"/)
+    expect(details).not.toContain('<button')
+    expect(details).toContain(`href="${href}"`)
+    expect(details).toContain('Go to Showcase')
+    expect(html.indexOf('</details>')).toBeLessThan(html.indexOf('Rating observed on 11/2/2026'))
+  })
+
+  it('keeps the previous numeric badge visible during refresh', () => {
+    const html = renderToString(<FaeBadge rating={liveRating} isLoading />)
+    expect(html).toContain('#14')
+    expect(html).not.toContain('fae-badge-loading')
   })
 
   it('falls back to leaderboard URL when uid is missing', () => {
     expect(getZfaeUrl(undefined, liveRating.slug)).toBe('https://zfae.net/leaderboard/claret')
   })
 
-  it('renders snapshot_outdated badge with an accessible saved rating indicator', () => {
+  it('renders snapshot_outdated badge with a visible outdated rating caption', () => {
     const outdatedRating: FaeRating = {
       ...liveRating,
       status: 'snapshot_outdated',
@@ -197,8 +270,9 @@ describe('FaeBadge rendering', () => {
       <FaeBadge rating={outdatedRating} uid="1503562965" showUnassessed />,
     )
     expect(html).toContain('data-testid="fae-badge-outdated"')
-    expect(html).toContain('lucide-rotate-ccw-clock')
-    expect(html).toContain('<span class="sr-only">Saved rating</span>')
+    expect(html).not.toContain('lucide-rotate-ccw-clock')
+    expect(html).toContain('>Outdated</span>')
+    expect(html).not.toContain('<span class="sr-only">Outdated</span>')
     expect(html).toContain('FAE')
     expect(html).toContain('#14')
   })

@@ -2,7 +2,7 @@ import type { FaeRating } from '@/types'
 
 export type FaeBadgeState =
   | { kind: 'loading' }
-  | { kind: 'live'; rating: FaeRating; uid?: string }
+  | { kind: 'snapshot'; rating: FaeRating; uid?: string }
   | { kind: 'snapshot_outdated'; rating: FaeRating; uid?: string }
   | { kind: 'unassessed'; showUnassessed?: boolean }
 
@@ -12,7 +12,7 @@ export function resolveFaeBadgeState(
   uid: string | undefined,
   showUnassessed: boolean | undefined,
 ): FaeBadgeState {
-  if (isLoading) {
+  if (isLoading && !rating) {
     return { kind: 'loading' }
   }
   if (!rating || rating.status === 'unassessed' || rating.rank == null) {
@@ -21,7 +21,7 @@ export function resolveFaeBadgeState(
   if (rating.status === 'snapshot_outdated' || rating.outdated) {
     return { kind: 'snapshot_outdated', rating, uid }
   }
-  return { kind: 'live', rating, uid }
+  return { kind: 'snapshot', rating, uid }
 }
 
 export function formatFaePercentile(topPercentile: number): string {

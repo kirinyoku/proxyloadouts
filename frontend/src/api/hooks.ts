@@ -136,10 +136,10 @@ export function useShowcase(uid: string) {
   })
 }
 
-export function useShowcaseFae(uid: string, fresh?: boolean) {
+export function useShowcaseFae(uid: string) {
   return useQuery({
     queryKey: queryKeys.showcaseFae(uid),
-    queryFn: ({ signal }) => api.getShowcaseFae(uid, fresh, signal),
+    queryFn: ({ signal }) => api.getShowcaseFae(uid, false, signal),
     enabled: uid.trim().length > 0,
     staleTime: FAE_STALE_TIME,
     retry: 1,
@@ -156,6 +156,7 @@ export function useRefreshShowcaseFae() {
   const { t } = useTranslation()
 
   return useMutation({
+    retry: false,
     mutationFn: async ({ uid }: RefreshShowcaseFaeVariables) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.showcaseFae(uid), exact: true })
       return api.getShowcaseFae(uid, true)
@@ -163,6 +164,7 @@ export function useRefreshShowcaseFae() {
     onSuccess: async (data, { uid, gameAccountId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.showcaseFae(uid), exact: true })
       queryClient.setQueryData(queryKeys.showcaseFae(uid), data)
+      if (data.refresh_outcome !== 'updated') return
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.showcaseRoster(uid) }),
         ...(gameAccountId

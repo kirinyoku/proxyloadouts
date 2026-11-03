@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { ExternalLink, History, ChevronRight } from 'lucide-react'
+import { ExternalLink, ChevronRight, RefreshCw } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import {
@@ -25,18 +26,21 @@ export interface FaeBadgeProps {
   uid?: string
   showUnassessed?: boolean
   className?: string
+  action?: ReactNode
+  details?: ReactNode
 }
 
 export function FaeTooltipContent({
   rating,
-  isOutdated,
   dateStr,
+  uid,
 }: {
   rating: FaeRating
-  isOutdated: boolean
   dateStr: string | null
+  uid?: string
 }) {
   const { t } = useTranslation()
+  const isOutdated = rating.status === 'snapshot_outdated' || rating.outdated
 
   const rankParts = rating.rank != null ? formatFaeRankParts(rating.rank, rating.rank_of) : null
   const percentileText =
@@ -110,19 +114,42 @@ export function FaeTooltipContent({
           ))}
         </dl>
       )}
-      {isOutdated ? (
-        <div className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5 font-medium">
-            <History className="size-3 shrink-0" aria-hidden="true" />
-            {t('fae.savedRating')}
-          </div>
-          <p className="mt-1 leading-relaxed">
-            {dateStr ? t('fae.outdatedStatus', { date: dateStr }) : t('fae.outdatedStatusNoDate')}
-          </p>
-        </div>
-      ) : (
-        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{t('fae.liveStatus')}</p>
-      )}
+      <div className="mt-4 rounded-lg border border-[#636af2]/20 bg-[#636af2]/[0.05] p-3">
+        <p className={cn('text-xs font-medium text-foreground', isOutdated && 'text-violet-700 dark:text-violet-300')}>
+          {t(isOutdated ? 'fae.outdatedRatingTitle' : 'fae.ratingInfoTitle')}
+        </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+          {t(isOutdated ? 'fae.outdatedRatingDescription' : 'fae.ratingInfoDescription')}
+        </p>
+        {isOutdated && (
+          <details className="group mt-3">
+            <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm text-xs font-medium text-violet-700 hover:text-violet-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-card dark:text-violet-300 dark:hover:text-violet-200 [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="size-3 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+              {t('fae.howToUpdate')}
+            </summary>
+            <ol className="mt-3 list-decimal space-y-2 pl-4 text-xs leading-relaxed text-muted-foreground marker:font-medium">
+              <li className="pl-1">{t('fae.updateGuideEquip')}</li>
+              <li className="pl-1">
+                {t('fae.updateGuideRefreshBefore')}{' '}
+                <span role="img" aria-label={t('fae.refreshRating')} className="inline-flex align-middle text-violet-700 dark:text-violet-300">
+                  <RefreshCw className="size-3.5" aria-hidden="true" />
+                </span>{' '}
+                {t('fae.updateGuideRefreshAfter')}
+              </li>
+            </ol>
+            <a
+              href={uid ? `/showcase?uid=${encodeURIComponent(uid)}` : '/showcase'}
+              className="mt-3 inline-flex min-h-9 items-center gap-1 rounded-md border border-[#636AF2]/30 bg-[#636AF2]/10 px-2.5 py-1.5 text-xs font-medium text-violet-700 hover:bg-[#636AF2]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-card dark:text-violet-300"
+            >
+              {t('fae.updateGuideOpenShowcase')}
+              <ChevronRight className="size-3 shrink-0" aria-hidden="true" />
+            </a>
+          </details>
+        )}
+        <p className="mt-3 border-t border-border pt-2.5 text-[11px] text-muted-foreground">
+          {dateStr ? t('fae.observedAt', { date: dateStr }) : t('fae.observedUnknown')}
+        </p>
+      </div>
     </div>
   )
 }
@@ -133,6 +160,8 @@ export function FaeBadge({
   uid,
   showUnassessed = false,
   className,
+  action,
+  details,
 }: FaeBadgeProps) {
   const { t } = useTranslation()
   const state = resolveFaeBadgeState(isLoading, rating, uid, showUnassessed)
@@ -156,22 +185,21 @@ export function FaeBadge({
       }
       return (
         <Dialog>
-          <DialogTrigger asChild>
-            <button
-              type="button"
-              data-testid="fae-badge-unassessed"
-              className={cn(
-                'inline-flex h-8 min-w-0 max-w-full cursor-pointer items-center overflow-hidden rounded-lg border border-border bg-card pr-2 text-left text-foreground transition-colors hover:border-[#636AF2] hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none',
-                className,
-              )}
-            >
-              <span className="flex shrink-0 self-stretch items-center rounded-l-[7px] bg-linear-to-r from-[#24208C] via-[#363ED9] to-[#636AF2] px-2 text-white">
-                <FaeLogo className="w-13" />
-              </span>
-              <span className="ml-2 min-w-0 truncate text-xs font-medium text-muted-foreground">{t('fae.unassessed')}</span>
-              <ChevronRight className="ml-auto box-content size-3 shrink-0 pl-2 text-muted-foreground" aria-hidden="true" />
-            </button>
-          </DialogTrigger>
+          <div data-testid={action ? 'fae-refresh-control' : undefined} className={cn('inline-flex h-8 min-w-0 max-w-full items-stretch rounded-lg border border-border bg-card text-foreground', className)}>
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                data-testid="fae-badge-unassessed"
+                className="inline-flex min-w-0 flex-1 cursor-pointer items-center overflow-hidden rounded-[7px] pr-2 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+              >
+                <span className="flex shrink-0 self-stretch items-center rounded-l-[7px] bg-linear-to-r from-[#24208C] via-[#363ED9] to-[#636AF2] px-2 text-white">
+                  <FaeLogo className="w-13" />
+                </span>
+                <span className="ml-2 min-w-0 truncate text-xs font-medium text-muted-foreground">{t('fae.unassessed')}</span>
+              </button>
+            </DialogTrigger>
+            {action}
+          </div>
           <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-card-foreground sm:max-w-[420px] sm:p-6">
             <DialogTitle className="pr-8 text-lg font-semibold">{t('fae.guideTitle')}</DialogTitle>
             <DialogDescription className="mt-2 text-sm leading-relaxed">{t('fae.guideDescription')}</DialogDescription>
@@ -189,13 +217,14 @@ export function FaeBadge({
               </li>
               <li className="pl-1">{t('fae.guideReload')}</li>
             </ol>
+            {details}
             <p className="mt-5 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">{t('fae.guideDelay')}</p>
           </DialogContent>
         </Dialog>
       )
     }
 
-    case 'live':
+    case 'snapshot':
     case 'snapshot_outdated': {
       const isOutdated = state.kind === 'snapshot_outdated'
       const r = state.rating
@@ -203,40 +232,36 @@ export function FaeBadge({
       const percentileText =
         r.top_percentile != null ? formatFaePercentile(r.top_percentile) : null
       const url = getZfaeUrl(state.uid, r.slug)
-      const dateStr = r.time_assessed
-        ? new Date(r.time_assessed * 1000).toLocaleDateString()
+      const dateStr = r.observed_at
+        ? new Date(r.observed_at).toLocaleString()
         : null
 
       return (
         <Dialog>
-          <DialogTrigger asChild>
-            <button
-              type="button"
-              data-testid={isOutdated ? 'fae-badge-outdated' : 'fae-badge-live'}
-              className={cn(
-                'inline-flex h-8 min-w-0 max-w-full cursor-pointer items-center overflow-hidden rounded-lg border border-border bg-card pr-2 text-left text-foreground transition-colors hover:border-[#636AF2] hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none',
-                className,
-              )}
-            >
-              <span className="flex shrink-0 self-stretch items-center rounded-l-[7px] bg-linear-to-r from-[#24208C] via-[#363ED9] to-[#636AF2] px-2 text-white">
-                <FaeLogo className="w-13" />
-              </span>
-              <span className="ml-1.5 min-w-0 truncate font-tech text-[15px] font-semibold leading-none tabular-nums">{rankParts?.rank}</span>
-              {percentileText && <span className="ml-2 shrink-0 text-[11px] leading-none text-muted-foreground">{`${t('fae.topPrefix')} ${percentileText}`}</span>}
-              {isOutdated ? (
-                <>
-                  <span className="sr-only">{t('fae.savedRating')}</span>
-                  <History className="ml-auto box-content size-3 shrink-0 pl-2 text-muted-foreground" aria-hidden="true" />
-                </>
-              ) : (
-                <ChevronRight className="ml-auto box-content size-3 shrink-0 pl-2 text-muted-foreground" aria-hidden="true" />
-              )}
-            </button>
-          </DialogTrigger>
+          <div data-testid={action ? 'fae-refresh-control' : undefined} className={cn('inline-flex h-8 min-w-0 max-w-full items-stretch rounded-lg border border-border bg-card text-foreground', className)}>
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                data-testid={isOutdated ? 'fae-badge-outdated' : 'fae-badge-snapshot'}
+                className="inline-flex min-w-0 flex-1 cursor-pointer items-center overflow-hidden rounded-[7px] pr-2 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#636AF2] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+              >
+                <span className="flex shrink-0 self-stretch items-center rounded-l-[7px] bg-linear-to-r from-[#24208C] via-[#363ED9] to-[#636AF2] px-2 text-white">
+                  <FaeLogo className="w-13" />
+                </span>
+                <span className={cn(isOutdated ? 'contents sm:ml-1.5 sm:flex sm:min-w-0 sm:-translate-y-[0.5px] sm:flex-col' : 'ml-1.5 flex min-w-0 flex-col')}>
+                  <span className={cn('truncate font-tech tabular-nums', isOutdated ? 'ml-1.5 text-[14px] font-bold sm:ml-0' : 'text-[15px] font-semibold', 'leading-none')}>{rankParts?.rank}</span>
+                  {isOutdated && <span className="order-1 ml-auto shrink-0 whitespace-nowrap pl-3 font-sans text-[9px] font-medium leading-[10px] text-[#a6a7bb] sm:order-none sm:ml-0 sm:pl-0">{t('fae.outdatedRating')}</span>}
+                </span>
+                {percentileText && <span className="ml-2 shrink-0 text-[11px] leading-none text-muted-foreground">{`${t('fae.topPrefix')} ${percentileText}`}</span>}
+              </button>
+            </DialogTrigger>
+            {action}
+          </div>
           <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-0 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-card-foreground sm:max-w-[420px] sm:p-6">
             <DialogTitle className="sr-only">FAE</DialogTitle>
-            <DialogDescription className="sr-only">{r.bracket_name || 'ZFAE Leaderboard'}</DialogDescription>
-            <FaeTooltipContent rating={r} isOutdated={isOutdated} dateStr={dateStr} />
+            <DialogDescription className="sr-only">{r.bracket_name || 'FAE Leaderboard'}</DialogDescription>
+            <FaeTooltipContent rating={r} dateStr={dateStr} uid={state.uid} />
+            {details}
             {!isOutdated && (
               <a
                 href={url}
