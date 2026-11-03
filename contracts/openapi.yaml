@@ -667,7 +667,7 @@ paths:
 
   /showcase/{uid}/fae:
     get:
-      summary: Get ZFAE leaderboard ratings for player showcase
+      summary: Read saved FAE ratings or explicitly refresh them
       description: Returns community leaderboard rankings and gear ratings from zfae.net for agents in the showcase.
       operationId: getShowcaseFae
       tags:
@@ -684,13 +684,13 @@ paths:
         - name: fresh
           in: query
           required: false
-          description: Force refresh leaderboard data from zfae.net
+          description: Explicitly refresh FAE data subject to durable cooldown and shared host backoff. False returns a stored observation at any age, or automatically loads a missing observation and bootstraps a missing FAE profile.
           schema:
             type: boolean
             default: false
       responses:
         '200':
-          description: Showcase ZFAE leaderboard ratings
+          description: Showcase FAE leaderboard ratings
           content:
             application/json:
               schema:
@@ -2297,9 +2297,10 @@ components:
           type: string
           enum:
             - live
+            - snapshot
             - snapshot_outdated
             - unassessed
-          example: live
+          example: snapshot
         outdated:
           type: boolean
           example: false
@@ -2317,6 +2318,10 @@ components:
           type: number
           format: double
           example: 85.1
+        observed_at:
+          type: string
+          format: date-time
+          description: When this rating was actually observed. Absent for legacy snapshots.
         time_assessed:
           type: integer
           format: int64
@@ -2339,6 +2344,8 @@ components:
         - uid
         - agents
         - fetched_at
+        - refresh_available_at
+        - refresh_outcome
       properties:
         uid:
           type: string
@@ -2348,8 +2355,15 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/FaeRating'
         fetched_at:
-          type: string
+          type: [string, 'null']
           format: date-time
+          description: Actual observation time, null when this UID has no saved observation.
+        refresh_available_at:
+          type: [string, 'null']
+          format: date-time
+        refresh_outcome:
+          type: string
+          enum: [saved, missing, updated, cooldown, backoff, failed, capacity]
 
     # ---------------------------------------------------------------------
     # Admin (see docs/product/PRD-admin-dashboard.md)

@@ -436,7 +436,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get ZFAE leaderboard ratings for player showcase
+         * Read saved FAE ratings or explicitly refresh them
          * @description Returns community leaderboard rankings and gear ratings from zfae.net for agents in the showcase.
          */
         get: operations["getShowcaseFae"];
@@ -1152,10 +1152,10 @@ export interface components {
         };
         FaeRating: {
             /**
-             * @example live
+             * @example snapshot
              * @enum {string}
              */
-            status: "live" | "snapshot_outdated" | "unassessed";
+            status: "live" | "snapshot" | "snapshot_outdated" | "unassessed";
             /** @example false */
             outdated: boolean;
             /** @example 4 */
@@ -1172,6 +1172,11 @@ export interface components {
              * @example 85.1
              */
             score?: number;
+            /**
+             * Format: date-time
+             * @description When this rating was actually observed. Absent for legacy snapshots.
+             */
+            observed_at?: string;
             /**
              * Format: int64
              * @example 1793393915
@@ -1191,8 +1196,15 @@ export interface components {
             agents: {
                 [key: string]: components["schemas"]["FaeRating"];
             };
+            /**
+             * Format: date-time
+             * @description Actual observation time, null when this UID has no saved observation.
+             */
+            fetched_at: string | null;
             /** Format: date-time */
-            fetched_at: string;
+            refresh_available_at: string | null;
+            /** @enum {string} */
+            refresh_outcome: "saved" | "missing" | "updated" | "cooldown" | "backoff" | "failed" | "capacity";
         };
         AdminStats: {
             /** Format: date-time */
@@ -2193,7 +2205,7 @@ export interface operations {
     getShowcaseFae: {
         parameters: {
             query?: {
-                /** @description Force refresh leaderboard data from zfae.net */
+                /** @description Explicitly refresh FAE data subject to durable cooldown and shared host backoff. False returns a stored observation at any age, or automatically loads a missing observation and bootstraps a missing FAE profile. */
                 fresh?: boolean;
             };
             header?: never;
@@ -2204,7 +2216,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Showcase ZFAE leaderboard ratings */
+            /** @description Showcase FAE leaderboard ratings */
             200: {
                 headers: {
                     [name: string]: unknown;
