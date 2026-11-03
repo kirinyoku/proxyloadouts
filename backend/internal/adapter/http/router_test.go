@@ -785,15 +785,14 @@ type fakeRouterFaeFetcher struct {
 	err     error
 }
 
-func (f *fakeRouterFaeFetcher) FetchProfileRatings(_ context.Context, _ string, _ bool) (map[int]*domain.FaeRating, error) {
+func (f *fakeRouterFaeFetcher) LoadProfile(_ context.Context, uid string) (*domain.FaeProfile, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
-	return f.ratings, nil
+	return &domain.FaeProfile{UID: uid, Current: &domain.FaeObservation{ObservedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), Agents: f.ratings}, Outcome: domain.FaeRefreshSaved}, nil
 }
-
-func (f *fakeRouterFaeFetcher) LookupByFingerprint(_ string, _ int, _ string) (*domain.FaeRating, bool) {
-	return nil, false
+func (f *fakeRouterFaeFetcher) RefreshProfile(ctx context.Context, uid string) (*domain.FaeProfile, error) {
+	return f.LoadProfile(ctx, uid)
 }
 
 func TestShowcaseFaeEndpoint(t *testing.T) {
@@ -801,7 +800,7 @@ func TestShowcaseFaeEndpoint(t *testing.T) {
 		f := newFixture(t)
 		rank := 14
 		score := 82.6
-		f.scanner.WithFaeFetcher(&fakeRouterFaeFetcher{
+		fakeFae := &fakeRouterFaeFetcher{
 			ratings: map[int]*domain.FaeRating{
 				1091: {
 					Status: domain.FaeStatusLive,
@@ -809,7 +808,8 @@ func TestShowcaseFaeEndpoint(t *testing.T) {
 					Score:  &score,
 				},
 			},
-		})
+		}
+		f.scanner.WithFae(fakeFae, fakeFae)
 
 		rec := f.do(t, http.MethodGet, "/api/v1/showcase/1504687050/fae?fresh=true", nil)
 		if rec.Code != http.StatusOK {
@@ -1353,5 +1353,45 @@ func TestAuthRateLimit(t *testing.T) {
 	blocked := f.do(t, http.MethodGet, "/api/v1/auth/discord/login", nil)
 	if blocked.Code != http.StatusTooManyRequests {
 		t.Fatalf("expected 429 Too Many Requests on 3rd rapid login attempt, got %d", blocked.Code)
+	}
+}
+
+type routerFaeLoader func(context.Context, string) (*domain.FaeProfile, error)
+
+func (f routerFaeLoader) LoadProfile(ctx context.Context, uid string) (*domain.FaeProfile, error) {
+	return f(ctx, uid)
+}
+
+func TestShowcaseFaeReadsExposeActualObservationAndColdNull(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	store := sqlite.NewFaeStore(f.db)
+	f.scanner.WithFae(routerFaeLoader(store.ReadProfile), nil)
+	cold := f.do(t, http.MethodGet, "/api/v1/showcase/1504687050/fae", nil)
+	var response struct {
+		FetchedAt *time.Time               `json:"fetched_at"`
+		Outcome   domain.FaeRefreshOutcome `json:"refresh_outcome"`
+	}
+	if err := json.Unmarshal(cold.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.FetchedAt != nil || response.Outcome != domain.FaeRefreshMissing {
+		t.Fatalf("cold metadata = %+v", response)
+	}
+	observed := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	if _, err := store.ReserveRefresh(ctx, "1504687050", observed, 20*time.Minute, 1000); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveObservation(ctx, "1504687050", domain.FaeObservation{ObservedAt: observed, Agents: map[int]*domain.FaeRating{}}); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		rec := f.do(t, http.MethodGet, "/api/v1/showcase/1504687050/fae", nil)
+		if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		if response.FetchedAt == nil || !response.FetchedAt.Equal(observed) {
+			t.Fatalf("cached timestamp = %+v, want%v", response, observed)
+		}
 	}
 }

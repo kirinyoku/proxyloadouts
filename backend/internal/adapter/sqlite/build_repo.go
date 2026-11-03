@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -254,27 +255,35 @@ func (r *SQLiteBuildRepo) UpdateVisibility(ctx context.Context, id uuid.UUID, is
 	return nil
 }
 
-// UpdateFaeRating updates the fae_data JSON payload of an agent build without modifying updated_at.
-func (r *SQLiteBuildRepo) UpdateFaeRating(ctx context.Context, id uuid.UUID, rating *domain.FaeRating) error {
+// AttachFaeRating atomically retains the first rating and returns it without modifying updated_at.
+func (r *SQLiteBuildRepo) AttachFaeRating(ctx context.Context, id uuid.UUID, rating *domain.FaeRating) (*domain.FaeRating, error) {
 	var faeData sql.NullString
 	if rating != nil {
 		bytes, err := json.Marshal(rating)
 		if err != nil {
-			return fmt.Errorf("failed to marshal fae rating: %w", err)
+			return nil, fmt.Errorf("failed to marshal fae rating: %w", err)
 		}
 		faeData = sql.NullString{String: string(bytes), Valid: true}
 	}
-	res, err := r.db.ExecContext(ctx,
-		`UPDATE agent_builds SET fae_data = ? WHERE id = ?;`,
+	var persisted sql.NullString
+	err := r.db.QueryRowContext(ctx,
+		`UPDATE agent_builds SET fae_data = COALESCE(fae_data, ?) WHERE id = ? RETURNING fae_data;`,
 		faeData, id.String(),
-	)
+	).Scan(&persisted)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("%w: agent build %s", domain.ErrNotFound, id)
+	}
 	if err != nil {
-		return fmt.Errorf("failed to update fae rating for build %s: %w", id, err)
+		return nil, fmt.Errorf("failed to attach fae rating for build %s: %w", id, err)
 	}
-	if affected, _ := res.RowsAffected(); affected == 0 {
-		return fmt.Errorf("%w: agent build %s", domain.ErrNotFound, id)
+	if !persisted.Valid {
+		return nil, nil
 	}
-	return nil
+	var attached domain.FaeRating
+	if err := json.Unmarshal([]byte(persisted.String), &attached); err != nil {
+		return nil, fmt.Errorf("failed to decode attached fae rating for build %s: %w", id, err)
+	}
+	return &attached, nil
 }
 
 // GetPublicByID returns a public build and its owner info, or domain.ErrNotFound if

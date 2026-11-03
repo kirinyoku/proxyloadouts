@@ -146,11 +146,12 @@ func run() error {
 	negCache := inmemory.NewNegativeCache(cfg.NegativeCacheMaxItems, time.Minute)
 	defer negCache.Close()
 
-	faeClient := zfae.NewClient()
+	faeProfiles := sqlite.NewFaeStore(db)
+	faeClient := zfae.NewClient(faeProfiles)
 	scanner := scannersvc.New(fairyClient, scanCache, scannersvc.Options{
 		NegativeCache: negCache,
 		NegativeTTL:   60 * time.Second,
-	}).WithFaeFetcher(faeClient)
+	}).WithFae(faeClient, faeClient)
 
 	// 6. Initialize Discord adapter and application services
 	discordClient := discordadapter.NewClient(discordadapter.Options{
@@ -184,7 +185,7 @@ func run() error {
 		return inmemory.GetOrFetchValue(ctx, enrichStore, key, cfg.BuildEnrichTTL, compute)
 	}, cfg.BuildEnrichTTL)
 
-	buildSvc := buildsvc.New(buildsRepo, accounts, buildsvc.WithScanner(scanner), buildsvc.WithEnricher(localizer), buildsvc.WithUsers(users), buildsvc.WithFae(faeClient))
+	buildSvc := buildsvc.New(buildsRepo, accounts, buildsvc.WithScanner(scanner), buildsvc.WithEnricher(localizer), buildsvc.WithUsers(users), buildsvc.WithFae(faeProfiles))
 	teamSvc := teamsvc.New(teamsRepo, buildsRepo, accounts, teamsvc.WithEnricher(localizer), teamsvc.WithUsers(users))
 	slog.Info("application services initialized",
 		"build_enrich_cache_items", cfg.BuildEnrichMaxItems,

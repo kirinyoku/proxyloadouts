@@ -633,24 +633,41 @@ func TestFetchFreshRawProfile_FetcherError(t *testing.T) {
 }
 
 type fakeFaeFetcher struct {
-	ratings map[int]*domain.FaeRating
-	err     error
-	byFP    map[string]*domain.FaeRating
+	ratings   map[int]*domain.FaeRating
+	err       error
+	loads     int
+	refreshes int
 }
 
-func (f *fakeFaeFetcher) FetchProfileRatings(_ context.Context, _ string, _ bool) (map[int]*domain.FaeRating, error) {
+func (f *fakeFaeFetcher) LoadProfile(_ context.Context, uid string) (*domain.FaeProfile, error) {
+	f.loads++
 	if f.err != nil {
 		return nil, f.err
 	}
-	return f.ratings, nil
+	return &domain.FaeProfile{UID: uid, Current: &domain.FaeObservation{Agents: f.ratings}}, nil
+}
+func (f *fakeFaeFetcher) RefreshProfile(ctx context.Context, uid string) (*domain.FaeProfile, error) {
+	f.refreshes++
+	return f.LoadProfile(ctx, uid)
 }
 
-func (f *fakeFaeFetcher) LookupByFingerprint(_ string, _ int, fingerprint string) (*domain.FaeRating, bool) {
-	if f.byFP != nil {
-		r, ok := f.byFP[fingerprint]
-		return r, ok
+func TestFetchFaeByUIDRoutesLoadAndExplicitRefresh(t *testing.T) {
+	svc, cache := newTestService(&fakeFetcher{}, time.Minute)
+	t.Cleanup(cache.Close)
+	loader, refresher := &fakeFaeFetcher{}, &fakeFaeFetcher{}
+	svc.WithFae(loader, refresher)
+	if _, err := svc.FetchFaeByUID(context.Background(), "1301806568", false); err != nil {
+		t.Fatal(err)
 	}
-	return nil, false
+	if loader.loads != 1 || loader.refreshes != 0 || refresher.refreshes != 0 {
+		t.Errorf("FetchFaeByUID(load) calls = loader %d, refresh %d, want 1, 0", loader.loads, refresher.refreshes)
+	}
+	if _, err := svc.FetchFaeByUID(context.Background(), "1301806568", true); err != nil {
+		t.Fatal(err)
+	}
+	if loader.loads != 1 || refresher.refreshes != 1 {
+		t.Errorf("FetchFaeByUID(refresh) calls = loader %d, refresh %d, want 1, 1", loader.loads, refresher.refreshes)
+	}
 }
 
 func TestFetchFaeByUID(t *testing.T) {
@@ -672,8 +689,8 @@ func TestFetchFaeByUID(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(ratings) != 0 {
-			t.Fatalf("expected empty map, got %d items", len(ratings))
+		if len(ratings.Ratings()) != 0 {
+			t.Fatalf("expected empty map, got %d items", len(ratings.Ratings()))
 		}
 	})
 
@@ -690,13 +707,13 @@ func TestFetchFaeByUID(t *testing.T) {
 				},
 			},
 		}
-		svc.WithFaeFetcher(fae)
+		svc.WithFae(fae, fae)
 
 		ratings, err := svc.FetchFaeByUID(context.Background(), "1301806568", false)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(ratings) != 1 || *ratings[1091].Rank != 10 {
+		if len(ratings.Ratings()) != 1 || *ratings.Ratings()[1091].Rank != 10 {
 			t.Fatalf("unexpected ratings returned: %+v", ratings)
 		}
 	})

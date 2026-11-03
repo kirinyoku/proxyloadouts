@@ -2,37 +2,35 @@ package zfae
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
-
-	"golang.org/x/sync/singleflight"
 
 	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
 
 const (
-	DefaultBaseURL               = "https://zfae.net"
-	DefaultTimeout               = 15 * time.Second
-	DefaultTTL                   = 20 * time.Minute
-	DefaultCooldown              = 2 * time.Minute
-	DefaultMaxConcurrentSwitches = 5
-	DefaultUserAgent             = "ProxyLoadouts/1.0 (+https://github.com/kirinyoku/proxyloadouts)"
+	DefaultBaseURL            = "https://zfae.net"
+	DefaultTimeout            = 15 * time.Second
+	DefaultCooldown           = 20 * time.Minute
+	DefaultUserAgent          = "ProxyLoadouts/1.0 (+https://github.com/kirinyoku/proxyloadouts)"
+	DefaultProfileLimit int64 = 8 << 20
+	DefaultCardLimit    int64 = 1 << 20
 )
+
+var pipeline = make(chan struct{}, 1)
+var nextRequestStart time.Time
 
 type Option func(*Client)
 
 func WithBaseURL(rawURL string) Option {
-	return func(c *Client) {
-		c.baseURL = strings.TrimRight(rawURL, "/")
-	}
+	return func(c *Client) { c.baseURL = strings.TrimRight(rawURL, "/") }
 }
-
 func WithHTTPClient(hc *http.Client) Option {
 	return func(c *Client) {
 		if hc != nil {
@@ -40,23 +38,6 @@ func WithHTTPClient(hc *http.Client) Option {
 		}
 	}
 }
-
-func WithTTL(ttl time.Duration) Option {
-	return func(c *Client) {
-		if ttl > 0 {
-			c.ttl = ttl
-		}
-	}
-}
-
-func WithCooldown(cooldown time.Duration) Option {
-	return func(c *Client) {
-		if cooldown > 0 {
-			c.cooldown = cooldown
-		}
-	}
-}
-
 func WithUserAgent(ua string) Option {
 	return func(c *Client) {
 		if ua != "" {
@@ -65,344 +46,325 @@ func WithUserAgent(ua string) Option {
 	}
 }
 
-func WithMaxConcurrentSwitches(n int) Option {
-	return func(c *Client) {
-		if n > 0 {
-			c.maxConcurrentSwitches = n
-		}
-	}
-}
-
-type ProfileResult struct {
-	UID                   string
-	Ratings               map[int]*domain.FaeRating
-	AllRatings            []*domain.FaeRating
-	ByFingerprint         map[string]*domain.FaeRating
-	ByAgentAndFingerprint map[string]*domain.FaeRating
-	FetchedAt             time.Time
-	refreshErr            error
-}
-
-type cachedProfile struct {
-	result    *ProfileResult
-	expiresAt time.Time
-}
-
+// Client loads missing observations and refreshes profiles through a shared pipeline.
 type Client struct {
-	baseURL               string
-	httpClient            *http.Client
-	ttl                   time.Duration
-	cooldown              time.Duration
-	userAgent             string
-	maxConcurrentSwitches int
-
-	mu                sync.RWMutex
-	cache             map[string]*cachedProfile
-	lastFetchShowcase map[string]time.Time
-
-	sflight singleflight.Group
+	store        domain.FaeStore
+	baseURL      string
+	httpClient   *http.Client
+	userAgent    string
+	pacing       time.Duration
+	profileLimit int64
+	cardLimit    int64
 }
 
-var _ domain.FaeFetcher = (*Client)(nil)
+var _ domain.FaeRefresher = (*Client)(nil)
+var _ domain.FaeLoader = (*Client)(nil)
 
-func NewClient(opts ...Option) *Client {
+// NewClient requires a durable store so refresh admission survives restarts.
+func NewClient(store domain.FaeStore, opts ...Option) *Client {
 	c := &Client{
-		baseURL:               DefaultBaseURL,
-		httpClient:            &http.Client{Timeout: DefaultTimeout},
-		ttl:                   DefaultTTL,
-		cooldown:              DefaultCooldown,
-		userAgent:             DefaultUserAgent,
-		maxConcurrentSwitches: DefaultMaxConcurrentSwitches,
-		cache:                 make(map[string]*cachedProfile),
-		lastFetchShowcase:     make(map[string]time.Time),
+		store:        store,
+		baseURL:      DefaultBaseURL,
+		httpClient:   &http.Client{Timeout: DefaultTimeout},
+		userAgent:    DefaultUserAgent,
+		pacing:       500 * time.Millisecond,
+		profileLimit: DefaultProfileLimit,
+		cardLimit:    DefaultCardLimit,
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
+	transport := *c.httpClient
+	transport.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	c.httpClient = &transport
 	return c
 }
 
-func (c *Client) FetchProfileRatings(ctx context.Context, uid string, forceRefresh bool) (map[int]*domain.FaeRating, error) {
-	res, err := c.FetchProfileDetailed(ctx, uid, forceRefresh)
+// LoadProfile preserves stored observations regardless of age and fetches only on a miss.
+// Once a cold fill begins, it continues if the caller cancels, for at most 45 seconds.
+func (c *Client) LoadProfile(ctx context.Context, uid string) (*domain.FaeProfile, error) {
+	p, err := c.store.ReadProfile(ctx, uid)
 	if err != nil {
 		return nil, err
 	}
-	return res.Ratings, nil
-}
-
-func (c *Client) LookupByFingerprint(uid string, agentID int, fingerprint string) (*domain.FaeRating, bool) {
-	if uid == "" || fingerprint == "" {
-		return nil, false
+	if p.Current != nil {
+		return p, nil
 	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	cached, ok := c.cache[uid]
-	if !ok || cached == nil || cached.result == nil {
-		return nil, false
+	select {
+	case pipeline <- struct{}{}:
+		defer func() { <-pipeline }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
-	if agentID > 0 {
-		key := fmt.Sprintf("%d:%s", agentID, fingerprint)
-		if r, ok := cached.result.ByAgentAndFingerprint[key]; ok && r != nil {
-			return r, true
-		}
-	}
-	if r, ok := cached.result.ByFingerprint[fingerprint]; ok && r != nil {
-		return r, true
-	}
-	return nil, false
-}
-
-func (c *Client) FetchProfileDetailed(ctx context.Context, uid string, forceRefresh bool) (*ProfileResult, error) {
-	if !forceRefresh {
-		c.mu.RLock()
-		if cached, ok := c.cache[uid]; ok && time.Now().Before(cached.expiresAt) {
-			c.mu.RUnlock()
-			return cached.result, nil
-		}
-		c.mu.RUnlock()
-	}
-
-	key := uid
-	val, err, _ := c.sflight.Do(key, func() (any, error) {
-		if !forceRefresh {
-			c.mu.RLock()
-			if cached, ok := c.cache[uid]; ok && time.Now().Before(cached.expiresAt) {
-				c.mu.RUnlock()
-				return cached.result, nil
-			}
-			c.mu.RUnlock()
-		}
-
-		return c.doFetchProfile(ctx, uid)
-	})
-	result, _ := val.(*ProfileResult)
-	if forceRefresh && result != nil && result.refreshErr != nil {
-		return nil, result.refreshErr
-	}
+	p, err = c.store.ReadProfile(ctx, uid)
 	if err != nil {
 		return nil, err
 	}
-	return result, nil
-}
-
-func (c *Client) doFetchProfile(ctx context.Context, uid string) (*ProfileResult, error) {
-	preHTML, preStatusCode, err := c.getProfileHTML(ctx, uid)
-	if err != nil && preStatusCode != http.StatusNotFound {
+	if p.Current != nil || (p.RefreshAvailableAt != nil && time.Now().Before(*p.RefreshAvailableAt)) {
+		return p, nil
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-
-	preCards := ParseProfileCards(preHTML)
-
-	didRefresh := false
-
-	c.mu.Lock()
-	last, hasCooldown := c.lastFetchShowcase[uid]
-	canRefresh := !hasCooldown || time.Since(last) >= c.cooldown
-	if canRefresh {
-		c.lastFetchShowcase[uid] = time.Now()
-	}
-	c.mu.Unlock()
-
-	var refreshErr error
-	if canRefresh {
-		refreshErr = c.postFetchShowcase(ctx, uid)
-		didRefresh = refreshErr == nil
-	}
-
-	cardsToProcess := preCards
-	var postCards []CardParseResult
-	if didRefresh {
-		postHTML, postStatus, postErr := c.getProfileHTML(ctx, uid)
-		refreshErr = postErr
-		if postStatus == http.StatusNotFound {
-			refreshErr = fmt.Errorf("%w: zfae profile %s", domain.ErrNotFound, uid)
-		}
-		if postErr == nil && postStatus == http.StatusOK {
-			postCards = ParseProfileCards(postHTML)
-			if len(postCards) > 0 {
-				cardsToProcess = postCards
-			}
-		}
-	}
-
-	if len(cardsToProcess) == 0 && preStatusCode == http.StatusNotFound {
-		return &ProfileResult{refreshErr: refreshErr}, fmt.Errorf("%w: zfae profile %s", domain.ErrNotFound, uid)
-	}
-
-	c.normalizeCardsLeaderboard(ctx, cardsToProcess)
-
-	now := time.Now()
-	res := &ProfileResult{
-		UID:                   uid,
-		Ratings:               make(map[int]*domain.FaeRating),
-		AllRatings:            make([]*domain.FaeRating, 0, len(cardsToProcess)+len(preCards)),
-		ByFingerprint:         make(map[string]*domain.FaeRating),
-		ByAgentAndFingerprint: make(map[string]*domain.FaeRating),
-		FetchedAt:             now,
-		refreshErr:            refreshErr,
-	}
-
-	for _, card := range preCards {
-		if card.Rating != nil {
-			res.AllRatings = append(res.AllRatings, card.Rating)
-			if card.Rating.EquipmentFingerprint != nil && *card.Rating.EquipmentFingerprint != "" {
-				res.ByFingerprint[*card.Rating.EquipmentFingerprint] = card.Rating
-				if card.AgentID > 0 {
-					res.ByAgentAndFingerprint[fmt.Sprintf("%d:%s", card.AgentID, *card.Rating.EquipmentFingerprint)] = card.Rating
-				}
-			}
-		}
-	}
-
-	for _, card := range cardsToProcess {
-		if card.Rating != nil {
-			res.Ratings[card.AgentID] = card.Rating
-			res.AllRatings = append(res.AllRatings, card.Rating)
-			if card.Rating.EquipmentFingerprint != nil && *card.Rating.EquipmentFingerprint != "" {
-				res.ByFingerprint[*card.Rating.EquipmentFingerprint] = card.Rating
-				if card.AgentID > 0 {
-					res.ByAgentAndFingerprint[fmt.Sprintf("%d:%s", card.AgentID, *card.Rating.EquipmentFingerprint)] = card.Rating
-				}
-			}
-		}
-	}
-
-	c.mu.Lock()
-	c.cache[uid] = &cachedProfile{
-		result:    res,
-		expiresAt: now.Add(c.ttl),
-	}
-	c.mu.Unlock()
-
-	return res, nil
+	fillCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 45*time.Second)
+	defer cancel()
+	return c.fetchProfile(fillCtx, uid, c.load)
 }
 
-func (c *Client) normalizeCardsLeaderboard(ctx context.Context, cards []CardParseResult) {
-	sem := make(chan struct{}, c.maxConcurrentSwitches)
-	var wg sync.WaitGroup
+func (c *Client) RefreshProfile(ctx context.Context, uid string) (*domain.FaeProfile, error) {
+	select {
+	case pipeline <- struct{}{}:
+		defer func() { <-pipeline }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	return c.fetchProfile(ctx, uid, c.refresh)
+}
 
+func (c *Client) fetchProfile(ctx context.Context, uid string, fetch func(context.Context, string) error) (*domain.FaeProfile, error) {
+	admission, err := c.store.ReserveRefresh(ctx, uid, time.Now(), DefaultCooldown, 1000)
+	if err != nil {
+		return nil, err
+	}
+	if admission.Outcome != domain.FaeRefreshUpdated {
+		return c.result(ctx, uid, admission)
+	}
+	err = fetch(ctx, uid)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if !errors.Is(err, domain.ErrSourceUnavailable) && !errors.Is(err, domain.ErrRateLimited) {
+			return nil, err
+		}
+		admission.Outcome = domain.FaeRefreshFailed
+		if errors.Is(err, domain.ErrRateLimited) {
+			admission.Outcome = domain.FaeRefreshBackoff
+		}
+	}
+	return c.result(ctx, uid, admission)
+}
+
+func (c *Client) result(ctx context.Context, uid string, admission domain.FaeRefreshAdmission) (*domain.FaeProfile, error) {
+	p, err := c.store.ReadProfile(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	p.Outcome = admission.Outcome
+	if !admission.AvailableAt.IsZero() && (p.RefreshAvailableAt == nil || admission.AvailableAt.After(*p.RefreshAvailableAt)) {
+		p.RefreshAvailableAt = &admission.AvailableAt
+	}
+	return p, nil
+}
+
+func (c *Client) load(ctx context.Context, uid string) error {
+	cards, missing, err := c.profile(ctx, uid)
+	if err != nil {
+		return err
+	}
+	if missing {
+		return c.fetchShowcase(ctx, uid, true)
+	}
+	if err := c.normalize(ctx, cards); err != nil {
+		return err
+	}
+	return c.store.SaveObservation(ctx, uid, observation(cards))
+}
+
+func (c *Client) refresh(ctx context.Context, uid string) error {
+	pre, preMissing, err := c.profile(ctx, uid)
+	if err != nil {
+		return err
+	}
+	if !preMissing {
+		if err := c.normalize(ctx, pre); err != nil {
+			return err
+		}
+		if err := c.store.SaveObservation(ctx, uid, observation(pre)); err != nil {
+			return err
+		}
+	}
+	return c.fetchShowcase(ctx, uid, preMissing)
+}
+
+func (c *Client) fetchShowcase(ctx context.Context, uid string, preMissing bool) error {
+	if _, _, err := c.request(ctx, http.MethodPost, "/profile?query", url.Values{"task": {"fetchShowcase"}, "userUid": {uid}}, c.cardLimit); err != nil {
+		return err
+	}
+	post, postMissing, err := c.profile(ctx, uid)
+	if err != nil {
+		return err
+	}
+	if postMissing && !preMissing {
+		return fmt.Errorf("%w: populated profile disappeared", domain.ErrSourceUnavailable)
+	}
+	if err := c.normalize(ctx, post); err != nil {
+		return err
+	}
+	return c.store.SaveObservation(ctx, uid, observation(post))
+}
+
+func observation(cards []CardParseResult) domain.FaeObservation {
+	now := time.Now().UTC()
+	ratings := make(map[int]*domain.FaeRating, len(cards))
+	for _, card := range cards {
+		r := card.Rating.Clone()
+		r.ObservedAt = &now
+		if r.Rank != nil {
+			r.Status = domain.FaeStatusSnapshot
+		}
+		ratings[card.AgentID] = r
+	}
+	return domain.FaeObservation{ObservedAt: now, Agents: ratings}
+}
+
+func (c *Client) profile(ctx context.Context, uid string) ([]CardParseResult, bool, error) {
+	body, status, err := c.request(ctx, http.MethodGet, "/profile/"+url.PathEscape(uid), nil, c.profileLimit)
+	if err != nil {
+		return nil, false, err
+	}
+	if status == http.StatusNotFound {
+		return nil, true, nil
+	}
+	if !reProfileDocument.MatchString(body) {
+		return nil, false, fmt.Errorf("%w: incomplete zfae profile document", domain.ErrSourceUnavailable)
+	}
+	cards := ParseProfileCards(body)
+	if len(cards) == 0 || len(cards) != len(reCardStart.FindAllStringIndex(body, -1)) {
+		return nil, false, fmt.Errorf("%w: malformed zfae profile", domain.ErrSourceUnavailable)
+	}
+	return cards, false, nil
+}
+
+func (c *Client) normalize(ctx context.Context, cards []CardParseResult) error {
 	for i := range cards {
 		card := &cards[i]
-		if card.ActiveLeaderboardID > 0 && card.AssessmentID != "" {
-			wg.Add(1)
-			go func(cRef *CardParseResult) {
-				defer wg.Done()
-				select {
-				case sem <- struct{}{}:
-					defer func() { <-sem }()
-				case <-ctx.Done():
-					return
-				}
-
-				html, err := c.postSwitchLeaderboard(ctx, cRef.AssessmentID, 0)
-				if err != nil {
-					return
-				}
-				if newCard, ok := ParseCardHTML(html); ok && newCard.Rating != nil {
-					cRef.Rating = newCard.Rating
-					cRef.ActiveLeaderboardID = newCard.ActiveLeaderboardID
-				}
-			}(card)
+		if card.ActiveLeaderboardID == 0 {
+			continue
 		}
+		if card.AssessmentID == "" {
+			return fmt.Errorf("%w: missing assessment", domain.ErrSourceUnavailable)
+		}
+		body, _, err := c.request(ctx, http.MethodPost, "/profile?query", url.Values{"task": {"switchLeaderboard"}, "assessmentId": {card.AssessmentID}, "leaderboardId": {"0"}, "showDedicatedLink": {"0"}}, c.cardLimit)
+		if err != nil {
+			return err
+		}
+		normalized, ok := ParseCardHTML(body)
+		if !ok || len(reCardStart.FindAllStringIndex(body, 2)) != 1 || normalized.AgentID != card.AgentID || normalized.AssessmentID != card.AssessmentID {
+			return fmt.Errorf("%w: invalid normalized card", domain.ErrSourceUnavailable)
+		}
+		if !normalized.HasActiveLeaderboard || normalized.ActiveLeaderboardID != 0 {
+			return fmt.Errorf("%w: invalid normalized card", domain.ErrSourceUnavailable)
+		}
+		*card = normalized
 	}
-
-	wg.Wait()
-}
-
-func (c *Client) getProfileHTML(ctx context.Context, uid string) (string, int, error) {
-	reqURL := fmt.Sprintf("%s/profile/%s", c.baseURL, url.PathEscape(uid))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to create profile request: %w", err)
-	}
-	req.Header.Set("User-Agent", c.userAgent)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to fetch zfae profile: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return "", resp.StatusCode, nil
-	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return "", resp.StatusCode, fmt.Errorf("%w: zfae rate limit", domain.ErrRateLimited)
-	}
-	if resp.StatusCode >= http.StatusInternalServerError {
-		return "", resp.StatusCode, fmt.Errorf("%w: zfae upstream error %d", domain.ErrSourceUnavailable, resp.StatusCode)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", resp.StatusCode, fmt.Errorf("zfae unexpected status: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", resp.StatusCode, fmt.Errorf("failed to read zfae profile body: %w", err)
-	}
-	return string(body), resp.StatusCode, nil
-}
-
-func (c *Client) postFetchShowcase(ctx context.Context, uid string) error {
-	reqURL := c.baseURL + "/profile?query"
-	form := url.Values{
-		"task":    {"fetchShowcase"},
-		"userUid": {uid},
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(form.Encode()))
-	if err != nil {
-		return fmt.Errorf("failed to create fetchShowcase request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", c.userAgent)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to post fetchShowcase: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return fmt.Errorf("%w: zfae rate limit", domain.ErrRateLimited)
-	}
-	if resp.StatusCode >= http.StatusInternalServerError {
-		return fmt.Errorf("%w: zfae upstream error %d", domain.ErrSourceUnavailable, resp.StatusCode)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("zfae fetchShowcase status: %d", resp.StatusCode)
-	}
-
 	return nil
 }
 
-func (c *Client) postSwitchLeaderboard(ctx context.Context, assessmentID string, leaderboardID int) (string, error) {
-	reqURL := c.baseURL + "/profile?query"
-	form := url.Values{
-		"task":              {"switchLeaderboard"},
-		"assessmentId":      {assessmentID},
-		"leaderboardId":     {strconv.Itoa(leaderboardID)},
-		"showDedicatedLink": {"0"},
+func (c *Client) request(ctx context.Context, method, path string, form url.Values, limit int64) (string, int, error) {
+	if err := waitUntil(ctx, nextRequestStart); err != nil {
+		return "", 0, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(form.Encode()))
+	backoff, err := c.store.HostBackoff(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to create switchLeaderboard request: %w", err)
+		return "", 0, err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if time.Now().Before(backoff) {
+		return "", 0, domain.ErrRateLimited
+	}
+	var body io.Reader
+	if form != nil {
+		body = strings.NewReader(form.Encode())
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
+	if err != nil {
+		return "", 0, err
+	}
 	req.Header.Set("User-Agent", c.userAgent)
-
+	if form != nil {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	nextRequestStart = time.Now().Add(c.pacing)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to post switchLeaderboard: %w", err)
+		if ctx.Err() != nil {
+			return "", 0, ctx.Err()
+		}
+		if backoffErr := c.persistBackoff(ctx, time.Now().Add(10*time.Second)); backoffErr != nil {
+			return "", 0, backoffErr
+		}
+		return "", 0, fmt.Errorf("%w: %w", domain.ErrSourceUnavailable, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("zfae switchLeaderboard status: %d", resp.StatusCode)
+	status := resp.StatusCode
+	if status == http.StatusTooManyRequests || status >= http.StatusInternalServerError {
+		delay := 10 * time.Second
+		if status == http.StatusTooManyRequests {
+			delay = time.Minute
+		}
+		deadline := time.Now().Add(delay)
+		if status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable {
+			if parsed, ok := retryAfter(resp.Header.Get("Retry-After"), time.Now()); ok {
+				deadline = parsed
+			}
+		}
+		if err := c.persistBackoff(ctx, deadline); err != nil {
+			return "", status, err
+		}
+		if status == http.StatusTooManyRequests {
+			return "", status, domain.ErrRateLimited
+		}
+		return "", status, domain.ErrSourceUnavailable
 	}
-
-	body, err := io.ReadAll(resp.Body)
+	if status == http.StatusNotFound && method == http.MethodGet {
+		return "", status, nil
+	}
+	if status != http.StatusOK {
+		return "", status, fmt.Errorf("%w: zfae status %d", domain.ErrSourceUnavailable, status)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
-		return "", fmt.Errorf("failed to read switchLeaderboard body: %w", err)
+		if ctx.Err() != nil {
+			return "", status, ctx.Err()
+		}
+		if backoffErr := c.persistBackoff(ctx, time.Now().Add(10*time.Second)); backoffErr != nil {
+			return "", status, backoffErr
+		}
+		return "", status, fmt.Errorf("%w: %w", domain.ErrSourceUnavailable, err)
 	}
-	return string(body), nil
+	if int64(len(data)) > limit {
+		return "", status, fmt.Errorf("%w: zfae response exceeds limit", domain.ErrSourceUnavailable)
+	}
+	return string(data), status, nil
+}
+
+func retryAfter(value string, now time.Time) (time.Time, bool) {
+	if seconds, err := strconv.ParseInt(strings.TrimSpace(value), 10, 32); err == nil && seconds >= 0 {
+		return now.Add(time.Duration(seconds) * time.Second), true
+	}
+	if deadline, err := http.ParseTime(value); err == nil && !deadline.Before(now) {
+		return deadline, true
+	}
+	return time.Time{}, false
+}
+
+func waitUntil(ctx context.Context, deadline time.Time) error {
+	duration := time.Until(deadline)
+	if duration <= 0 {
+		return ctx.Err()
+	}
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (c *Client) persistBackoff(ctx context.Context, deadline time.Time) error {
+	policyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+	defer cancel()
+	return c.store.ExtendHostBackoff(policyCtx, deadline)
 }

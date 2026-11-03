@@ -214,9 +214,11 @@ func (h *ShowcaseHandler) handleRoster(w http.ResponseWriter, r *http.Request) {
 }
 
 type showcaseFaeResponse struct {
-	UID       string                       `json:"uid"`
-	Agents    map[string]*domain.FaeRating `json:"agents"`
-	FetchedAt string                       `json:"fetched_at"`
+	UID                string                       `json:"uid"`
+	Agents             map[string]*domain.FaeRating `json:"agents"`
+	FetchedAt          *time.Time                   `json:"fetched_at"`
+	RefreshAvailableAt *time.Time                   `json:"refresh_available_at"`
+	RefreshOutcome     domain.FaeRefreshOutcome     `json:"refresh_outcome"`
 }
 
 func (h *ShowcaseHandler) handleFae(w http.ResponseWriter, r *http.Request) {
@@ -229,20 +231,27 @@ func (h *ShowcaseHandler) handleFae(w http.ResponseWriter, r *http.Request) {
 	freshParam := r.URL.Query().Get("fresh")
 	forceRefresh := freshParam == "true" || freshParam == "1"
 
-	ratings, err := h.scanner.FetchFaeByUID(r.Context(), uid, forceRefresh)
+	profile, err := h.scanner.FetchFaeByUID(r.Context(), uid, forceRefresh)
 	if err != nil {
 		respondDomainError(w, r, err)
 		return
 	}
 
+	ratings := profile.Ratings()
 	agentsMap := make(map[string]*domain.FaeRating, len(ratings))
 	for agentID, rating := range ratings {
 		agentsMap[strconv.Itoa(agentID)] = rating
 	}
 
+	var observedAt *time.Time
+	if profile.Current != nil {
+		observedAt = &profile.Current.ObservedAt
+	}
 	respondJSON(w, http.StatusOK, showcaseFaeResponse{
-		UID:       uid,
-		Agents:    agentsMap,
-		FetchedAt: time.Now().UTC().Format(time.RFC3339),
+		UID:                uid,
+		Agents:             agentsMap,
+		FetchedAt:          observedAt,
+		RefreshAvailableAt: profile.RefreshAvailableAt,
+		RefreshOutcome:     profile.Outcome,
 	})
 }

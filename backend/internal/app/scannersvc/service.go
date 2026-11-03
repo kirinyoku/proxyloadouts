@@ -135,16 +135,19 @@ type Options struct {
 
 // Service scans showcases by UID.
 type Service struct {
-	fetcher     Fetcher
-	cache       Cache
-	negCache    NegativeCache
-	faeFetcher  domain.FaeFetcher
-	fallbackTTL time.Duration
-	negativeTTL time.Duration
+	fetcher      Fetcher
+	cache        Cache
+	negCache     NegativeCache
+	faeLoader    domain.FaeLoader
+	faeRefresher domain.FaeRefresher
+	fallbackTTL  time.Duration
+	negativeTTL  time.Duration
 }
 
-func (s *Service) WithFaeFetcher(fetcher domain.FaeFetcher) *Service {
-	s.faeFetcher = fetcher
+// WithFae configures initial observation loading and explicit refresh separately.
+func (s *Service) WithFae(loader domain.FaeLoader, refresher domain.FaeRefresher) *Service {
+	s.faeLoader = loader
+	s.faeRefresher = refresher
 	return s
 }
 
@@ -441,21 +444,17 @@ func (s *Service) EnrichAgent(raw *zzz.AvatarData, lang fairy.Language) (*fairy.
 	return s.fetcher.EnrichAgent(raw, lang)
 }
 
-func (s *Service) FetchFaeByUID(ctx context.Context, uid string, forceRefresh bool) (map[int]*domain.FaeRating, error) {
+func (s *Service) FetchFaeByUID(ctx context.Context, uid string, refresh bool) (*domain.FaeProfile, error) {
 	if err := domain.ValidateUID(uid); err != nil {
 		return nil, fmt.Errorf("%w: %w", domain.ErrInvalidInput, err)
 	}
-	if s.faeFetcher == nil {
-		return map[int]*domain.FaeRating{}, nil
+	if refresh && s.faeRefresher != nil {
+		return s.faeRefresher.RefreshProfile(ctx, uid)
 	}
-	ratings, err := s.faeFetcher.FetchProfileRatings(ctx, uid, forceRefresh)
-	if err != nil {
-		return nil, err
+	if s.faeLoader != nil {
+		return s.faeLoader.LoadProfile(ctx, uid)
 	}
-	if ratings == nil {
-		return map[int]*domain.FaeRating{}, nil
-	}
-	return ratings, nil
+	return &domain.FaeProfile{UID: uid, Outcome: domain.FaeRefreshMissing}, nil
 }
 
 func scanCacheKey(uid string) string {

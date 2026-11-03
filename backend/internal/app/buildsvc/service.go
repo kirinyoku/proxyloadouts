@@ -34,13 +34,13 @@ type AgentLocalizer = buildenrich.Localizer
 
 // Service implements build use cases.
 type Service struct {
-	builds     domain.BuildRepository
-	accounts   domain.AccountRepository
-	users      domain.UserRepository
-	scanner    ShowcaseValidator
-	enricher   AgentLocalizer
-	faeFetcher domain.FaeFetcher
-	now        func() time.Time
+	builds    domain.BuildRepository
+	accounts  domain.AccountRepository
+	users     domain.UserRepository
+	scanner   ShowcaseValidator
+	enricher  AgentLocalizer
+	faeReader domain.FaeReader
+	now       func() time.Time
 }
 
 // Option configures optional Service dependencies.
@@ -68,15 +68,15 @@ func WithEnricher(enricher AgentLocalizer) Option {
 	}
 }
 
-// WithFae configures an optional FaeFetcher for ZFAE leaderboard ratings.
-func WithFae(fetcher domain.FaeFetcher) Option {
+// WithFae configures an optional FaeReader for ZFAE leaderboard ratings.
+func WithFae(reader domain.FaeReader) Option {
 	return func(s *Service) {
-		s.faeFetcher = fetcher
+		s.faeReader = reader
 	}
 }
 
-func (s *Service) WithFaeFetcher(fetcher domain.FaeFetcher) *Service {
-	s.faeFetcher = fetcher
+func (s *Service) WithFaeReader(reader domain.FaeReader) *Service {
+	s.faeReader = reader
 	return s
 }
 
@@ -256,20 +256,9 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 
 	fp := domain.ComputeEquipmentFingerprint(rawAvatar)
 	var faeRating *domain.FaeRating
-	if s.faeFetcher != nil && fp != "" {
-		ratings, _ := s.faeFetcher.FetchProfileRatings(ctx, account.UID, false)
-		if liveCard, ok := ratings[extracted.agentID]; ok && liveCard != nil && liveCard.Rank != nil && liveCard.EquipmentFingerprint != nil && *liveCard.EquipmentFingerprint == fp {
-			cloned := liveCard.Clone()
-			cloned.Status = domain.FaeStatusLive
-			cloned.Outdated = false
-			cloned.EquipmentFingerprint = &fp
-			faeRating = cloned
-		} else if matched, found := s.faeFetcher.LookupByFingerprint(account.UID, extracted.agentID, fp); found && matched != nil && matched.Rank != nil {
-			cloned := matched.Clone()
-			cloned.Status = domain.FaeStatusLive
-			cloned.Outdated = false
-			cloned.EquipmentFingerprint = &fp
-			faeRating = cloned
+	if s.faeReader != nil && fp != "" {
+		if profile, err := s.faeReader.ReadProfile(ctx, account.UID); err == nil {
+			faeRating = profile.MatchRating(extracted.agentID, fp)
 		}
 	}
 
@@ -321,7 +310,7 @@ func (s *Service) GetByID(ctx context.Context, buildID uuid.UUID, lang ...string
 	if err != nil {
 		return nil, err
 	}
-	if s.faeFetcher != nil {
+	if s.faeReader != nil {
 		if acc, err := s.accounts.GetByID(ctx, build.GameAccountID); err == nil && acc != nil {
 			s.reconcileFaeRatings(ctx, acc.UID, []*domain.AgentBuild{build})
 		}
@@ -344,7 +333,7 @@ func (s *Service) ListByAccount(ctx context.Context, userID, accountID uuid.UUID
 	if err != nil {
 		return nil, err
 	}
-	if s.faeFetcher != nil && len(builds) > 0 {
+	if s.faeReader != nil && len(builds) > 0 {
 		if acc, err := s.accounts.GetByID(ctx, accountID); err == nil && acc != nil {
 			s.reconcileFaeRatings(ctx, acc.UID, builds)
 		}
@@ -369,7 +358,7 @@ func (s *Service) ListPublicByAccount(ctx context.Context, accountID uuid.UUID, 
 	if err != nil {
 		return nil, err
 	}
-	if s.faeFetcher != nil && len(builds) > 0 {
+	if s.faeReader != nil && len(builds) > 0 {
 		if acc, err := s.accounts.GetByID(ctx, accountID); err == nil && acc != nil {
 			s.reconcileFaeRatings(ctx, acc.UID, builds)
 		}
@@ -557,7 +546,7 @@ func (s *Service) GetPublic(ctx context.Context, buildID uuid.UUID, lang ...stri
 	if err != nil {
 		return nil, err
 	}
-	if s.faeFetcher != nil && owner != nil && owner.UID != "" {
+	if s.faeReader != nil && owner != nil && owner.UID != "" {
 		s.reconcileFaeRatings(ctx, owner.UID, []*domain.AgentBuild{build})
 	}
 
@@ -579,78 +568,39 @@ func (s *Service) GetPublicByID(ctx context.Context, buildID uuid.UUID, lang ...
 }
 
 func (s *Service) reconcileFaeRatings(ctx context.Context, uid string, builds []*domain.AgentBuild) {
-	if s.faeFetcher == nil || uid == "" || len(builds) == 0 {
+	if s.faeReader == nil || uid == "" || len(builds) == 0 {
 		return
 	}
-
-	ratings, err := s.faeFetcher.FetchProfileRatings(ctx, uid, false)
+	profile, err := s.faeReader.ReadProfile(ctx, uid)
 	if err != nil {
-		slog.Warn("failed to fetch zfae ratings during reconciliation", "uid", uid, "error", err)
+		slog.Warn("failed to read saved zfae ratings", "uid", uid, "error", err)
+		return
 	}
-
 	for _, b := range builds {
-		fp := domain.ComputeEquipmentFingerprintFromRawJSON(b.RawData)
-		var liveCard *domain.FaeRating
-		if ratings != nil {
-			liveCard = ratings[b.AgentID]
-		}
-
-		if fp != "" && liveCard != nil && liveCard.Rank != nil && liveCard.EquipmentFingerprint != nil && *liveCard.EquipmentFingerprint == fp {
-			updated := liveCard.Clone()
-			updated.Status = domain.FaeStatusLive
-			updated.Outdated = false
-			if ratingDiffers(b.FaeRating, updated) {
-				_ = s.builds.UpdateFaeRating(ctx, b.ID, updated)
-			}
-			b.FaeRating = updated
-			continue
-		}
-
-		if b.FaeRating == nil && fp != "" {
-			if matchedCard, ok := s.faeFetcher.LookupByFingerprint(uid, b.AgentID, fp); ok && matchedCard != nil && matchedCard.Rank != nil {
-				backfilled := matchedCard.Clone()
-				backfilled.Status = domain.FaeStatusSnapshotOutdated
-				backfilled.Outdated = true
-				_ = s.builds.UpdateFaeRating(ctx, b.ID, backfilled)
-				b.FaeRating = backfilled
+		fingerprint := domain.ComputeEquipmentFingerprintFromRawJSON(b.RawData)
+		if b.FaeRating == nil {
+			rating := profile.MatchRating(b.AgentID, fingerprint)
+			if rating == nil {
 				continue
 			}
-		}
-
-		if b.FaeRating != nil && b.FaeRating.Rank != nil && ratings != nil {
-			liveMatches := liveCard != nil && liveCard.Rank != nil && liveCard.EquipmentFingerprint != nil && fp != "" && *liveCard.EquipmentFingerprint == fp
-			if !liveMatches {
-				needUpdate := b.FaeRating.Status != domain.FaeStatusSnapshotOutdated || !b.FaeRating.Outdated
-				b.FaeRating.Status = domain.FaeStatusSnapshotOutdated
-				b.FaeRating.Outdated = true
-				if needUpdate {
-					_ = s.builds.UpdateFaeRating(ctx, b.ID, b.FaeRating)
-				}
+			attached, err := s.builds.AttachFaeRating(ctx, b.ID, rating)
+			if err != nil {
+				slog.Warn("failed to attach saved zfae rating", "build_id", b.ID, "error", err)
+				continue
 			}
+			b.FaeRating = attached
 		}
+		if profile == nil || profile.Current == nil || profile.Current.Agents == nil {
+			continue
+		}
+		current, exists := profile.Current.Agents[b.AgentID]
+		if exists && (current == nil || current.EquipmentFingerprint == nil || *current.EquipmentFingerprint == "" || fingerprint == "" || *current.EquipmentFingerprint == fingerprint) {
+			continue
+		}
+		b.FaeRating = b.FaeRating.Clone()
+		b.FaeRating.Status = domain.FaeStatusSnapshotOutdated
+		b.FaeRating.Outdated = true
 	}
-}
-
-func ratingDiffers(a, b *domain.FaeRating) bool {
-	if a == nil || b == nil {
-		return a != b
-	}
-	if a.Status != b.Status || a.Outdated != b.Outdated {
-		return true
-	}
-	if (a.Rank == nil) != (b.Rank == nil) || (a.Rank != nil && *a.Rank != *b.Rank) {
-		return true
-	}
-	if (a.RankOf == nil) != (b.RankOf == nil) || (a.RankOf != nil && *a.RankOf != *b.RankOf) {
-		return true
-	}
-	if (a.Score == nil) != (b.Score == nil) || (a.Score != nil && *a.Score != *b.Score) {
-		return true
-	}
-	if (a.TimeAssessed == nil) != (b.TimeAssessed == nil) || (a.TimeAssessed != nil && *a.TimeAssessed != *b.TimeAssessed) {
-		return true
-	}
-	return false
 }
 
 func (s *Service) ensureAccountOwnership(ctx context.Context, userID, accountID uuid.UUID) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -553,34 +554,68 @@ func TestBuildRepo_FaeRatingRoundtrip(t *testing.T) {
 		t.Errorf("breakdown mismatch: %+v", got.FaeRating.Breakdown)
 	}
 
-	// Update to snapshot_outdated
 	newRank := 5
-	updatedRating := &domain.FaeRating{
-		Status:   domain.FaeStatusSnapshotOutdated,
-		Outdated: true,
-		Rank:     &newRank,
+	attempt := &domain.FaeRating{Status: domain.FaeStatusSnapshotOutdated, Outdated: true, Rank: &newRank}
+	winner, err := repo.AttachFaeRating(ctx, build.ID, attempt)
+	if err != nil || winner == nil || winner.Rank == nil || *winner.Rank != 4 || winner.Outdated {
+		t.Fatalf("AttachFaeRating(existing, rank 5) = %+v, %v, want original rank 4", winner, err)
 	}
-	if err := repo.UpdateFaeRating(ctx, build.ID, updatedRating); err != nil {
-		t.Fatalf("failed to update fae rating: %v", err)
+	winner, err = repo.AttachFaeRating(ctx, build.ID, nil)
+	if err != nil || winner == nil || winner.Rank == nil || *winner.Rank != 4 {
+		t.Fatalf("AttachFaeRating(existing, nil) = %+v, %v, want original rank 4", winner, err)
 	}
+	persisted, err := repo.GetByID(ctx, build.ID)
+	if err != nil || persisted.FaeRating == nil || *persisted.FaeRating.Rank != 4 || persisted.UpdatedAt.UnixMilli() != build.UpdatedAt.UnixMilli() {
+		t.Fatalf("GetByID(after attachment attempts) = %+v, %v, want unchanged rating and updated_at", persisted, err)
+	}
+}
 
-	gotUpdated, err := repo.GetByID(ctx, build.ID)
-	if err != nil {
-		t.Fatalf("failed to get updated build: %v", err)
+func TestBuildRepo_AttachFaeRatingRetainsConcurrentWinner(t *testing.T) {
+	ctx := context.Background()
+	db := newMigratedTestDB(t)
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	repo := NewBuildRepo(db)
+	user := seedUser(t, ctx, users, "646464646464646464")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687092")
+	build := makeDomainBuild(user.ID, account.ID, "Initially unrated", 1611)
+	if err := repo.Create(ctx, build); err != nil {
+		t.Fatal(err)
 	}
-	if gotUpdated.FaeRating.Status != domain.FaeStatusSnapshotOutdated || *gotUpdated.FaeRating.Rank != 5 || !gotUpdated.FaeRating.Outdated {
-		t.Errorf("expected updated fae rating, got %+v", gotUpdated.FaeRating)
+	if empty, err := repo.AttachFaeRating(ctx, build.ID, nil); err != nil || empty != nil {
+		t.Fatalf("AttachFaeRating(empty, nil) = %+v, %v, want nil", empty, err)
 	}
-
-	// Clear fae rating
-	if err := repo.UpdateFaeRating(ctx, build.ID, nil); err != nil {
-		t.Fatalf("failed to clear fae rating: %v", err)
+	start := make(chan struct{})
+	type result struct {
+		rating *domain.FaeRating
+		err    error
 	}
-	gotCleared, err := repo.GetByID(ctx, build.ID)
-	if err != nil {
-		t.Fatalf("failed to get cleared build: %v", err)
+	results := make(chan result, 8)
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Go(func() {
+			<-start
+			rank := i + 1
+			rating, err := repo.AttachFaeRating(ctx, build.ID, &domain.FaeRating{Status: domain.FaeStatusSnapshot, Rank: &rank})
+			results <- result{rating: rating, err: err}
+		})
 	}
-	if gotCleared.FaeRating != nil {
-		t.Errorf("expected nil fae rating after clearing, got %+v", gotCleared.FaeRating)
+	close(start)
+	wg.Wait()
+	close(results)
+	persisted, err := repo.GetByID(ctx, build.ID)
+	if err != nil || persisted.FaeRating == nil || persisted.FaeRating.Rank == nil {
+		t.Fatalf("GetByID(attached) = %+v, %v", persisted, err)
+	}
+	for got := range results {
+		if got.err != nil || got.rating == nil || got.rating.Rank == nil || *got.rating.Rank != *persisted.FaeRating.Rank {
+			t.Errorf("AttachFaeRating(concurrent) = %+v, %v, want persisted rank %d", got.rating, got.err, *persisted.FaeRating.Rank)
+		}
+	}
+	if persisted.UpdatedAt.UnixMilli() != build.UpdatedAt.UnixMilli() {
+		t.Errorf("attachment updated_at = %v, want original %v", persisted.UpdatedAt, build.UpdatedAt)
+	}
+	if _, err := repo.AttachFaeRating(ctx, uuid.New(), persisted.FaeRating); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("AttachFaeRating(missing) error = %v, want ErrNotFound", err)
 	}
 }

@@ -23,6 +23,7 @@ type FaeBuildStatus string
 
 const (
 	FaeStatusLive             FaeBuildStatus = "live"
+	FaeStatusSnapshot         FaeBuildStatus = "snapshot"
 	FaeStatusSnapshotOutdated FaeBuildStatus = "snapshot_outdated"
 	FaeStatusUnassessed       FaeBuildStatus = "unassessed"
 )
@@ -35,6 +36,7 @@ type FaeScoreBreakdown struct {
 }
 
 type FaeRating struct {
+	ObservedAt           *time.Time         `json:"observed_at,omitempty"`
 	Status               FaeBuildStatus     `json:"status"`
 	Outdated             bool               `json:"outdated"`
 	Rank                 *int               `json:"rank,omitempty"`
@@ -53,6 +55,10 @@ func (r *FaeRating) Clone() *FaeRating {
 		return nil
 	}
 	cp := *r
+	if r.ObservedAt != nil {
+		v := *r.ObservedAt
+		cp.ObservedAt = &v
+	}
 	if r.Rank != nil {
 		v := *r.Rank
 		cp.Rank = &v

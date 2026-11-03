@@ -1,21 +1,23 @@
 package zfae
 
 import (
+	"compress/gzip"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	"github.com/kirinyoku/enkanetwork-go/client/zzz"
+	"github.com/kirinyoku/proxyloadouts/backend/internal/adapter/sqlite"
 	"github.com/kirinyoku/proxyloadouts/backend/internal/domain"
 )
 
@@ -212,419 +214,359 @@ func TestEquipmentFingerprint_ExactMatchWithDomain(t *testing.T) {
 	}
 }
 
-func TestClient_SwitchLeaderboard(t *testing.T) {
-	v2CardHTML := `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="12" data-date-updated="1793393915" data-top-percentile="0.001">
-		<img src="/img/agent_mindscapes/Mindscape_1611_3.webp">
-		<ul class="dropdown-menu filter-menu">
-			<li class="active"> <span onclick="switchLeaderboard(this, 5511555, 4)">Team Sandwich</span> </li>
-		</ul>
-		<span class="rank-of">5000</span>
-		Total score:</span> <span>75.5</span>
-		<div class="disc-details"><div class="stat-list slot1"><ul><li class="sub stat vertical impact3 Def_Ratio"><span class="label">DEF%</span></li></ul></div></div>
-	</div>`
-
-	v1CardHTML := `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4" data-date-updated="1793393915" data-top-percentile="0.00038">
-		<img src="/img/agent_mindscapes/Mindscape_1611_3.webp">
-		<ul class="dropdown-menu filter-menu">
-			<li class="active"> <span onclick="switchLeaderboard(this, 5511555, 0)">Solo Bracket</span> </li>
-		</ul>
-		<span class="rank-of">10556</span>
-		Total score:</span> <span>85.1</span>
-	</div>`
-
-	var switchCalled atomic.Bool
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet && r.URL.Path == "/profile/1503562965" {
-			_, _ = w.Write([]byte(v2CardHTML))
-			return
-		}
-		if r.Method == http.MethodPost && r.URL.Path == "/profile" {
-			_ = r.ParseForm()
-			if r.FormValue("task") == "switchLeaderboard" && r.FormValue("assessmentId") == "5511555" && r.FormValue("leaderboardId") == "0" {
-				switchCalled.Store(true)
-				_, _ = w.Write([]byte(v1CardHTML))
-				return
-			}
-		}
-		http.NotFound(w, r)
-	}))
-	defer server.Close()
-
-	client := NewClient(WithBaseURL(server.URL))
-	ratings, err := client.FetchProfileRatings(context.Background(), "1503562965", false)
+func testClient(t *testing.T, handler http.HandlerFunc) (*Client, *sqlite.FaeStore) {
+	t.Helper()
+	db, err := sqlite.NewDB(filepath.Join(t.TempDir(), "fae.db"))
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
-
-	if !switchCalled.Load() {
-		t.Error("expected switchLeaderboard to be called for v2 leaderboard")
+	t.Cleanup(func() { _ = db.Close() })
+	if err := sqlite.Migrate(context.Background(), db); err != nil {
+		t.Fatal(err)
 	}
-
-	claretRating := ratings[1611]
-	if claretRating == nil {
-		t.Fatal("expected Claret rating to be present")
-	}
-	if claretRating.Rank == nil || *claretRating.Rank != 4 {
-		t.Errorf("expected switched rank 4, got %v", claretRating.Rank)
-	}
-	if claretRating.Score == nil || *claretRating.Score != 85.1 {
-		t.Errorf("expected switched score 85.1, got %v", claretRating.Score)
-	}
-}
-
-func TestClient_ColdProfileAndCooldown(t *testing.T) {
-	cardHTML := `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4" data-date-updated="1793393915" data-top-percentile="0.00038">
-		<img src="/img/agent_mindscapes/Mindscape_1611_3.webp">
-		<span class="rank-of">10556</span>
-		Total score:</span> <span>85.1</span>
-	</div>`
-
-	var (
-		fetchShowcaseCount atomic.Int32
-		getProfileCount    atomic.Int32
-	)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet && r.URL.Path == "/profile/1500000000" {
-			getProfileCount.Add(1)
-			if fetchShowcaseCount.Load() == 0 {
-				// Cold profile before fetchShowcase
-				_, _ = w.Write([]byte(`<div>No agents yet</div>`))
-				return
-			}
-			_, _ = w.Write([]byte(cardHTML))
-			return
-		}
-		if r.Method == http.MethodPost && r.URL.Path == "/profile" {
-			_ = r.ParseForm()
-			if r.FormValue("task") == "fetchShowcase" && r.FormValue("userUid") == "1500000000" {
-				fetchShowcaseCount.Add(1)
-				_, _ = w.Write([]byte("success"))
-				return
-			}
-		}
-		http.NotFound(w, r)
-	}))
-	defer server.Close()
-
-	client := NewClient(
-		WithBaseURL(server.URL),
-		WithCooldown(100*time.Millisecond),
-	)
-
-	// First fetch: cold profile (0 cards) triggers fetchShowcase
-	ratings, err := client.FetchProfileRatings(context.Background(), "1500000000", false)
-	if err != nil {
-		t.Fatalf("first fetch failed: %v", err)
-	}
-	if ratings[1611] == nil {
-		t.Fatal("expected Claret rating after cold fetch")
-	}
-	if fetchShowcaseCount.Load() != 1 {
-		t.Errorf("expected 1 fetchShowcase call, got %d", fetchShowcaseCount.Load())
-	}
-
-	// Immediate second fetch with forceRefresh=true: cooldown is active, so fetchShowcase should NOT be called again
-	_, err = client.FetchProfileRatings(context.Background(), "1500000000", true)
-	if err != nil {
-		t.Fatalf("second fetch failed: %v", err)
-	}
-	if fetchShowcaseCount.Load() != 1 {
-		t.Errorf("expected fetchShowcase count to remain 1 due to cooldown, got %d", fetchShowcaseCount.Load())
-	}
-
-	// Wait for cooldown to expire
-	time.Sleep(120 * time.Millisecond)
-
-	// Third fetch with forceRefresh=true: cooldown expired, fetchShowcase should be called again
-	_, err = client.FetchProfileRatings(context.Background(), "1500000000", true)
-	if err != nil {
-		t.Fatalf("third fetch failed: %v", err)
-	}
-	if fetchShowcaseCount.Load() != 2 {
-		t.Errorf("expected 2 fetchShowcase calls after cooldown, got %d", fetchShowcaseCount.Load())
-	}
-}
-
-func TestClient_ExistingProfileRefreshesShowcase(t *testing.T) {
-	const uid = "1504687050"
-	const claretHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
-	const phoenixHTML = `<div class="agent-card" data-agent-slug="phoenix" data-assessment-id="5511556" data-rank="352"><span class="rank-of">5667</span></div>`
-	var getCount, refreshCount atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet && r.URL.Path == "/profile/"+uid {
-			getCount.Add(1)
-			html := claretHTML
-			if refreshCount.Load() > 0 {
-				html += phoenixHTML
-			}
-			_, _ = w.Write([]byte(html))
-			return
-		}
-		if r.Method == http.MethodPost && r.URL.Path == "/profile" {
-			if err := r.ParseForm(); err != nil {
-				t.Errorf("ParseForm() = %v, want nil", err)
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			if r.FormValue("task") == "fetchShowcase" && r.FormValue("userUid") == uid {
-				refreshCount.Add(1)
-				_, _ = w.Write([]byte("success"))
-				return
-			}
-		}
-		http.NotFound(w, r)
-	}))
+	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	client := NewClient(WithBaseURL(server.URL), WithCooldown(time.Hour))
+	store := sqlite.NewFaeStore(db)
+	client := NewClient(store, WithBaseURL(server.URL))
+	client.pacing = 0
+	nextRequestStart = time.Time{}
+	return client, store
+}
 
-	ratings, err := client.FetchProfileRatings(context.Background(), uid, false)
-	if err != nil {
-		t.Fatalf("FetchProfileRatings(%q, false) error = %v, want nil", uid, err)
-	}
-	if ratings[1641] == nil {
-		t.Errorf("FetchProfileRatings(%q, false)[1641] = nil, want Phoenix rating after showcase refresh", uid)
-	}
-	if ratings[1611] == nil {
-		t.Errorf("FetchProfileRatings(%q, false)[1611] = nil, want existing Claret rating", uid)
-	}
-	if got := refreshCount.Load(); got != 1 {
-		t.Errorf("FetchProfileRatings(%q, false) showcase requests = %d, want 1", uid, got)
-	}
+const rankedCard = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4" data-date-updated="1793393915"><span class="rank-of">10556</span></div>`
+const switchMarkup = `<li class="active"><span onclick="switchLeaderboard(this, 5511555, 4)">Other</span></li></div>`
 
-	_, err = client.FetchProfileRatings(context.Background(), uid, false)
-	if err != nil {
-		t.Fatalf("FetchProfileRatings(%q, false) cached error = %v, want nil", uid, err)
+func TestClientLocalReadsAndPersistentCooldown(t *testing.T) {
+	var requests atomic.Int32
+	c, s := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(profileDocument(rankedCard)))
+		}
+	})
+	ctx := context.Background()
+	cold, err := s.ReadProfile(ctx, "uid")
+	if err != nil || cold.Current != nil {
+		t.Fatalf("cold = %+v, %v", cold, err)
 	}
-	if got := getCount.Load(); got != 2 {
-		t.Errorf("FetchProfileRatings(%q, false) cached profile requests = %d, want 2", uid, got)
+	if requests.Load() != 0 {
+		t.Fatal("cold local read contacted upstream")
 	}
-	if got := refreshCount.Load(); got != 1 {
-		t.Errorf("FetchProfileRatings(%q, false) cached showcase requests = %d, want 1", uid, got)
+	p, err := c.RefreshProfile(ctx, "uid")
+	if err != nil || p.Outcome != domain.FaeRefreshUpdated || p.Ratings()[1611] == nil {
+		t.Fatalf("refresh = %+v, %v", p, err)
 	}
-
-	client.mu.Lock()
-	client.cache[uid].expiresAt = time.Now().Add(-time.Second)
-	client.mu.Unlock()
-	_, err = client.FetchProfileRatings(context.Background(), uid, false)
-	if err != nil {
-		t.Fatalf("FetchProfileRatings(%q, false) expired cache error = %v, want nil", uid, err)
+	observed := p.Current.ObservedAt
+	for range 3 {
+		p, err = s.ReadProfile(ctx, "uid")
+		if err != nil || !p.Current.ObservedAt.Equal(observed) {
+			t.Fatalf("local observation time = %+v, %v", p, err)
+		}
 	}
-	if got := getCount.Load(); got != 3 {
-		t.Errorf("FetchProfileRatings(%q, false) expired cache profile requests = %d, want 3", uid, got)
+	restarted := NewClient(s, WithBaseURL(c.baseURL))
+	p, err = restarted.RefreshProfile(ctx, "uid")
+	if err != nil || p.Outcome != domain.FaeRefreshCooldown {
+		t.Fatalf("restart cooldown = %+v, %v", p, err)
 	}
-	if got := refreshCount.Load(); got != 1 {
-		t.Errorf("FetchProfileRatings(%q, false) during cooldown showcase requests = %d, want 1", uid, got)
+	if requests.Load() != 3 {
+		t.Errorf("all requests = %d, want unchanged 3", requests.Load())
 	}
 }
 
-func TestClient_ExistingProfileSurvivesRefreshFailure(t *testing.T) {
-	const uid = "1504687050"
-	const cardHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
-	var refreshCount atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet && r.URL.Path == "/profile/"+uid {
-			_, _ = w.Write([]byte(cardHTML))
+func TestClientPersistsHistoryBeforeShowcaseMutation(t *testing.T) {
+	var store *sqlite.FaeStore
+	var gets int
+	c, s := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			gets++
+			html := rankedCard
+			if gets > 1 {
+				html = strings.Replace(html, `data-rank="4"`, `data-rank="8"`, 1)
+			}
+			_, _ = w.Write([]byte(profileDocument(html)))
 			return
 		}
-		if r.Method == http.MethodPost && r.URL.Path == "/profile" {
-			refreshCount.Add(1)
-			http.Error(w, "unavailable", http.StatusServiceUnavailable)
-			return
+		p, err := store.ReadProfile(r.Context(), "uid")
+		if err != nil || p.Ratings()[1611] == nil || *p.Ratings()[1611].Rank != 4 {
+			t.Errorf("pre snapshot before POST = %+v, %v", p, err)
 		}
-		http.NotFound(w, r)
-	}))
-	t.Cleanup(server.Close)
-	client := NewClient(WithBaseURL(server.URL))
-
-	ratings, err := client.FetchProfileRatings(context.Background(), uid, false)
+	})
+	store = s
+	p, err := c.RefreshProfile(context.Background(), "uid")
 	if err != nil {
-		t.Fatalf("FetchProfileRatings(%q, false) error = %v, want nil after refresh failure", uid, err)
+		t.Fatal(err)
 	}
-	if ratings[1611] == nil || ratings[1611].Rank == nil || *ratings[1611].Rank != 4 {
-		t.Errorf("FetchProfileRatings(%q, false)[1611] = %+v, want existing Claret rank 4", uid, ratings[1611])
-	}
-	if got := refreshCount.Load(); got != 1 {
-		t.Errorf("FetchProfileRatings(%q, false) showcase requests = %d, want 1", uid, got)
+	if len(p.History) != 1 || *p.History[0].Agents[1611].Rank != 4 || *p.Ratings()[1611].Rank != 8 {
+		t.Fatalf("history = %+v", p)
 	}
 }
 
-func TestClient_ForcedRefreshReturnsShowcaseFailure(t *testing.T) {
-	const uid = "1504687050"
-	const cardHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
-	for _, tc := range []struct {
-		status  int
-		wantErr error
-	}{
-		{status: 0},
-		{status: http.StatusBadRequest},
-		{status: http.StatusTooManyRequests, wantErr: domain.ErrRateLimited},
-		{status: http.StatusServiceUnavailable, wantErr: domain.ErrSourceUnavailable},
-	} {
-		t.Run(fmt.Sprint(tc.status), func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestClientBackoffEveryRequestKind(t *testing.T) {
+	for _, step := range []int32{1, 2, 3, 4} {
+		t.Run(strconv.Itoa(int(step)), func(t *testing.T) {
+			var requests atomic.Int32
+			c, s := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+				n := requests.Add(1)
+				if n == step {
+					w.Header().Set("Retry-After", "120")
+					w.WriteHeader(http.StatusTooManyRequests)
+					return
+				}
+				html := rankedCard
+				if step == 4 && n == 3 {
+					html = strings.Replace(html, "</div>", switchMarkup, 1)
+				}
 				if r.Method == http.MethodGet {
-					_, _ = w.Write([]byte(cardHTML))
-					return
+					html = profileDocument(html)
 				}
-				if tc.status == 0 {
-					panic(http.ErrAbortHandler)
-				}
-				w.WriteHeader(tc.status)
-			}))
-			t.Cleanup(server.Close)
-			client := NewClient(WithBaseURL(server.URL))
-
-			_, err := client.FetchProfileRatings(context.Background(), uid, true)
-			if err == nil {
-				t.Errorf("FetchProfileRatings(%q, true) error = nil, want refresh failure for status %d", uid, tc.status)
-			} else if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
-				t.Errorf("FetchProfileRatings(%q, true) error = %v, want %v", uid, err, tc.wantErr)
+				_, _ = w.Write([]byte(html))
+			})
+			p, err := c.RefreshProfile(context.Background(), "uid")
+			if err != nil || p.Outcome != domain.FaeRefreshBackoff {
+				t.Fatalf("backoff = %+v, %v", p, err)
+			}
+			if requests.Load() != step {
+				t.Errorf("requests = %d, want %d", requests.Load(), step)
+			}
+			restart := NewClient(s, WithBaseURL(c.baseURL))
+			p, err = restart.RefreshProfile(context.Background(), "other")
+			if err != nil || p.Outcome != domain.FaeRefreshBackoff || requests.Load() != step {
+				t.Fatalf("shared backoff = %+v, %v, requests %d", p, err, requests.Load())
+			}
+			deadline, err := s.HostBackoff(context.Background())
+			if err != nil || time.Until(deadline) < 119*time.Second {
+				t.Errorf("retry deadline = %v, %v", deadline, err)
 			}
 		})
 	}
 }
 
-func TestClient_ProfileRereadFailure(t *testing.T) {
-	const uid = "1504687050"
-	const cardHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
-	for _, tc := range []struct {
-		status  int
-		wantErr error
-	}{
-		{status: 0},
-		{status: http.StatusNotFound, wantErr: domain.ErrNotFound},
-		{status: http.StatusTooManyRequests, wantErr: domain.ErrRateLimited},
-		{status: http.StatusServiceUnavailable, wantErr: domain.ErrSourceUnavailable},
-	} {
-		for _, forceRefresh := range []bool{false, true} {
-			t.Run(fmt.Sprintf("status_%d/force_%t", tc.status, forceRefresh), func(t *testing.T) {
-				var getCount atomic.Int32
-				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.Method == http.MethodPost {
-						w.WriteHeader(http.StatusOK)
-						return
-					}
-					if getCount.Add(1) == 1 {
-						_, _ = w.Write([]byte(cardHTML))
-						return
-					}
-					if tc.status == 0 {
-						panic(http.ErrAbortHandler)
-					}
-					w.WriteHeader(tc.status)
-				}))
-				t.Cleanup(server.Close)
-				client := NewClient(WithBaseURL(server.URL))
-
-				ratings, err := client.FetchProfileRatings(context.Background(), uid, forceRefresh)
-				if forceRefresh {
-					if err == nil {
-						t.Errorf("FetchProfileRatings(%q, true) error = nil, want reread failure for status %d", uid, tc.status)
-					} else if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
-						t.Errorf("FetchProfileRatings(%q, true) error = %v, want %v", uid, err, tc.wantErr)
+func TestClientFailedRefreshRetainsDatedNumbers(t *testing.T) {
+	for _, failure := range []string{"post", "missing", "malformed", "partial", "oversized", "switch"} {
+		t.Run(failure, func(t *testing.T) {
+			var gets int
+			c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					_ = r.ParseForm()
+					if failure == "post" || r.FormValue("task") == "switchLeaderboard" {
+						w.WriteHeader(http.StatusServiceUnavailable)
 					}
 					return
 				}
-				if err != nil {
-					t.Fatalf("FetchProfileRatings(%q, false) error = %v, want nil", uid, err)
+				gets++
+				if gets == 1 {
+					_, _ = w.Write([]byte(profileDocument(rankedCard)))
+					return
 				}
-				if ratings[1611] == nil || ratings[1611].Rank == nil || *ratings[1611].Rank != 4 {
-					t.Errorf("FetchProfileRatings(%q, false)[1611] = %+v, want existing Claret rank 4", uid, ratings[1611])
-				}
-			})
-		}
-	}
-}
-
-func TestClient_MixedRefreshFailure(t *testing.T) {
-	const uid = "1504687050"
-	const cardHTML = `<div class="agent-card" data-agent-slug="claret" data-assessment-id="5511555" data-rank="4"><span class="rank-of">10556</span></div>`
-	for _, forceLeader := range []bool{false, true} {
-		t.Run(fmt.Sprintf("force_leader_%t", forceLeader), func(t *testing.T) {
-			synctest.Test(t, func(t *testing.T) {
-				postStarted := make(chan struct{})
-				releasePost := make(chan struct{})
-				var postCount int
-				client := NewClient(WithHTTPClient(&http.Client{Transport: refreshTestTransport(func(r *http.Request) (*http.Response, error) {
-					if r.Method == http.MethodGet {
-						return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(cardHTML))}, nil
-					}
-					postCount++
-					close(postStarted)
-					<-releasePost
-					return &http.Response{StatusCode: http.StatusServiceUnavailable, Body: http.NoBody}, nil
-				})}))
-				type fetchResult struct {
-					force   bool
-					ratings map[int]*domain.FaeRating
-					err     error
-				}
-				results := make(chan fetchResult, 2)
-				fetch := func(force bool) {
-					ratings, err := client.FetchProfileRatings(context.Background(), uid, force)
-					results <- fetchResult{force: force, ratings: ratings, err: err}
-				}
-				go fetch(forceLeader)
-				<-postStarted
-				go fetch(!forceLeader)
-				synctest.Wait()
-				close(releasePost)
-				synctest.Wait()
-				for range 2 {
-					result := <-results
-					if result.force {
-						if !errors.Is(result.err, domain.ErrSourceUnavailable) {
-							t.Errorf("FetchProfileRatings(%q, true) error = %v, want %v", uid, result.err, domain.ErrSourceUnavailable)
-						}
-					} else if result.err != nil {
-						t.Errorf("FetchProfileRatings(%q, false) error = %v, want nil", uid, result.err)
-					} else if rating := result.ratings[1611]; rating == nil || rating.Rank == nil || *rating.Rank != 4 {
-						t.Errorf("FetchProfileRatings(%q, false)[1611] = %+v, want existing Claret rank 4", uid, rating)
-					}
-				}
-				if postCount != 1 {
-					t.Errorf("FetchProfileRatings mixed refresh showcase requests = %d, want 1", postCount)
+				switch failure {
+				case "missing":
+					http.NotFound(w, r)
+				case "malformed":
+					_, _ = w.Write([]byte("bad html"))
+				case "partial":
+					_, _ = w.Write([]byte(profileDocument(strings.Replace(rankedCard, `data-rank="4"`, `data-rank="8"`, 1) + `<div class="agent-card" data-agent-slug="unknown-agent"></div>`)))
+				case "oversized":
+					_, _ = w.Write([]byte(strings.Repeat("x", 1025)))
+				case "switch":
+					_, _ = w.Write([]byte(profileDocument(strings.Replace(rankedCard, "</div>", switchMarkup, 1))))
 				}
 			})
+			c.profileLimit = 1024
+			p, err := c.RefreshProfile(context.Background(), "uid")
+			if err != nil || p.Outcome != domain.FaeRefreshFailed || p.Ratings()[1611] == nil || *p.Ratings()[1611].Rank != 4 || p.Ratings()[1611].ObservedAt == nil {
+				t.Fatalf("retained fallback = %+v, %v", p, err)
+			}
 		})
 	}
 }
 
-func TestClient_MissingProfileRefreshFailure(t *testing.T) {
-	const uid = "1504687050"
-	for _, tc := range []struct {
-		status  int
-		wantErr error
-	}{
-		{status: http.StatusTooManyRequests, wantErr: domain.ErrRateLimited},
-		{status: http.StatusServiceUnavailable, wantErr: domain.ErrSourceUnavailable},
-	} {
-		for _, forceRefresh := range []bool{false, true} {
-			t.Run(fmt.Sprintf("status_%d/force_%t", tc.status, forceRefresh), func(t *testing.T) {
-				client := NewClient(WithHTTPClient(&http.Client{Transport: refreshTestTransport(func(r *http.Request) (*http.Response, error) {
-					status := http.StatusNotFound
-					if r.Method == http.MethodPost {
-						status = tc.status
-					}
-					return &http.Response{StatusCode: status, Body: http.NoBody}, nil
-				})}))
-				_, err := client.FetchProfileRatings(context.Background(), uid, forceRefresh)
-				wantErr := domain.ErrNotFound
-				if forceRefresh {
-					wantErr = tc.wantErr
-				}
-				if !errors.Is(err, wantErr) {
-					t.Errorf("FetchProfileRatings(%q, %t) error = %v, want %v", uid, forceRefresh, err, wantErr)
-				}
-			})
+func TestClientBootstrapEmptyAndNormalization(t *testing.T) {
+	var requests atomic.Int32
+	c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		if r.Method == http.MethodGet {
+			http.NotFound(w, r)
+		}
+	})
+	p, err := c.RefreshProfile(context.Background(), "uid")
+	if err != nil || p.Outcome != domain.FaeRefreshUpdated || p.Current == nil || len(p.Ratings()) != 0 || requests.Load() != 3 {
+		t.Fatalf("404 bootstrap = %+v, %v, requests %d", p, err, requests.Load())
+	}
+	requests.Store(0)
+	c, _ = testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		html := selectedCard(0)
+		if r.Method == http.MethodGet {
+			html = profileDocument(strings.Replace(rankedCard, "</div>", switchMarkup, 1))
+		}
+		_, _ = w.Write([]byte(html))
+	})
+	p, err = c.RefreshProfile(context.Background(), "uid")
+	if err != nil || p.Outcome != domain.FaeRefreshUpdated || *p.Ratings()[1611].Rank != 4 {
+		t.Fatalf("normalized = %+v, %v", p, err)
+	}
+	if requests.Load() != 5 {
+		t.Errorf("normalized pre/post requests = %d, want 3+2 switches", requests.Load())
+	}
+}
+
+func TestClientCancellationWhilePipelineBusy(t *testing.T) {
+	c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) { t.Error("cancelled refresh contacted upstream") })
+	pipeline <- struct{}{}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := c.RefreshProfile(ctx, "uid")
+	<-pipeline
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("cancelled wait = %v", err)
+	}
+}
+
+func TestRetryAfter(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	for _, value := range []string{"120", now.Add(2 * time.Minute).Format(http.TimeFormat)} {
+		deadline, ok := retryAfter(value, now)
+		if !ok || !deadline.Equal(now.Add(2*time.Minute)) {
+			t.Errorf("retryAfter(%q) = %v, %t", value, deadline, ok)
 		}
 	}
 }
 
-type refreshTestTransport func(*http.Request) (*http.Response, error)
+func TestClientPacesAndSerializesDifferentUIDs(t *testing.T) {
+	var starts []time.Time
+	var mu sync.Mutex
+	var inFlight atomic.Int32
+	c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if inFlight.Add(1) != 1 {
+			t.Error("overlapping upstream requests")
+		}
+		defer inFlight.Add(-1)
+		mu.Lock()
+		starts = append(starts, time.Now())
+		mu.Unlock()
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(profileDocument(rankedCard)))
+		}
+	})
+	c.pacing = 500 * time.Millisecond
+	var wg sync.WaitGroup
+	for _, uid := range []string{"one", "two", "one"} {
+		wg.Go(func() {
+			p, err := c.RefreshProfile(context.Background(), uid)
+			if err != nil {
+				t.Error(err)
+			}
+			if p == nil {
+				t.Error("missing refresh result")
+			}
+		})
+	}
+	wg.Wait()
+	mu.Lock()
+	defer mu.Unlock()
+	if len(starts) != 6 {
+		t.Fatalf("concurrent request starts = %d, want6", len(starts))
+	}
+	for i := 1; i < len(starts); i++ {
+		if delta := starts[i].Sub(starts[i-1]); delta < 490*time.Millisecond {
+			t.Errorf("request start spacing = %v, want at least500ms allowing scheduler jitter", delta)
+		}
+	}
+}
 
-func (f refreshTestTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	return f(r)
+func TestClientFailedPreDoesNotOverwriteSavedObservation(t *testing.T) {
+	var gets atomic.Int32
+	c, s := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gets.Add(1)
+		body := strings.Replace(rankedCard, "</div>", switchMarkup, 1)
+		if r.Method == http.MethodGet {
+			body = profileDocument(body)
+		}
+		_, _ = w.Write([]byte(body))
+	})
+	ctx := context.Background()
+	now := time.Now().Add(-time.Hour)
+	if _, err := s.ReserveRefresh(ctx, "uid", now, time.Minute, 1000); err != nil {
+		t.Fatal(err)
+	}
+	rank := 2
+	observed := domain.FaeObservation{ObservedAt: now, Agents: map[int]*domain.FaeRating{1611: {Rank: &rank, ObservedAt: &now}}}
+	if err := s.SaveObservation(ctx, "uid", observed); err != nil {
+		t.Fatal(err)
+	}
+	p, err := c.RefreshProfile(ctx, "uid")
+	if err != nil || p.Outcome != domain.FaeRefreshFailed || *p.Ratings()[1611].Rank != 2 || !p.Current.ObservedAt.Equal(now) {
+		t.Fatalf("failed normalization fallback = %+v, %v", p, err)
+	}
+	if gets.Load() != 2 {
+		t.Errorf("failed pre normalization calls = %d, want2 with no showcase mutation", gets.Load())
+	}
+}
+
+type cancellingTransport struct{ cancel context.CancelFunc }
+
+func (t cancellingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	t.cancel()
+	return &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": []string{"120"}}, Body: io.NopCloser(strings.NewReader("")), Request: r}, nil
+}
+
+func TestClientPersistsRetryAfterWhenCallerCancelsAfterHeaders(t *testing.T) {
+	c, s := testClient(t, func(w http.ResponseWriter, r *http.Request) { t.Error("unexpected fixture request") })
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c.httpClient = &http.Client{Transport: cancellingTransport{cancel: cancel}}
+	_, err := c.RefreshProfile(ctx, "uid")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled refresh = %v", err)
+	}
+	deadline, err := s.HostBackoff(context.Background())
+	if err != nil || time.Until(deadline) < 119*time.Second {
+		t.Fatalf("cancelled Retry-After = %v, %v", deadline, err)
+	}
+}
+
+func TestClientServiceUnavailableHonorsHTTPDate(t *testing.T) {
+	deadline := time.Now().Add(5 * time.Minute).UTC().Truncate(time.Second)
+	c, s := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", deadline.Format(http.TimeFormat))
+		w.WriteHeader(http.StatusServiceUnavailable)
+	})
+	p, err := c.RefreshProfile(context.Background(), "uid")
+	if err != nil || p.Outcome != domain.FaeRefreshFailed {
+		t.Fatalf("503 refresh = %+v, %v", p, err)
+	}
+	got, err := s.HostBackoff(context.Background())
+	if err != nil || !got.Equal(deadline) {
+		t.Errorf("503 deadline = %v, %v, want%v", got, err, deadline)
+	}
+}
+
+func TestClientBoundedDecodedCardResponse(t *testing.T) {
+	c, _ := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(profileDocument(rankedCard)))
+			return
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		compressed := gzip.NewWriter(w)
+		_, _ = compressed.Write([]byte(strings.Repeat("x", 2048)))
+		_ = compressed.Close()
+	})
+	c.cardLimit = 1024
+	p, err := c.RefreshProfile(context.Background(), "uid")
+	if err != nil || p.Outcome != domain.FaeRefreshFailed || *p.Ratings()[1611].Rank != 4 {
+		t.Fatalf("oversized decoded card = %+v, %v", p, err)
+	}
+}
+
+func TestClientRateLimitWithoutRetryAfterUsesFallback(t *testing.T) {
+	c, s := testClient(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusTooManyRequests) })
+	p, err := c.RefreshProfile(context.Background(), "uid")
+	if err != nil || p.Outcome != domain.FaeRefreshBackoff {
+		t.Fatalf("429 fallback = %+v, %v", p, err)
+	}
+	deadline, err := s.HostBackoff(context.Background())
+	if err != nil || time.Until(deadline) < 59*time.Second {
+		t.Errorf("fallback deadline = %v, %v", deadline, err)
+	}
 }

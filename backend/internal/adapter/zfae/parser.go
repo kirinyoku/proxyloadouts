@@ -11,7 +11,10 @@ import (
 )
 
 var (
+	reProfileDocument = regexp.MustCompile(`(?is)^\s*(?:<!--.*?-->\s*)*(?:<!doctype\s+html[^>]*>\s*)?<html(?:\s[^>]*)?>.*<body(?:\s[^>]*)?>.*</body\s*>\s*</html\s*>\s*$`)
+
 	reCardStart = regexp.MustCompile(`<div class="agent-card"`)
+	reDivTag    = regexp.MustCompile(`(?is)</?div\b(?:[^"'<>]|"[^"]*"|'[^']*')*>`)
 
 	reMindscape = regexp.MustCompile(`src="[^"]*Mindscape_(\d+)_`)
 
@@ -116,11 +119,11 @@ var agentSlugToIDMap = map[string]int{
 }
 
 type CardParseResult struct {
-	AgentID             int
-	Rating              *domain.FaeRating
-	ActiveLeaderboardID int
-	AssessmentID        string
-	RawCardHTML         string
+	AgentID              int
+	Rating               *domain.FaeRating
+	ActiveLeaderboardID  int
+	HasActiveLeaderboard bool
+	AssessmentID         string
 }
 
 func ParseProfileCards(html string) []CardParseResult {
@@ -147,6 +150,23 @@ func ParseProfileCards(html string) []CardParseResult {
 }
 
 func ParseCardHTML(cardHTML string) (CardParseResult, bool) {
+	cardHTML, opening, ok := completeCardHTML(cardHTML)
+	if !ok {
+		return CardParseResult{}, false
+	}
+	rankAttribute := reDataRank.FindStringSubmatch(opening)
+	if len(rankAttribute) != 2 {
+		return CardParseResult{}, false
+	}
+	rankStr := strings.TrimSpace(rankAttribute[1])
+	rankVal := 0
+	if rankStr != "" {
+		var err error
+		rankVal, err = strconv.Atoi(rankStr)
+		if err != nil || rankVal < 0 {
+			return CardParseResult{}, false
+		}
+	}
 	agentID := 0
 	if m := reMindscape.FindStringSubmatch(cardHTML); len(m) > 1 {
 		if id, err := strconv.Atoi(m[1]); err == nil {
@@ -155,8 +175,8 @@ func ParseCardHTML(cardHTML string) (CardParseResult, bool) {
 	}
 
 	slug := ""
-	if m := reDataAgentSlug.FindStringSubmatch(cardHTML); len(m) > 1 {
-		slug = m[1]
+	if m := reDataAgentSlug.FindStringSubmatch(opening); len(m) > 1 {
+		slug = strings.Clone(m[1])
 	}
 	if agentID == 0 && slug != "" {
 		norm := normalizeSlug(slug)
@@ -170,22 +190,29 @@ func ParseCardHTML(cardHTML string) (CardParseResult, bool) {
 	}
 
 	assessmentID := ""
-	if m := reDataAssessmentID.FindStringSubmatch(cardHTML); len(m) > 1 {
-		assessmentID = m[1]
+	if m := reDataAssessmentID.FindStringSubmatch(opening); len(m) > 1 {
+		assessmentID = strings.Clone(m[1])
 	}
 
 	activeLeaderboardID := 0
+	hasActiveLeaderboard := false
 	if m := reActiveSwitchLeaderboard.FindStringSubmatch(cardHTML); len(m) > 2 {
+		if assessmentID != "" && m[1] != assessmentID {
+			return CardParseResult{}, false
+		}
 		if aid := m[1]; aid != "" && assessmentID == "" {
-			assessmentID = aid
+			assessmentID = strings.Clone(aid)
 		}
 		if lid, err := strconv.Atoi(m[2]); err == nil {
 			activeLeaderboardID = lid
+			hasActiveLeaderboard = true
+		} else {
+			return CardParseResult{}, false
 		}
 	}
 
 	var timeAssessed *int64
-	if m := reDataDateUpdated.FindStringSubmatch(cardHTML); len(m) > 1 && m[1] != "" {
+	if m := reDataDateUpdated.FindStringSubmatch(opening); len(m) > 1 && m[1] != "" {
 		if t, err := strconv.ParseInt(m[1], 10, 64); err == nil {
 			timeAssessed = &t
 		}
@@ -202,17 +229,12 @@ func ParseCardHTML(cardHTML string) (CardParseResult, bool) {
 		fpPtr = &fp
 	}
 
-	rankStr := ""
-	if m := reDataRank.FindStringSubmatch(cardHTML); len(m) > 1 {
-		rankStr = strings.TrimSpace(m[1])
-	}
-
-	if rankStr == "" || rankStr == "0" {
+	if rankVal == 0 {
 		return CardParseResult{
-			AgentID:             agentID,
-			ActiveLeaderboardID: activeLeaderboardID,
-			AssessmentID:        assessmentID,
-			RawCardHTML:         cardHTML,
+			AgentID:              agentID,
+			ActiveLeaderboardID:  activeLeaderboardID,
+			HasActiveLeaderboard: hasActiveLeaderboard,
+			AssessmentID:         assessmentID,
 			Rating: &domain.FaeRating{
 				Status:               domain.FaeStatusUnassessed,
 				Outdated:             false,
@@ -221,11 +243,6 @@ func ParseCardHTML(cardHTML string) (CardParseResult, bool) {
 				EquipmentFingerprint: fpPtr,
 			},
 		}, true
-	}
-
-	rankVal, err := strconv.Atoi(rankStr)
-	if err != nil {
-		return CardParseResult{}, false
 	}
 
 	var rankOfPtr *int
@@ -253,14 +270,14 @@ func ParseCardHTML(cardHTML string) (CardParseResult, bool) {
 
 	var bracketPtr *string
 	if m := reBracketToggle.FindStringSubmatch(cardHTML); len(m) > 1 {
-		b := strings.TrimSpace(m[1])
+		b := strings.Clone(strings.TrimSpace(m[1]))
 		if b != "" {
 			bracketPtr = &b
 		}
 	}
 	if bracketPtr == nil {
 		if m := reActiveFilter.FindStringSubmatch(cardHTML); len(m) > 1 {
-			b := strings.TrimSpace(m[1])
+			b := strings.Clone(strings.TrimSpace(m[1]))
 			if b != "" {
 				bracketPtr = &b
 			}
@@ -270,10 +287,10 @@ func ParseCardHTML(cardHTML string) (CardParseResult, bool) {
 	breakdown := parseBreakdown(cardHTML)
 
 	return CardParseResult{
-		AgentID:             agentID,
-		ActiveLeaderboardID: activeLeaderboardID,
-		AssessmentID:        assessmentID,
-		RawCardHTML:         cardHTML,
+		AgentID:              agentID,
+		ActiveLeaderboardID:  activeLeaderboardID,
+		HasActiveLeaderboard: hasActiveLeaderboard,
+		AssessmentID:         assessmentID,
 		Rating: &domain.FaeRating{
 			Status:               domain.FaeStatusLive,
 			Outdated:             false,
@@ -288,6 +305,36 @@ func ParseCardHTML(cardHTML string) (CardParseResult, bool) {
 			Breakdown:            breakdown,
 		},
 	}, true
+}
+
+func completeCardHTML(html string) (string, string, bool) {
+	html = strings.TrimSpace(html)
+	if !strings.HasPrefix(html, `<div class="agent-card"`) {
+		return "", "", false
+	}
+	depth, offset, openingEnd := 0, 0, 0
+	for {
+		loc := reDivTag.FindStringIndex(html[offset:])
+		if loc == nil {
+			return "", "", false
+		}
+		start, end := offset+loc[0], offset+loc[1]
+		if openingEnd == 0 {
+			if start != 0 {
+				return "", "", false
+			}
+			openingEnd = end
+		}
+		if html[start+1] == '/' {
+			depth--
+		} else {
+			depth++
+		}
+		if depth == 0 {
+			return html[:end], html[:openingEnd], true
+		}
+		offset = end
+	}
 }
 
 func parseBreakdown(cardHTML string) *domain.FaeScoreBreakdown {
@@ -349,8 +396,7 @@ func ExtractCardEquipmentFingerprint(cardHTML string) string {
 }
 
 func extractSlotSubstats(cardHTML string, slot int) []string {
-	patternStatList := fmt.Sprintf(`stat-list slot%d[^>]*>.*?<ul>(.*?)</ul>`, slot)
-	reStatList := regexp.MustCompile(`(?s)` + patternStatList)
+	reStatList := slotStatLists[slot-1]
 	if m := reStatList.FindStringSubmatch(cardHTML); len(m) > 1 {
 		matches := reStatListSubstat.FindAllStringSubmatch(m[1], -1)
 		if len(matches) > 0 {
@@ -367,8 +413,7 @@ func extractSlotSubstats(cardHTML string, slot int) []string {
 		}
 	}
 
-	patternModal := fmt.Sprintf(`<li class="slot%d"[^>]*>.*?<ul>(.*?)</ul>`, slot)
-	reModal := regexp.MustCompile(`(?s)` + patternModal)
+	reModal := slotModals[slot-1]
 	if m := reModal.FindStringSubmatch(cardHTML); len(m) > 1 {
 		matches := reModalSubstat.FindAllStringSubmatch(m[1], -1)
 		if len(matches) > 0 {
@@ -386,4 +431,15 @@ func extractSlotSubstats(cardHTML string, slot int) []string {
 	}
 
 	return nil
+}
+
+var slotStatLists = slotPatterns(`(?s)stat-list slot%d[^>]*>.*?<ul>(.*?)</ul>`)
+var slotModals = slotPatterns(`(?s)<li class="slot%d"[^>]*>.*?<ul>(.*?)</ul>`)
+
+func slotPatterns(pattern string) [6]*regexp.Regexp {
+	var patterns [6]*regexp.Regexp
+	for i := range patterns {
+		patterns[i] = regexp.MustCompile(fmt.Sprintf(pattern, i+1))
+	}
+	return patterns
 }

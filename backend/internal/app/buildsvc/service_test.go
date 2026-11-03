@@ -1163,19 +1163,15 @@ type testFaeFetcher struct {
 	err     error
 }
 
-func (m *testFaeFetcher) FetchProfileRatings(_ context.Context, _ string, _ bool) (map[int]*domain.FaeRating, error) {
+func (m *testFaeFetcher) ReadProfile(_ context.Context, uid string) (*domain.FaeProfile, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	return m.ratings, nil
-}
-
-func (m *testFaeFetcher) LookupByFingerprint(_ string, _ int, fingerprint string) (*domain.FaeRating, bool) {
-	if m.lookup != nil {
-		r, ok := m.lookup[fingerprint]
-		return r, ok
+	p := &domain.FaeProfile{UID: uid, Current: &domain.FaeObservation{Agents: m.ratings}}
+	for _, r := range m.lookup {
+		p.History = append(p.History, domain.FaeObservation{Agents: map[int]*domain.FaeRating{1511: r}})
 	}
-	return nil, false
+	return p, nil
 }
 
 func sampleFullRawAvatar(agentID int) (*zzz.AvatarData, string) {
@@ -1223,7 +1219,7 @@ func TestCreate_AttachesFaeRating(t *testing.T) {
 			},
 		},
 	}
-	env.svc.WithFaeFetcher(fetcher)
+	env.svc.WithFaeReader(fetcher)
 
 	build, err := env.svc.Create(ctx, CreateInput{
 		UserID:          env.ownerID,
@@ -1239,8 +1235,8 @@ func TestCreate_AttachesFaeRating(t *testing.T) {
 	if build.FaeRating == nil {
 		t.Fatal("expected FaeRating attached to created build")
 	}
-	if build.FaeRating.Status != domain.FaeStatusLive {
-		t.Errorf("expected status %s, got %s", domain.FaeStatusLive, build.FaeRating.Status)
+	if build.FaeRating.Status != domain.FaeStatusSnapshot {
+		t.Errorf("expected status %s, got %s", domain.FaeStatusSnapshot, build.FaeRating.Status)
 	}
 	if build.FaeRating.Outdated {
 		t.Errorf("expected outdated false")
@@ -1283,7 +1279,7 @@ func TestReconcile_ScenarioA_LiveMatchBackfill(t *testing.T) {
 			},
 		},
 	}
-	env.svc.WithFaeFetcher(fetcher)
+	env.svc.WithFaeReader(fetcher)
 
 	builds, err := env.svc.ListByAccount(ctx, env.ownerID, env.accountID)
 	if err != nil {
@@ -1297,8 +1293,8 @@ func TestReconcile_ScenarioA_LiveMatchBackfill(t *testing.T) {
 	if b.FaeRating == nil {
 		t.Fatal("expected FaeRating backfilled")
 	}
-	if b.FaeRating.Status != domain.FaeStatusLive || b.FaeRating.Outdated {
-		t.Errorf("expected live not-outdated status, got status=%s outdated=%v", b.FaeRating.Status, b.FaeRating.Outdated)
+	if b.FaeRating.Status != domain.FaeStatusSnapshot || b.FaeRating.Outdated {
+		t.Errorf("expected saved observation status, got status=%s outdated=%v", b.FaeRating.Status, b.FaeRating.Outdated)
 	}
 	if b.FaeRating.Rank == nil || *b.FaeRating.Rank != 5 {
 		t.Errorf("expected rank 5, got %v", b.FaeRating.Rank)
@@ -1341,7 +1337,7 @@ func TestReconcile_ScenarioB_PreRefreshLookupBackfill(t *testing.T) {
 			},
 		},
 	}
-	env.svc.WithFaeFetcher(fetcher)
+	env.svc.WithFaeReader(fetcher)
 
 	got, err := env.svc.Get(ctx, env.ownerID, build.ID)
 	if err != nil {
@@ -1351,7 +1347,7 @@ func TestReconcile_ScenarioB_PreRefreshLookupBackfill(t *testing.T) {
 		t.Fatal("expected pre-refresh card backfilled")
 	}
 	if got.FaeRating.Status != domain.FaeStatusSnapshotOutdated || !got.FaeRating.Outdated {
-		t.Errorf("expected snapshot_outdated, got status=%s outdated=%v", got.FaeRating.Status, got.FaeRating.Outdated)
+		t.Errorf("expected outdated historical observation, got status=%s outdated=%v", got.FaeRating.Status, got.FaeRating.Outdated)
 	}
 	if got.FaeRating.Rank == nil || *got.FaeRating.Rank != 20 {
 		t.Errorf("expected rank 20, got %v", got.FaeRating.Rank)
@@ -1362,7 +1358,7 @@ func TestReconcile_ScenarioB_PreRefreshLookupBackfill(t *testing.T) {
 		t.Fatalf("GetByID failed: %v", err)
 	}
 	if persisted.FaeRating == nil || !persisted.FaeRating.Outdated {
-		t.Errorf("expected persisted rating outdated=true, got %+v", persisted.FaeRating)
+		t.Errorf("expected persisted historical observation, got %+v", persisted.FaeRating)
 	}
 }
 
@@ -1382,7 +1378,7 @@ func TestReconcile_ScenarioSection42_SnapshotOutdated(t *testing.T) {
 			},
 		},
 	}
-	env.svc.WithFaeFetcher(fetcher)
+	env.svc.WithFaeReader(fetcher)
 
 	build, err := env.svc.Create(ctx, CreateInput{
 		UserID:          env.ownerID,
@@ -1394,8 +1390,8 @@ func TestReconcile_ScenarioSection42_SnapshotOutdated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
 	}
-	if build.FaeRating == nil || build.FaeRating.Status != domain.FaeStatusLive {
-		t.Fatalf("expected initial live status, got %+v", build.FaeRating)
+	if build.FaeRating == nil || build.FaeRating.Status != domain.FaeStatusSnapshot {
+		t.Fatalf("expected initial saved observation, got %+v", build.FaeRating)
 	}
 
 	newFP := fp + "-diff"
@@ -1409,7 +1405,7 @@ func TestReconcile_ScenarioSection42_SnapshotOutdated(t *testing.T) {
 		t.Fatalf("Get failed: %v", err)
 	}
 	if got.FaeRating.Status != domain.FaeStatusSnapshotOutdated || !got.FaeRating.Outdated {
-		t.Errorf("expected transition to snapshot_outdated, got status=%s outdated=%v", got.FaeRating.Status, got.FaeRating.Outdated)
+		t.Errorf("expected outdated presentation with saved rating attached, got status=%s outdated=%v", got.FaeRating.Status, got.FaeRating.Outdated)
 	}
 	if got.FaeRating.Rank == nil || *got.FaeRating.Rank != 10 {
 		t.Errorf("expected historical rank 10 preserved, got %v", got.FaeRating.Rank)
@@ -1419,8 +1415,8 @@ func TestReconcile_ScenarioSection42_SnapshotOutdated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
-	if persisted.FaeRating.Status != domain.FaeStatusSnapshotOutdated || !persisted.FaeRating.Outdated {
-		t.Errorf("expected persisted snapshot_outdated, got %+v", persisted.FaeRating)
+	if persisted.FaeRating.Status != domain.FaeStatusSnapshot || persisted.FaeRating.Outdated {
+		t.Errorf("expected saved rating to remain persisted, got %+v", persisted.FaeRating)
 	}
 }
 
@@ -1452,7 +1448,7 @@ func TestReconcile_ScenarioC_UnassessedRemainsNil(t *testing.T) {
 			},
 		},
 	}
-	env.svc.WithFaeFetcher(fetcher)
+	env.svc.WithFaeReader(fetcher)
 
 	builds, err := env.svc.ListByAccount(ctx, env.ownerID, env.accountID)
 	if err != nil {
@@ -1460,5 +1456,38 @@ func TestReconcile_ScenarioC_UnassessedRemainsNil(t *testing.T) {
 	}
 	if builds[0].FaeRating != nil {
 		t.Errorf("expected FaeRating to remain nil for mismatched build, got %+v", builds[0].FaeRating)
+	}
+}
+
+func TestReconcilePreservesAttachedRatingWhenApproximateFingerprintCollides(t *testing.T) {
+	env := newFixture(t)
+	ctx := context.Background()
+	raw, fp := sampleFullRawAvatar(1511)
+	data, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rank := 10
+	fetcher := &testFaeFetcher{ratings: map[int]*domain.FaeRating{1511: {Rank: &rank, EquipmentFingerprint: &fp}}}
+	env.svc.WithFaeReader(fetcher)
+	build, err := env.svc.Create(ctx, CreateInput{UserID: env.ownerID, GameAccountID: env.accountID, Name: "Original gear", RawAgentPayload: fairyAgentJSON(t, 1511, "Miyabi", true), RawData: data})
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherRank := 999
+	fetcher.ratings[1511] = &domain.FaeRating{Rank: &otherRank, EquipmentFingerprint: &fp}
+	got, err := env.svc.Get(ctx, env.ownerID, build.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.FaeRating == nil || *got.FaeRating.Rank != 10 {
+		t.Fatalf("attached collision rating = %+v, want original rank10", got.FaeRating)
+	}
+	persisted, err := env.builds.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *persisted.FaeRating.Rank != 10 {
+		t.Errorf("persisted collision rank = %d, want10", *persisted.FaeRating.Rank)
 	}
 }
