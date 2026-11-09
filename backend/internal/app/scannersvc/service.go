@@ -135,11 +135,20 @@ type Options struct {
 
 // Service scans showcases by UID.
 type Service struct {
-	fetcher     Fetcher
-	cache       Cache
-	negCache    NegativeCache
-	fallbackTTL time.Duration
-	negativeTTL time.Duration
+	fetcher      Fetcher
+	cache        Cache
+	negCache     NegativeCache
+	faeLoader    domain.FaeLoader
+	faeRefresher domain.FaeRefresher
+	fallbackTTL  time.Duration
+	negativeTTL  time.Duration
+}
+
+// WithFae configures initial observation loading and explicit refresh separately.
+func (s *Service) WithFae(loader domain.FaeLoader, refresher domain.FaeRefresher) *Service {
+	s.faeLoader = loader
+	s.faeRefresher = refresher
+	return s
 }
 
 // New creates a scanner service.
@@ -433,6 +442,19 @@ func (s *Service) GetRawAvatar(ctx context.Context, uid string, agentID int) (*z
 // EnrichAgent delegates to the fetcher to enrich a single raw avatar data payload in the given language.
 func (s *Service) EnrichAgent(raw *zzz.AvatarData, lang fairy.Language) (*fairy.Agent, error) {
 	return s.fetcher.EnrichAgent(raw, lang)
+}
+
+func (s *Service) FetchFaeByUID(ctx context.Context, uid string, refresh bool) (*domain.FaeProfile, error) {
+	if err := domain.ValidateUID(uid); err != nil {
+		return nil, fmt.Errorf("%w: %w", domain.ErrInvalidInput, err)
+	}
+	if refresh && s.faeRefresher != nil {
+		return s.faeRefresher.RefreshProfile(ctx, uid)
+	}
+	if s.faeLoader != nil {
+		return s.faeLoader.LoadProfile(ctx, uid)
+	}
+	return &domain.FaeProfile{UID: uid, Outcome: domain.FaeRefreshMissing}, nil
 }
 
 func scanCacheKey(uid string) string {

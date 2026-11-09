@@ -8,6 +8,7 @@ import { PageLoader } from '@/components/common/PageLoader'
 import { ShareIconButton } from '@/components/common/ShareIconButton'
 import { SharedUnavailableState } from '@/components/common/SharedUnavailableState'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
+import { FaeBadge } from '@/components/showcase/FaeBadge'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
@@ -222,8 +223,14 @@ export function PublicBuildPage() {
                 </div>
               </div>
 
-              {/* Actions: Separator + Share Button */}
+              {/* Actions: FAE Badge (desktop) + Separator + Share Button */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <FaeBadge
+                  rating={build.fae_rating}
+                  uid={owner.uid}
+                  showUnassessed={false}
+                  className="hidden sm:inline-flex w-auto"
+                />
                 <div className="hidden h-6 w-px shrink-0 bg-white/[0.12] sm:block" aria-hidden="true" />
                 <ShareIconButton
                   onClick={handleShare}
@@ -234,6 +241,14 @@ export function PublicBuildPage() {
                 />
               </div>
             </div>
+
+            {/* Mobile FAE Badge: full-width sub-row in header */}
+            <FaeBadge
+              rating={build.fae_rating}
+              uid={owner.uid}
+              showUnassessed={false}
+              className="sm:hidden w-full mt-2.5"
+            />
 
             {/* Mobile Note: full-width sub-row in header */}
             {build.description?.trim() && (

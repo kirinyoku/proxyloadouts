@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -209,5 +210,48 @@ func (h *ShowcaseHandler) handleRoster(w http.ResponseWriter, r *http.Request) {
 		IsPublicShowcase: account.IsPublicShowcase(),
 		Builds:           newBuildListResponse(buildsList),
 		Teams:            newTeamSummaryListResponse(teamsList),
+	})
+}
+
+type showcaseFaeResponse struct {
+	UID                string                       `json:"uid"`
+	Agents             map[string]*domain.FaeRating `json:"agents"`
+	FetchedAt          *time.Time                   `json:"fetched_at"`
+	RefreshAvailableAt *time.Time                   `json:"refresh_available_at"`
+	RefreshOutcome     domain.FaeRefreshOutcome     `json:"refresh_outcome"`
+}
+
+func (h *ShowcaseHandler) handleFae(w http.ResponseWriter, r *http.Request) {
+	if h.scanner == nil {
+		respondError(w, http.StatusNotFound, "scanner service unavailable")
+		return
+	}
+
+	uid := chi.URLParam(r, "uid")
+	freshParam := r.URL.Query().Get("fresh")
+	forceRefresh := freshParam == "true" || freshParam == "1"
+
+	profile, err := h.scanner.FetchFaeByUID(r.Context(), uid, forceRefresh)
+	if err != nil {
+		respondDomainError(w, r, err)
+		return
+	}
+
+	ratings := profile.Ratings()
+	agentsMap := make(map[string]*domain.FaeRating, len(ratings))
+	for agentID, rating := range ratings {
+		agentsMap[strconv.Itoa(agentID)] = rating
+	}
+
+	var observedAt *time.Time
+	if profile.Current != nil {
+		observedAt = &profile.Current.ObservedAt
+	}
+	respondJSON(w, http.StatusOK, showcaseFaeResponse{
+		UID:                uid,
+		Agents:             agentsMap,
+		FetchedAt:          observedAt,
+		RefreshAvailableAt: profile.RefreshAvailableAt,
+		RefreshOutcome:     profile.Outcome,
 	})
 }

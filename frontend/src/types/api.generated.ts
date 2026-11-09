@@ -428,6 +428,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/showcase/{uid}/fae": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read saved FAE ratings or explicitly refresh them
+         * @description Returns community leaderboard rankings and gear ratings from zfae.net for agents in the showcase.
+         */
+        get: operations["getShowcaseFae"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/showcase/{uid}/roster": {
         parameters: {
             query?: never;
@@ -968,6 +988,7 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+            fae_rating?: components["schemas"]["FaeRating"];
         };
         CreateBuildRequest: {
             /** Format: uuid */
@@ -1118,6 +1139,72 @@ export interface components {
             verified_owner?: components["schemas"]["PublicOwnerInfo"] | null;
             /** @description True if verified owner has published presets and squads */
             has_public_roster?: boolean;
+        };
+        FaeScoreBreakdown: {
+            /** @example 100 */
+            weapon_percent?: number;
+            /** @example 100 */
+            disc_set_percent?: number;
+            /** @example 100 */
+            mainstat_percent?: number;
+            /** @example 86 */
+            substat_percent?: number;
+        };
+        FaeRating: {
+            /**
+             * @example snapshot
+             * @enum {string}
+             */
+            status: "live" | "snapshot" | "snapshot_outdated" | "unassessed";
+            /** @example false */
+            outdated: boolean;
+            /** @example 4 */
+            rank?: number;
+            /** @example 10556 */
+            rank_of?: number;
+            /**
+             * Format: double
+             * @example 0.00038
+             */
+            top_percentile?: number;
+            /**
+             * Format: double
+             * @example 85.1
+             */
+            score?: number;
+            /**
+             * Format: date-time
+             * @description When this rating was actually observed. Absent for legacy snapshots.
+             */
+            observed_at?: string;
+            /**
+             * Format: int64
+             * @example 1793393915
+             */
+            time_assessed?: number;
+            /** @example claret */
+            slug?: string;
+            /** @example S Rank Limited W-Engines */
+            bracket_name?: string;
+            /** @example w:r1|s1:CR+3,DEF%+1,HP+0,PEN+0|s2:CDMG+1,CR+2,DEF%+2,PEN+0|s3:CDMG+1,CR+3,DEF%+1,PEN+0|s4:CDMG+2,DEF%+2,HP%+0,PEN+0|s5:CR+1,DEF+0,DEF%+3,HP%+1|s6:CDMG+0,CR+3,DEF+1,PEN+1 */
+            equipment_fingerprint?: string;
+            breakdown?: components["schemas"]["FaeScoreBreakdown"];
+        };
+        ShowcaseFaeResponse: {
+            /** @example 1503562965 */
+            uid: string;
+            agents: {
+                [key: string]: components["schemas"]["FaeRating"];
+            };
+            /**
+             * Format: date-time
+             * @description Actual observation time, null when this UID has no saved observation.
+             */
+            fetched_at: string | null;
+            /** Format: date-time */
+            refresh_available_at: string | null;
+            /** @enum {string} */
+            refresh_outcome: "saved" | "missing" | "updated" | "cooldown" | "backoff" | "failed" | "capacity";
         };
         AdminStats: {
             /** Format: date-time */
@@ -2107,6 +2194,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShowcaseResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            429: components["responses"]["RateLimitedError"];
+            502: components["responses"]["BadGatewayError"];
+        };
+    };
+    getShowcaseFae: {
+        parameters: {
+            query?: {
+                /** @description Explicitly refresh FAE data subject to durable cooldown and shared host backoff. False returns a stored observation at any age, or automatically loads a missing observation and bootstraps a missing FAE profile. */
+                fresh?: boolean;
+            };
+            header?: never;
+            path: {
+                uid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Showcase FAE leaderboard ratings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShowcaseFaeResponse"];
                 };
             };
             400: components["responses"]["BadRequestError"];

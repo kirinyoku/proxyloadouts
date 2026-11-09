@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -492,5 +493,129 @@ func TestBuildRepo_HasPublicByAccount(t *testing.T) {
 	}
 	if !has {
 		t.Errorf("expected HasPublicByAccount=true after making build public")
+	}
+}
+
+func TestBuildRepo_FaeRatingRoundtrip(t *testing.T) {
+	db := newMigratedTestDB(t)
+	ctx := context.Background()
+
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	repo := NewBuildRepo(db)
+
+	user := seedUser(t, ctx, users, "626262626262626262")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687072")
+
+	build := makeDomainBuild(user.ID, account.ID, "Fae Rated", 1611)
+	rank := 4
+	rankOf := 10556
+	pct := 0.00038
+	score := 85.1
+	timeAssessed := int64(1793393915)
+	slug := "claret"
+	bracket := "S Rank Limited W-Engines"
+	fp := "w:r1|s1:CDMG+1,CR+2,DEF%+1,PEN+0|s2:|s3:|s4:|s5:|s6:"
+	wPct := 100
+	sPct := 86
+
+	build.FaeRating = &domain.FaeRating{
+		Status:               domain.FaeStatusLive,
+		Outdated:             false,
+		Rank:                 &rank,
+		RankOf:               &rankOf,
+		TopPercentile:        &pct,
+		Score:                &score,
+		TimeAssessed:         &timeAssessed,
+		Slug:                 &slug,
+		BracketName:          &bracket,
+		EquipmentFingerprint: &fp,
+		Breakdown: &domain.FaeScoreBreakdown{
+			WeaponPercent:  &wPct,
+			SubstatPercent: &sPct,
+		},
+	}
+
+	if err := repo.Create(ctx, build); err != nil {
+		t.Fatalf("failed to create build with fae rating: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("failed to get build: %v", err)
+	}
+	if got.FaeRating == nil {
+		t.Fatal("expected non-nil FaeRating")
+	}
+	if got.FaeRating.Status != domain.FaeStatusLive || *got.FaeRating.Rank != 4 || *got.FaeRating.Score != 85.1 {
+		t.Errorf("fae rating mismatch: %+v", got.FaeRating)
+	}
+	if got.FaeRating.Breakdown == nil || *got.FaeRating.Breakdown.WeaponPercent != 100 {
+		t.Errorf("breakdown mismatch: %+v", got.FaeRating.Breakdown)
+	}
+
+	newRank := 5
+	attempt := &domain.FaeRating{Status: domain.FaeStatusSnapshotOutdated, Outdated: true, Rank: &newRank}
+	winner, err := repo.AttachFaeRating(ctx, build.ID, attempt)
+	if err != nil || winner == nil || winner.Rank == nil || *winner.Rank != 4 || winner.Outdated {
+		t.Fatalf("AttachFaeRating(existing, rank 5) = %+v, %v, want original rank 4", winner, err)
+	}
+	winner, err = repo.AttachFaeRating(ctx, build.ID, nil)
+	if err != nil || winner == nil || winner.Rank == nil || *winner.Rank != 4 {
+		t.Fatalf("AttachFaeRating(existing, nil) = %+v, %v, want original rank 4", winner, err)
+	}
+	persisted, err := repo.GetByID(ctx, build.ID)
+	if err != nil || persisted.FaeRating == nil || *persisted.FaeRating.Rank != 4 || persisted.UpdatedAt.UnixMilli() != build.UpdatedAt.UnixMilli() {
+		t.Fatalf("GetByID(after attachment attempts) = %+v, %v, want unchanged rating and updated_at", persisted, err)
+	}
+}
+
+func TestBuildRepo_AttachFaeRatingRetainsConcurrentWinner(t *testing.T) {
+	ctx := context.Background()
+	db := newMigratedTestDB(t)
+	users := NewUserRepo(db)
+	accounts := NewAccountRepo(db)
+	repo := NewBuildRepo(db)
+	user := seedUser(t, ctx, users, "646464646464646464")
+	account := seedAccount(t, ctx, accounts, user.ID, "1504687092")
+	build := makeDomainBuild(user.ID, account.ID, "Initially unrated", 1611)
+	if err := repo.Create(ctx, build); err != nil {
+		t.Fatal(err)
+	}
+	if empty, err := repo.AttachFaeRating(ctx, build.ID, nil); err != nil || empty != nil {
+		t.Fatalf("AttachFaeRating(empty, nil) = %+v, %v, want nil", empty, err)
+	}
+	start := make(chan struct{})
+	type result struct {
+		rating *domain.FaeRating
+		err    error
+	}
+	results := make(chan result, 8)
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Go(func() {
+			<-start
+			rank := i + 1
+			rating, err := repo.AttachFaeRating(ctx, build.ID, &domain.FaeRating{Status: domain.FaeStatusSnapshot, Rank: &rank})
+			results <- result{rating: rating, err: err}
+		})
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+	persisted, err := repo.GetByID(ctx, build.ID)
+	if err != nil || persisted.FaeRating == nil || persisted.FaeRating.Rank == nil {
+		t.Fatalf("GetByID(attached) = %+v, %v", persisted, err)
+	}
+	for got := range results {
+		if got.err != nil || got.rating == nil || got.rating.Rank == nil || *got.rating.Rank != *persisted.FaeRating.Rank {
+			t.Errorf("AttachFaeRating(concurrent) = %+v, %v, want persisted rank %d", got.rating, got.err, *persisted.FaeRating.Rank)
+		}
+	}
+	if persisted.UpdatedAt.UnixMilli() != build.UpdatedAt.UnixMilli() {
+		t.Errorf("attachment updated_at = %v, want original %v", persisted.UpdatedAt, build.UpdatedAt)
+	}
+	if _, err := repo.AttachFaeRating(ctx, uuid.New(), persisted.FaeRating); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("AttachFaeRating(missing) error = %v, want ErrNotFound", err)
 	}
 }

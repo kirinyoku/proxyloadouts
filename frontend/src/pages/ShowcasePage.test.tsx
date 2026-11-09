@@ -64,6 +64,8 @@ vi.mock('@/api/hooks', async (importOriginal) => {
     ...actual,
     useMe: () => mockUseMe(),
     useShowcase: () => mockUseShowcase(),
+    useRefreshShowcaseFae: () => ({ isPending: false, variables: undefined, mutate: vi.fn() }),
+    useShowcaseFae: () => ({ data: undefined, isPending: false, refetch: vi.fn() }),
     useShowcaseRoster: () => mockUseShowcaseRoster(),
     useBuilds: () => mockUseBuilds(),
     useRenameBuild: () => ({ mutate: vi.fn(), isPending: false }),

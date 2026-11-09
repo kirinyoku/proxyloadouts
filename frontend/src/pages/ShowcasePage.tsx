@@ -1,12 +1,13 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, Check, Layers, RefreshCw, ScanLine, Users } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useBuilds, useMe, useShowcase, useShowcaseRoster } from '@/api/hooks'
+import { useBuilds, useMe, useRefreshShowcaseFae, useShowcase, useShowcaseFae, useShowcaseRoster } from '@/api/hooks'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
 import { findMatchingSavedBuild, getAgentEquipmentFingerprint } from '@/lib/builds'
 import { persistLastUid, readLastUid, UID_PATTERN } from '@/lib/uid'
 import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
+import { FaeRefreshControl } from '@/components/showcase/FaeRefreshControl'
 import { ShowcaseProfileHeader } from '@/components/showcase/ShowcaseProfileHeader'
 import { ShowcaseSavedPresets } from '@/components/showcase/ShowcaseSavedPresets'
 import { ShowcaseSquads } from '@/components/showcase/ShowcaseSquads'
@@ -55,6 +56,7 @@ interface AgentShowcaseSectionProps {
   matchingBuildName?: string | null
   canSave: boolean
   onSaveClick: () => void
+  faeBadge: ReactNode
 }
 
 function MobileSectionTabs({
@@ -109,6 +111,7 @@ function AgentShowcaseSection({
   matchingBuildName,
   canSave,
   onSaveClick,
+  faeBadge,
 }: AgentShowcaseSectionProps) {
   const { t, i18n } = useTranslation()
   const [mobileSection, setMobileSection] = useState<MobileAgentSection>('discs')
@@ -143,8 +146,8 @@ function AgentShowcaseSection({
   return (
     <div className="relative rounded-3xl border border-white/[0.08] bg-card/96 p-3 shadow-xl backdrop-blur-sm md:p-4">
       <div className="space-y-3">
-        {/* Agent identity and the primary build action */}
-        <div className="flex items-center justify-between gap-2 border-b border-white/[0.08] pb-2">
+        {/* Agent identity, FAE rank badge, and the primary build action */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] pb-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <h2 className="truncate font-heading text-[15px] font-bold leading-none tracking-wide text-foreground sm:text-xl">
               {agent.name}
@@ -157,10 +160,12 @@ function AgentShowcaseSection({
           </div>
 
           {saveButton && (
-            <div className="shrink-0">
+            <div className="shrink-0 sm:order-3">
               {saveButton}
             </div>
           )}
+
+          {faeBadge}
         </div>
 
         {/* On mobile screens: W-Engine card is displayed above the section tabs */}
@@ -312,6 +317,13 @@ export function ShowcasePage() {
   const buildsQuery = useBuilds(isAuthed && matchingAccount ? matchingAccount.id : undefined)
   const showcaseQuery = useShowcase(scannedUid)
   const rosterQuery = useShowcaseRoster(scannedUid)
+  const faeQuery = useShowcaseFae(scannedUid)
+  const refreshFae = useRefreshShowcaseFae()
+  const isFaeRefreshing = refreshFae.isPending && refreshFae.variables.uid === scannedUid
+
+  function refreshShowcase() {
+    void showcaseQuery.refetch()
+  }
 
   const hasPublicBuilds = Boolean(
     (rosterQuery.data?.is_public_roster ?? rosterQuery.data?.is_public_showcase) &&
@@ -399,8 +411,7 @@ export function ShowcasePage() {
     setUidInput(uid)
     persistLastUid(uid)
     if (uid === scannedUid) {
-      void showcaseQuery.refetch()
-      void rosterQuery.refetch()
+      refreshShowcase()
     } else {
       setSearchParams((previous) => {
         const next = new URLSearchParams(previous)
@@ -472,10 +483,7 @@ export function ShowcasePage() {
           error={showcaseQuery.error}
           uid={scannedUid}
           onScanUid={scan}
-          onRetry={() => {
-            void showcaseQuery.refetch()
-            void rosterQuery.refetch()
-          }}
+          onRetry={refreshShowcase}
           isRetrying={showcaseQuery.isFetching}
           className="w-full mx-auto"
         />
@@ -524,6 +532,14 @@ export function ShowcasePage() {
   ]
 
   const showModeSwitcher = modeOptions.length > 1
+  const faeRefreshProps = {
+    profile: faeQuery.data,
+    pending: isFaeRefreshing,
+    failed: refreshFae.isError && refreshFae.variables.uid === scannedUid,
+    onRefresh: () => refreshFae.mutate({ uid: scannedUid, gameAccountId: matchingAccount?.id }),
+    uid: scannedUid,
+    isLoading: faeQuery.isPending,
+  }
 
   return (
     <div className="space-y-3">
@@ -544,10 +560,7 @@ export function ShowcasePage() {
               isRefetching={showcaseQuery.isRefetching}
               onScan={scan}
               onUidInputChange={setUidInput}
-              onRefresh={() => {
-                void showcaseQuery.refetch()
-                void rosterQuery.refetch()
-              }}
+              onRefresh={refreshShowcase}
               className="flex-1 min-w-0 w-full"
             />
 
@@ -586,10 +599,11 @@ export function ShowcasePage() {
           {isEnkaDownWithRosterFallback && (
             <div
               role="alert"
-              className="flex items-center gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200 shadow-sm"
+              className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200 shadow-sm"
             >
               <AlertCircle className="size-4 shrink-0 text-amber-400" />
-              <span>{t('showcase.enkaUnavailableNotice')}</span>
+              <span className="min-w-0 flex-1">{t('showcase.enkaUnavailableNotice')}</span>
+              {!showModeSwitcher && effectiveMode !== 'live' && <FaeRefreshControl {...faeRefreshProps} className="shrink-0" />}
             </div>
           )}
 
@@ -602,16 +616,19 @@ export function ShowcasePage() {
                   title={t('showcase.emptyTitle')}
                   description={t('showcase.emptyDesc')}
                   action={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void showcaseQuery.refetch()}
-                      loading={showcaseQuery.isRefetching}
-                      className="gap-1.5"
-                    >
-                      {!showcaseQuery.isRefetching && <RefreshCw className="size-3.5" />}
-                      {t('showcase.refreshShowcase')}
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <FaeRefreshControl {...faeRefreshProps} />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshShowcase}
+                        loading={showcaseQuery.isRefetching}
+                        className="gap-1.5"
+                      >
+                        {!showcaseQuery.isRefetching && <RefreshCw className="size-3.5" />}
+                        {t('showcase.refreshShowcase')}
+                      </Button>
+                    </div>
                   }
                 />
               )}
@@ -649,6 +666,13 @@ export function ShowcasePage() {
                       matchingBuildName={matchingSavedBuild?.name}
                       canSave={isAuthed && isOwnedUid}
                       onSaveClick={() => setSavingAgent(selectedAgent)}
+                      faeBadge={
+                        <FaeRefreshControl
+                          {...faeRefreshProps}
+                          rating={faeQuery.data?.agents?.[String(selectedAgent.id)]}
+                          className="order-3 sm:order-2"
+                        />
+                      }
                     />
                   </div>
                 </div>
@@ -663,7 +687,7 @@ export function ShowcasePage() {
                 <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
               </div>
             ) : (
-              <ShowcaseSavedPresets builds={rosterQuery.data?.builds ?? []} />
+              <ShowcaseSavedPresets builds={rosterQuery.data?.builds ?? []} uid={showcase?.uid || scannedUid} />
             )
           )}
 

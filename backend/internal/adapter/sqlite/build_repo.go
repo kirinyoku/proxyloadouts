@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -58,15 +59,24 @@ func (r *SQLiteBuildRepo) Create(ctx context.Context, build *domain.AgentBuild) 
 		return fmt.Errorf("%w: raw_data is required", domain.ErrInvalidInput)
 	}
 
+	var faeData sql.NullString
+	if build.FaeRating != nil {
+		bytes, err := json.Marshal(build.FaeRating)
+		if err != nil {
+			return fmt.Errorf("failed to marshal fae rating: %w", err)
+		}
+		faeData = sql.NullString{String: string(bytes), Valid: true}
+	}
+
 	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO agent_builds (id, user_id, game_account_id, agent_id, agent_name, name, description,
-		 weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+		 weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, fae_data, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
 		build.ID.String(), build.UserID.String(), build.GameAccountID.String(),
 		build.AgentID, build.AgentName, build.Name, nullableString(build.Description),
 		nullableString(build.WeaponUID), nullableInt(build.WeaponID),
 		string(discUIDs), string(discSlots), string(build.RawData),
-		boolToInt(build.IsPublic),
+		boolToInt(build.IsPublic), faeData,
 		formatTime(build.CreatedAt), formatTime(build.UpdatedAt),
 	)
 	if err != nil {
@@ -245,12 +255,43 @@ func (r *SQLiteBuildRepo) UpdateVisibility(ctx context.Context, id uuid.UUID, is
 	return nil
 }
 
+// AttachFaeRating atomically retains the first rating and returns it without modifying updated_at.
+func (r *SQLiteBuildRepo) AttachFaeRating(ctx context.Context, id uuid.UUID, rating *domain.FaeRating) (*domain.FaeRating, error) {
+	var faeData sql.NullString
+	if rating != nil {
+		bytes, err := json.Marshal(rating)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal fae rating: %w", err)
+		}
+		faeData = sql.NullString{String: string(bytes), Valid: true}
+	}
+	var persisted sql.NullString
+	err := r.db.QueryRowContext(ctx,
+		`UPDATE agent_builds SET fae_data = COALESCE(fae_data, ?) WHERE id = ? RETURNING fae_data;`,
+		faeData, id.String(),
+	).Scan(&persisted)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("%w: agent build %s", domain.ErrNotFound, id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach fae rating for build %s: %w", id, err)
+	}
+	if !persisted.Valid {
+		return nil, nil
+	}
+	var attached domain.FaeRating
+	if err := json.Unmarshal([]byte(persisted.String), &attached); err != nil {
+		return nil, fmt.Errorf("failed to decode attached fae rating for build %s: %w", id, err)
+	}
+	return &attached, nil
+}
+
 // GetPublicByID returns a public build and its owner info, or domain.ErrNotFound if
 // the build does not exist, is private (is_public = 0), or the owner is banned.
 func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*domain.AgentBuild, *domain.PublicOwnerInfo, error) {
 	row := r.db.QueryRowContext(ctx,
 		`SELECT b.id, b.user_id, b.game_account_id, b.agent_id, b.agent_name, b.name, b.description,
-		        b.weapon_uid, b.weapon_id, b.disc_uids, b.disc_slots, b.raw_data, b.is_public, b.created_at, b.updated_at,
+		        b.weapon_uid, b.weapon_id, b.disc_uids, b.disc_slots, b.raw_data, b.is_public, b.fae_data, b.created_at, b.updated_at,
 		        ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.show_discord,
 		        u.discord_id, u.username, u.avatar_url
 		 FROM agent_builds b
@@ -274,6 +315,7 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 		discSlots        string
 		rawData          string
 		isPublic         int
+		faeData          sql.NullString
 		createdAt        string
 		updatedAt        string
 		ownerUID         string
@@ -288,7 +330,7 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 
 	if err := row.Scan(
 		&buildID, &userID, &accountID, &agentID, &agentName, &name, &description,
-		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &createdAt, &updatedAt,
+		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &faeData, &createdAt, &updatedAt,
 		&ownerUID, &ownerRegion, &ownerNickname, &ownerAvatarURL, &ownerShowDiscord,
 		&discordID, &discordUsername, &discordAvatarURL,
 	); err != nil {
@@ -296,7 +338,7 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 	}
 
 	build, err := parseBuildFields(buildID, userID, accountID, agentID, agentName, name, description,
-		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, createdAt, updatedAt)
+		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, faeData, createdAt, updatedAt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -322,7 +364,7 @@ func (r *SQLiteBuildRepo) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 const buildSelect = `SELECT id, user_id, game_account_id, agent_id, agent_name, name, description,
-	weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, created_at, updated_at
+	weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, fae_data, created_at, updated_at
 	FROM agent_builds`
 
 func scanBuildRow(row rowScanner) (*domain.AgentBuild, error) {
@@ -340,16 +382,17 @@ func scanBuildRow(row rowScanner) (*domain.AgentBuild, error) {
 		discSlots   string
 		rawData     string
 		isPublic    int
+		faeData     sql.NullString
 		createdAt   string
 		updatedAt   string
 	)
 	if err := row.Scan(&id, &userID, &accountID, &agentID, &agentName, &name, &description,
-		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &createdAt, &updatedAt); err != nil {
+		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &faeData, &createdAt, &updatedAt); err != nil {
 		return nil, notFound("agent build", err)
 	}
 
 	return parseBuildFields(id, userID, accountID, agentID, agentName, name, description,
-		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, createdAt, updatedAt)
+		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, faeData, createdAt, updatedAt)
 }
 
 func parseBuildFields(
@@ -359,6 +402,7 @@ func parseBuildFields(
 	weaponID sql.NullInt64,
 	discUIDs, discSlots, rawData string,
 	isPublic int,
+	faeData sql.NullString,
 	createdAt, updatedAt string,
 ) (*domain.AgentBuild, error) {
 	parsedIDs, err := parseUUID3("agent build", "id", id, "user_id", userID, "game_account_id", accountID)
@@ -403,6 +447,13 @@ func parseBuildFields(
 		IsPublic:      isPublic != 0,
 		CreatedAt:     createdAtParsed,
 		UpdatedAt:     updatedAtParsed,
+	}
+	if faeData.Valid && faeData.String != "" {
+		var rating domain.FaeRating
+		if err := json.Unmarshal([]byte(faeData.String), &rating); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal fae rating of build %s: %w", id, err)
+		}
+		b.FaeRating = &rating
 	}
 	if len(b.DiscSlots) == 0 && len(b.RawData) > 0 {
 		b.PopulateDiscSlotsFromRawData()

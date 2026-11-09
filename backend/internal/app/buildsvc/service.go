@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -33,12 +34,13 @@ type AgentLocalizer = buildenrich.Localizer
 
 // Service implements build use cases.
 type Service struct {
-	builds   domain.BuildRepository
-	accounts domain.AccountRepository
-	users    domain.UserRepository
-	scanner  ShowcaseValidator
-	enricher AgentLocalizer
-	now      func() time.Time
+	builds    domain.BuildRepository
+	accounts  domain.AccountRepository
+	users     domain.UserRepository
+	scanner   ShowcaseValidator
+	enricher  AgentLocalizer
+	faeReader domain.FaeReader
+	now       func() time.Time
 }
 
 // Option configures optional Service dependencies.
@@ -64,6 +66,18 @@ func WithEnricher(enricher AgentLocalizer) Option {
 	return func(s *Service) {
 		s.enricher = enricher
 	}
+}
+
+// WithFae configures an optional FaeReader for ZFAE leaderboard ratings.
+func WithFae(reader domain.FaeReader) Option {
+	return func(s *Service) {
+		s.faeReader = reader
+	}
+}
+
+func (s *Service) WithFaeReader(reader domain.FaeReader) *Service {
+	s.faeReader = reader
+	return s
 }
 
 // New creates the build service.
@@ -213,8 +227,10 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 	}
 
 	var rawData json.RawMessage
+	var rawAvatar *zzz.AvatarData
 	if s.scanner != nil {
-		rawAvatar, err := s.scanner.GetRawAvatar(ctx, account.UID, extracted.agentID)
+		var err error
+		rawAvatar, err = s.scanner.GetRawAvatar(ctx, account.UID, extracted.agentID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get raw avatar for UID %s: %w", account.UID, err)
 		}
@@ -227,14 +243,23 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 		}
 		rawData = rawBytes
 	} else if len(input.RawData) > 0 {
-		var rawAvatar zzz.AvatarData
-		if err := json.Unmarshal(input.RawData, &rawAvatar); err != nil {
+		var av zzz.AvatarData
+		if err := json.Unmarshal(input.RawData, &av); err != nil {
 			return nil, fmt.Errorf("%w: invalid raw avatar data: %w", domain.ErrInvalidInput, err)
 		}
+		rawAvatar = &av
 		rawData = input.RawData
 	}
 	if len(rawData) == 0 {
 		return nil, fmt.Errorf("%w: raw avatar data is required to save a build", domain.ErrInvalidInput)
+	}
+
+	fp := domain.ComputeEquipmentFingerprint(rawAvatar)
+	var faeRating *domain.FaeRating
+	if s.faeReader != nil && fp != "" {
+		if profile, err := s.faeReader.ReadProfile(ctx, account.UID); err == nil {
+			faeRating = profile.MatchRating(extracted.agentID, fp)
+		}
 	}
 
 	isPublic := true
@@ -256,6 +281,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 		DiscSlots:     extracted.discSlots,
 		BuildData:     input.RawAgentPayload,
 		RawData:       rawData,
+		FaeRating:     faeRating,
 	}
 	if err := s.builds.Create(ctx, build); err != nil {
 		return nil, err
@@ -267,12 +293,27 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*domain.AgentB
 // domain.ErrForbidden. When lang is supplied and raw_data is available, the
 // build payload and agent name are dynamically localized.
 func (s *Service) Get(ctx context.Context, userID, buildID uuid.UUID, lang ...string) (*domain.AgentBuild, error) {
-	build, err := s.builds.GetByID(ctx, buildID)
+	build, err := s.GetByID(ctx, buildID, lang...)
 	if err != nil {
 		return nil, err
 	}
 	if build.UserID != userID {
 		return nil, fmt.Errorf("%w: build %s", domain.ErrForbidden, buildID)
+	}
+	return build, nil
+}
+
+// GetByID returns the build by ID regardless of owner, running FAE reconciliation
+// and enrichment when applicable.
+func (s *Service) GetByID(ctx context.Context, buildID uuid.UUID, lang ...string) (*domain.AgentBuild, error) {
+	build, err := s.builds.GetByID(ctx, buildID)
+	if err != nil {
+		return nil, err
+	}
+	if s.faeReader != nil {
+		if acc, err := s.accounts.GetByID(ctx, build.GameAccountID); err == nil && acc != nil {
+			s.reconcileFaeRatings(ctx, acc.UID, []*domain.AgentBuild{build})
+		}
 	}
 	requestedLang := ""
 	if len(lang) > 0 {
@@ -291,6 +332,11 @@ func (s *Service) ListByAccount(ctx context.Context, userID, accountID uuid.UUID
 	builds, err := s.builds.ListByAccount(ctx, accountID)
 	if err != nil {
 		return nil, err
+	}
+	if s.faeReader != nil && len(builds) > 0 {
+		if acc, err := s.accounts.GetByID(ctx, accountID); err == nil && acc != nil {
+			s.reconcileFaeRatings(ctx, acc.UID, builds)
+		}
 	}
 	requestedLang := ""
 	if len(lang) > 0 {
@@ -311,6 +357,11 @@ func (s *Service) ListPublicByAccount(ctx context.Context, accountID uuid.UUID, 
 	builds, err := s.builds.ListPublicByAccount(ctx, accountID)
 	if err != nil {
 		return nil, err
+	}
+	if s.faeReader != nil && len(builds) > 0 {
+		if acc, err := s.accounts.GetByID(ctx, accountID); err == nil && acc != nil {
+			s.reconcileFaeRatings(ctx, acc.UID, builds)
+		}
 	}
 	requestedLang := ""
 	if len(lang) > 0 {
@@ -495,6 +546,9 @@ func (s *Service) GetPublic(ctx context.Context, buildID uuid.UUID, lang ...stri
 	if err != nil {
 		return nil, err
 	}
+	if s.faeReader != nil && owner != nil && owner.UID != "" {
+		s.reconcileFaeRatings(ctx, owner.UID, []*domain.AgentBuild{build})
+	}
 
 	requestedLang := ""
 	if len(lang) > 0 {
@@ -506,6 +560,47 @@ func (s *Service) GetPublic(ctx context.Context, buildID uuid.UUID, lang ...stri
 		Build: build,
 		Owner: owner,
 	}, nil
+}
+
+// GetPublicByID is an alias for GetPublic.
+func (s *Service) GetPublicByID(ctx context.Context, buildID uuid.UUID, lang ...string) (*PublicBuildDetail, error) {
+	return s.GetPublic(ctx, buildID, lang...)
+}
+
+func (s *Service) reconcileFaeRatings(ctx context.Context, uid string, builds []*domain.AgentBuild) {
+	if s.faeReader == nil || uid == "" || len(builds) == 0 {
+		return
+	}
+	profile, err := s.faeReader.ReadProfile(ctx, uid)
+	if err != nil {
+		slog.Warn("failed to read saved zfae ratings", "uid", uid, "error", err)
+		return
+	}
+	for _, b := range builds {
+		fingerprint := domain.ComputeEquipmentFingerprintFromRawJSON(b.RawData)
+		if b.FaeRating == nil {
+			rating := profile.MatchRating(b.AgentID, fingerprint)
+			if rating == nil {
+				continue
+			}
+			attached, err := s.builds.AttachFaeRating(ctx, b.ID, rating)
+			if err != nil {
+				slog.Warn("failed to attach saved zfae rating", "build_id", b.ID, "error", err)
+				continue
+			}
+			b.FaeRating = attached
+		}
+		if profile == nil || profile.Current == nil || profile.Current.Agents == nil {
+			continue
+		}
+		current, exists := profile.Current.Agents[b.AgentID]
+		if exists && (current == nil || current.EquipmentFingerprint == nil || *current.EquipmentFingerprint == "" || fingerprint == "" || *current.EquipmentFingerprint == fingerprint) {
+			continue
+		}
+		b.FaeRating = b.FaeRating.Clone()
+		b.FaeRating.Status = domain.FaeStatusSnapshotOutdated
+		b.FaeRating.Outdated = true
+	}
 }
 
 func (s *Service) ensureAccountOwnership(ctx context.Context, userID, accountID uuid.UUID) error {

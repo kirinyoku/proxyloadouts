@@ -10,6 +10,7 @@ import type {
   PublicBuildResponse,
   PublicShowcaseRosterResponse,
   PublicTeamResponse,
+  ShowcaseFaeResponse,
   ShowcaseResponse,
   Team,
   TeamCountResponse,
@@ -199,6 +200,18 @@ export function fetchShowcase(
   const activeLang = lang || getCurrentLanguage()
   const query = activeLang ? `?lang=${encodeURIComponent(activeLang)}` : ''
   return request<ShowcaseResponse>(`/showcase/${encodeURIComponent(uid)}${query}`, { signal })
+}
+
+export function getShowcaseFae(
+  uid: string,
+  fresh?: boolean,
+  signal?: AbortSignal,
+): Promise<ShowcaseFaeResponse> {
+  const query = fresh ? '?fresh=true' : ''
+  return request<ShowcaseFaeResponse>(`/showcase/${encodeURIComponent(uid)}/fae${query}`, {
+    signal,
+    skipAuthRedirect: true,
+  })
 }
 
 export function fetchShowcaseRoster(

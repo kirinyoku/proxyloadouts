@@ -34,8 +34,8 @@ In endgame modes like **Shiyu Defense** and **Deadly Assault**, enemy lineups, a
 
 ProxyLoadouts is a web service that gives you an external loadout library and squad planner powered by your in-game showcase:
 
-1. **One-Screen Build Capture (`Showcase`)**: Place your agents on your in-game showcase and scan your UID (powered by EnkaNetwork). Instead of taking 6 separate screenshots, you see the agent's W-Engine, total stats, and **all 6 Drive Discs with their substat rolls** on a single screen.
-2. **Multiple Presets per Agent (`Roster`)**: Save up to **5 named builds per agent** with custom notes—so you can keep dedicated presets for different teams, bosses, or combat buffs.
+1. **One-Screen Build Capture (`Showcase`)**: Place your agents on your in-game showcase and scan your UID (powered by EnkaNetwork) with community build ratings and leaderboard rankings from FAE (`zfae.net`). Instead of taking 6 separate screenshots, you see the agent's W-Engine, total stats, and **all 6 Drive Discs with their substat rolls** on a single screen.
+2. **Multiple Presets per Agent (`Roster`)**: Save up to **5 named builds per agent** with custom notes and live/saved FAE rankings—so you can keep dedicated presets for different teams, bosses, or combat buffs.
 3. **Squad Planner with Conflict Check (`Squads`)**: Combine saved agent presets into 3-agent squads with notes (e.g., which boss the squad targets or which disc to swap). When picking builds for a squad, ProxyLoadouts automatically warns you if two agents share the exact same W-Engine or Drive Disc.
 4. **Secret Share Links & Public Previews (`Sharing`)**: Share individual builds (`/b/:token`), 3-agent combat squads (`/t/:token`), or your entire roster (`/r/:token`) via unguessable secret tokens. Recipients can inspect full equipment cards and substats without an account, and links can be revoked instantly.
 
@@ -58,7 +58,7 @@ Detailed technical and visual documentation is split by subsystem:
 ## Tech Stack at a Glance
 
 - **Frontend**: React 19, TypeScript 6.0, Vite 8, Tailwind CSS v4, Radix UI Primitives, TanStack Query v5, Zustand v5, i18next (`EN` / `RU`).
-- **Backend**: Go 1.26 (`CGO_ENABLED=0`), Chi v5 router, Pure-Go SQLite (`modernc.org/sqlite` in WAL mode), EnkaNetwork & [`fairy`](https://github.com/kirinyoku/fairy) ZZZ catalog SDK, Discord OAuth2.
+- **Backend**: Go 1.26 (`CGO_ENABLED=0`), Chi v5 router, Pure-Go SQLite (`modernc.org/sqlite` in WAL mode), EnkaNetwork & [`fairy`](https://github.com/kirinyoku/fairy) ZZZ catalog SDK, FAE (`zfae.net`) ratings, Discord OAuth2.
 - **Deployment**: Compiles into a **single self-contained Go binary** (`//go:embed`) consuming **~35 MB of RAM**, packaged via a multi-stage non-root Docker image alongside Dozzle for live container logs.
 
 ---
@@ -120,7 +120,8 @@ proxyloadouts/
 │   └── openapi.yaml        # OpenAPI 3.1 API specification (SSOT)
 ├── backend/                # Go 1.26 backend service (see backend/README.md)
 │   ├── cmd/                # Server entrypoint, game catalog codegen & user quota CLI
-│   ├── internal/           # Domain, conflict engine, use cases, adapters
+│   ├── internal/           # Domain, conflict engine, use cases
+│   │   └── adapter/        # Adapters (http, sqlite, discord, fairy, inmemory, telegram, zfae)
 │   └── migrations/         # Embedded SQLite schema migrations
 ├── frontend/               # React 19 SPA client (see frontend/README.md)
 │   ├── src/                # UI components, pages, hooks, stores, i18n

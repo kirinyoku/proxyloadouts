@@ -59,6 +59,7 @@ type BuildRepository interface {
 	UpdateDetails(ctx context.Context, id uuid.UUID, name string, description *string) error
 	UpdateName(ctx context.Context, id uuid.UUID, name string) error
 	UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error
+	AttachFaeRating(ctx context.Context, id uuid.UUID, rating *FaeRating) (*FaeRating, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 

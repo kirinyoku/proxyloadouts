@@ -1,5 +1,6 @@
 import type { PublicOwnerInfo } from './account'
 import type { Agent } from './agent'
+import type { FaeRating } from './fae'
 
 export interface Build {
   id: string
@@ -13,6 +14,7 @@ export interface Build {
   disc_uids: string[]
   build_data: Agent
   is_public: boolean
+  fae_rating?: FaeRating
   created_at: string
   updated_at: string
 }

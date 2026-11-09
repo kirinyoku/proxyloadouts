@@ -24,6 +24,7 @@ import * as api from './client'
 const AUTH_STALE_TIME = 60_000
 const COLLECTION_STALE_TIME = 2 * 60_000
 const SHOWCASE_STALE_TIME = 60_000
+const FAE_STALE_TIME = 15 * 60 * 1000
 const VALIDATION_DEBOUNCE_MS = 300
 
 // Stable empty reference so consumers do not re-render on every render while
@@ -52,6 +53,7 @@ export const queryKeys = {
   me: ['auth', 'me'] as const,
   showcase: (uid: string, lang?: string) =>
     lang ? (['showcase', uid, lang] as const) : (['showcase', uid] as const),
+  showcaseFae: (uid: string) => ['showcase', 'fae', uid] as const,
   showcaseRoster: (uid: string, lang?: string) =>
     lang ? (['showcase', 'roster', uid, lang] as const) : (['showcase', 'roster', uid] as const),
   builds: (gameAccountId: string, lang?: string) =>
@@ -131,6 +133,46 @@ export function useShowcase(uid: string) {
     queryFn: ({ signal }) => api.fetchShowcase(uid, langKey, signal),
     enabled: uid.trim().length > 0,
     staleTime: SHOWCASE_STALE_TIME,
+  })
+}
+
+export function useShowcaseFae(uid: string) {
+  return useQuery({
+    queryKey: queryKeys.showcaseFae(uid),
+    queryFn: ({ signal }) => api.getShowcaseFae(uid, false, signal),
+    enabled: uid.trim().length > 0,
+    staleTime: FAE_STALE_TIME,
+    retry: 1,
+  })
+}
+
+interface RefreshShowcaseFaeVariables {
+  uid: string
+  gameAccountId?: string
+}
+
+export function useRefreshShowcaseFae() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    retry: false,
+    mutationFn: async ({ uid }: RefreshShowcaseFaeVariables) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.showcaseFae(uid), exact: true })
+      return api.getShowcaseFae(uid, true)
+    },
+    onSuccess: async (data, { uid, gameAccountId }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.showcaseFae(uid), exact: true })
+      queryClient.setQueryData(queryKeys.showcaseFae(uid), data)
+      if (data.refresh_outcome !== 'updated') return
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.showcaseRoster(uid) }),
+        ...(gameAccountId
+          ? [queryClient.invalidateQueries({ queryKey: queryKeys.builds(gameAccountId) })]
+          : []),
+      ])
+    },
+    onError: (_error, { uid }) => toast.error(t('fae.refreshError', { uid })),
   })
 }
 

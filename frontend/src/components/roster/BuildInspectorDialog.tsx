@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { MindscapeBadge } from '@/components/ui/MindscapeBadge'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
+import { FaeBadge } from '@/components/showcase/FaeBadge'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import {
@@ -203,8 +204,13 @@ export function BuildInspectorDialog({
                 </div>
               </div>
 
-              {/* Actions: Open in Roster (private mode) + Close Button */}
+              {/* Actions: FAE Badge (desktop) + Open in Roster (private mode) + Close Button */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <FaeBadge
+                  rating={build.fae_rating}
+                  showUnassessed={false}
+                  className="hidden sm:inline-flex w-auto"
+                />
                 {!isPublic && (
                   <Button
                     variant="outline"
@@ -240,6 +246,13 @@ export function BuildInspectorDialog({
                 </DialogClose>
               </div>
             </div>
+
+            {/* Mobile FAE Badge: full-width sub-row in header */}
+            <FaeBadge
+              rating={build.fae_rating}
+              showUnassessed={false}
+              className="sm:hidden w-full mt-2.5"
+            />
 
             {/* Mobile Note: full-width sub-row in header */}
             {build.description?.trim() && (

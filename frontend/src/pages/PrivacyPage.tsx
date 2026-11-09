@@ -311,6 +311,22 @@ export function PrivacyPage() {
                 </a>
               </div>
             </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+              <div>
+                <span>{t('privacy.sections.thirdParty.faeLead')}</span>
+                <a
+                  href="https://zfae.net"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-0.5 text-primary hover:underline"
+                >
+                  <span>zfae.net</span>
+                  <ExternalLink className="size-3" />
+                </a>
+                <span>{t('privacy.sections.thirdParty.faeTail')}</span>
+              </div>
+            </li>
           </ul>
         </section>
 

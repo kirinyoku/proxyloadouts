@@ -8,6 +8,7 @@ import { AgentAvatarTab } from '@/components/showcase/AgentAvatarTab'
 import { RosterBuildToolbar } from '@/components/roster/RosterBuildToolbar'
 import { RosterToolbar } from '@/components/roster/RosterToolbar'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
+import { FaeBadge } from '@/components/showcase/FaeBadge'
 import { WEngineCard } from '@/components/showcase/WEngineCard'
 import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
 import { Button } from '@/components/ui/button'
@@ -442,6 +443,14 @@ export function RosterPage({
                         handleSelectBuildId(currentGroup.agentId, buildId)
                       }
                       meta={capacityChip}
+                      faeBadge={
+                        <FaeBadge
+                          rating={currentBuild.fae_rating}
+                          uid={activeAccount?.uid}
+                          showUnassessed
+                          className="w-full sm:w-auto"
+                        />
+                      }
                     />
 
                     {/* On mobile screens: W-Engine card is displayed above the section tabs */}
