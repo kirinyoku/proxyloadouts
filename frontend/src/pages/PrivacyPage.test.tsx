@@ -73,6 +73,7 @@ describe('PrivacyPage', () => {
     expect(html).toContain(`mailto:${ru.privacy.sections.contact.email}`)
     expect(html).toContain('href="https://www.hetzner.com"')
     expect(html).toContain('href="https://enka.network"')
+    expect(html).toContain('href="https://zfae.net"')
     expect(html).toContain('target="_blank"')
     expect(html).toContain('rel="noopener noreferrer"')
   })

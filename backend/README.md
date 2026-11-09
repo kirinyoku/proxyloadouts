@@ -7,7 +7,7 @@
 [![Tests](https://img.shields.io/badge/Tests-Passing%20with%20--race-success)](Makefile)
 [![Linter](https://img.shields.io/badge/Linter-golangci--lint%20(strict)-brightgreen)](.golangci.yml)
 
-The backend service for **ProxyLoadouts (PXL)** is a low-latency Go 1.26 application that powers *Zenless Zone Zero* showcase synchronization (via EnkaNetwork & Fairy SDK), persistent agent equipment presets (W-Engines & Drive Discs), and 3-agent squad assembly with transactional gear conflict validation.
+The backend service for **ProxyLoadouts (PXL)** is a low-latency Go 1.26 application that powers *Zenless Zone Zero* showcase synchronization (via EnkaNetwork & Fairy SDK), community build ratings and leaderboard rankings (via ZFAE), persistent agent equipment presets (W-Engines & Drive Discs), and 3-agent squad assembly with transactional gear conflict validation.
 
 It can run either as a standalone REST API server during local development or as a **self-contained single binary** (`CGO_ENABLED=0`, ~35 MB RAM) with the React 19 SPA embedded directly via `//go:embed`.
 
@@ -74,6 +74,7 @@ flowchart TD
         SQLite[("SQLite WAL (modernc.org/sqlite)")]:::driven
         Discord["Discord API (OAuth2 Client)"]:::driven
         Fairy["Fairy & Enka SDK (Game Catalog)"]:::driven
+        ZFAE["ZFAE (zfae.net Ratings)"]:::driven
         Cache["In-Memory Cache (LRU + Singleflight)"]:::driven
     end
 
@@ -87,6 +88,7 @@ flowchart TD
     RepoPorts <-.-|"Implements"| SQLite
     OAuthPort <-.-|"Implements"| Discord
     ScannerPort <-.-|"Implements"| Fairy
+    Application -.->|"Live ratings"| ZFAE
     Application -.->|"In-memory Cache"| Cache
 ```
 
@@ -115,7 +117,8 @@ backend/
 │   │   ├── discord/        # Discord OAuth2 HTTP client
 │   │   ├── fairy/          # ZZZ game catalog SDK adapter (github.com/kirinyoku/fairy)
 │   │   ├── inmemory/       # Thread-safe generic LRU TTL cache, negative cache & singleflight
-│   │   └── telegram/       # Async deduplicating Telegram Bot API alert notifier
+│   │   ├── telegram/       # Async deduplicating Telegram Bot API alert notifier
+│   │   └── zfae/           # ZFAE (zfae.net) scraper adapter for build ratings and leaderboards
 │   └── config/             # Typed environment parsing with production validation guards
 └── migrations/             # Embedded SQL schema migrations (embed.FS)
 ```
@@ -143,9 +146,9 @@ backend/
 
 ### 2. External Dependency Resilience & Thundering Herd Defense
 
-**Decision**: Implement a multi-tier caching and coalescing pipeline in front of the upstream EnkaNetwork and Fairy SDKs.
+**Decision**: Implement a multi-tier caching and coalescing pipeline in front of upstream integrations (EnkaNetwork, Fairy SDK, and ZFAE).
 
-Upstream game profile queries are subject to strict rate limits. A sudden traffic spike for a popular player UID could cause cascading 429 errors.
+Upstream game profile and build rating queries are subject to network variance and rate limits. A sudden traffic spike for a popular player UID could cause cascading 429 errors.
 
 1. **Request Coalescing (`singleflight`)**:
    When 20 concurrent HTTP requests arrive for the same uncached player UID, `golang.org/x/sync/singleflight` ensures only **one** outbound request hits the upstream API. The remaining 19 goroutines wait and share the single result.

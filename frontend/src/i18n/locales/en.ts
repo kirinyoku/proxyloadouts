@@ -870,6 +870,9 @@ const en: TranslationSchema = {
           'Discord OAuth2: Used strictly for secure authentication. Data processing by Discord Inc. is governed by its Privacy Policy and the EU-U.S. Data Privacy Framework.',
         enka:
           'EnkaNetwork API: Independent third-party API gateway used to fetch public in-game showcase data based on the UID you provide.',
+        faeLead: "FAE (Fairy's Agent Evaluator, ",
+        faeTail:
+          '): Independent third-party community service used to fetch public agent build ratings and leaderboard rankings based on the UID you provide.',
       },
       contact: {
         title: '10. Inquiries, DMCA & Supervisory Contacts (DSA / GDPR)',
