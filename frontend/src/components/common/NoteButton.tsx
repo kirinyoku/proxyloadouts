@@ -17,22 +17,29 @@ export type NoteButtonProps = {
   title: string
   subtitle?: string
   className?: string
-  defaultOpen?: boolean
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
 } & (
   | { readOnly: true }
   | { readOnly?: false; onSave: (next: string | null) => Promise<unknown>; isSaving: boolean }
 )
+
+export type NoteSavePlan = { kind: 'unchanged' } | { kind: 'save'; value: string | null }
+
+// oxlint-disable-next-line react/only-export-components
+export function planNoteSave(draft: string, note: string | null | undefined): NoteSavePlan {
+  const trimmedDraft = draft.trim()
+  const trimmedNote = (note ?? '').trim()
+  if (trimmedDraft === trimmedNote) {
+    return { kind: 'unchanged' }
+  }
+  return { kind: 'save', value: trimmedDraft || null }
+}
 
 export function NoteButton(props: NoteButtonProps) {
   const { note, title, subtitle, className } = props
   const { t } = useTranslation()
   const trimmedNote = note?.trim() ?? ''
 
-  const [internalOpen, setInternalOpen] = useState(props.defaultOpen ?? false)
-  const isControlled = props.open !== undefined
-  const open = isControlled ? props.open : internalOpen
+  const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(note ?? '')
 
   if (props.readOnly && !trimmedNote) {
@@ -40,10 +47,7 @@ export function NoteButton(props: NoteButtonProps) {
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!isControlled) {
-      setInternalOpen(nextOpen)
-    }
-    props.onOpenChange?.(nextOpen)
+    setOpen(nextOpen)
     if (nextOpen) {
       setDraft(note ?? '')
     }
@@ -51,14 +55,14 @@ export function NoteButton(props: NoteButtonProps) {
 
   const handleSave = async () => {
     if (props.readOnly) return
-    const trimmed = draft.trim()
-    if (trimmed === (note ?? '').trim()) {
-      handleOpenChange(false)
+    const plan = planNoteSave(draft, note)
+    if (plan.kind === 'unchanged') {
+      setOpen(false)
       return
     }
     try {
-      await props.onSave(trimmed || null)
-      handleOpenChange(false)
+      await props.onSave(plan.value)
+      setOpen(false)
     } catch {
       // Keep dialog open on rejection
     }
@@ -69,7 +73,6 @@ export function NoteButton(props: NoteButtonProps) {
       <DialogTrigger asChild>
         <button
           type="button"
-          onClick={() => handleOpenChange(true)}
           aria-label={t('notes.open')}
           title={trimmedNote || t('notes.add')}
           className={cn(
