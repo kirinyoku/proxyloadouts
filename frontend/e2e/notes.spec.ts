@@ -200,9 +200,7 @@ test.describe('Note Dialog Specs', () => {
     const box = await dialog.boundingBox()
     expect(box).not.toBeNull()
     if (box) {
-      // Bottom edge should align with bottom of viewport (740px) within 2px
       expect(Math.abs(box.y + box.height - 740)).toBeLessThanOrEqual(2)
-      // Width should be full viewport width (375px)
       expect(Math.round(box.width)).toBe(375)
     }
   })
@@ -277,7 +275,6 @@ test.describe('Note Dialog Specs', () => {
     await expect.poll(() => updateBuildBody?.description).toBeNull()
     await expect(dialog).toBeHidden()
 
-    // Mobile toolbar screenshot check
     await page.setViewportSize({ width: 375, height: 740 })
     const mobileToolbar = page.locator('.sm\\:hidden.space-y-2').first()
     await expect(mobileToolbar).toBeVisible()

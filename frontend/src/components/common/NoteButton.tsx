@@ -64,7 +64,7 @@ export function NoteButton(props: NoteButtonProps) {
       await props.onSave(plan.value)
       setOpen(false)
     } catch {
-      // Keep dialog open on rejection
+      // The mutation hook already toasts the error; keep the draft open.
     }
   }
 
