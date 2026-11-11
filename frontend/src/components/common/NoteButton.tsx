@@ -76,7 +76,7 @@ export function NoteButton(props: NoteButtonProps) {
           aria-label={t('notes.open')}
           title={trimmedNote || t('notes.add')}
           className={cn(
-            'relative inline-flex size-9 sm:size-8 items-center justify-center rounded-full border border-white/[0.12] bg-card text-neutral-300 transition-colors hover:border-primary/50 hover:text-primary active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/60 outline-none cursor-pointer shrink-0',
+            'relative inline-flex size-8 items-center justify-center rounded-full border border-white/[0.12] bg-card text-neutral-300 transition-colors hover:border-primary/50 hover:text-primary active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/60 outline-none cursor-pointer shrink-0',
             className,
           )}
         >
