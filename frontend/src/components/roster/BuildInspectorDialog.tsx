@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { NoteButton } from '@/components/common/NoteButton'
 import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
 import { MindscapeBadge } from '@/components/ui/MindscapeBadge'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
@@ -177,7 +178,7 @@ export function BuildInspectorDialog({
                     </div>
                   </div>
 
-                  {/* Line 2: Build Name (and Note on desktop sm+) */}
+                  {/* Line 2: Build Name */}
                   <div className="flex items-center gap-2 sm:gap-3.5 text-xs min-w-0">
                     <div className="inline-flex items-center gap-1.5 min-w-0 max-w-full">
                       <Layers className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
@@ -185,31 +186,22 @@ export function BuildInspectorDialog({
                         {build.name}
                       </span>
                     </div>
-
-                    {/* Desktop Note: inline next to build */}
-                    {build.description?.trim() && (
-                      <span
-                        className="hidden sm:inline-flex items-center gap-1.5 min-w-0 max-w-full font-mono text-xs text-muted-foreground"
-                        title={build.description.trim()}
-                      >
-                        <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
-                          {t('roster.addNote')}
-                        </span>
-                        <span className="truncate text-muted-foreground">
-                          {build.description.trim()}
-                        </span>
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Actions: FAE Badge (desktop) + Open in Roster (private mode) + Close Button */}
+              {/* Actions: FAE Badge (desktop) + Note Button + Open in Roster (private mode) + Close Button */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <FaeBadge
                   rating={build.fae_rating}
                   showUnassessed={false}
                   className="hidden sm:inline-flex w-auto"
+                />
+                <NoteButton
+                  note={build.description}
+                  title={t('notes.buildTitle')}
+                  subtitle={build.name}
+                  readOnly
                 />
                 {!isPublic && (
                   <Button
@@ -253,21 +245,6 @@ export function BuildInspectorDialog({
               showUnassessed={false}
               className="sm:hidden w-full mt-2.5"
             />
-
-            {/* Mobile Note: full-width sub-row in header */}
-            {build.description?.trim() && (
-              <div
-                className="flex sm:hidden items-center gap-1.5 min-w-0 pt-2 font-mono text-xs text-muted-foreground"
-                title={build.description.trim()}
-              >
-                <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
-                  {t('roster.addNote')}
-                </span>
-                <span className="truncate text-muted-foreground">
-                  {build.description.trim()}
-                </span>
-              </div>
-            )}
           </DialogHeader>
 
           {/* On mobile screens: W-Engine card is displayed above the section tabs */}

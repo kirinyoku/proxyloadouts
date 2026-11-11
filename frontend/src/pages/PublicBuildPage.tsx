@@ -6,6 +6,7 @@ import { usePublicBuild } from '@/api/hooks'
 import { PublicOwnerHeader } from '@/components/common/PublicOwnerHeader'
 import { PageLoader } from '@/components/common/PageLoader'
 import { ShareIconButton } from '@/components/common/ShareIconButton'
+import { NoteButton } from '@/components/common/NoteButton'
 import { SharedUnavailableState } from '@/components/common/SharedUnavailableState'
 import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
 import { FaeBadge } from '@/components/showcase/FaeBadge'
@@ -196,7 +197,7 @@ export function PublicBuildPage() {
                     </div>
                   </div>
 
-                  {/* Line 2: Build Name (and Note on desktop sm+) */}
+                  {/* Line 2: Build Name */}
                   <div className="flex items-center gap-2 sm:gap-3.5 text-xs min-w-0">
                     <div className="inline-flex items-center gap-1.5 min-w-0 max-w-full">
                       <Layers className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
@@ -204,26 +205,11 @@ export function PublicBuildPage() {
                         {build.name}
                       </span>
                     </div>
-
-                    {/* Desktop Note: inline next to build */}
-                    {build.description?.trim() && (
-                      <span
-                        className="hidden sm:inline-flex items-center gap-1.5 min-w-0 max-w-full font-mono text-xs text-muted-foreground"
-                        title={build.description.trim()}
-                      >
-                        <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
-                          {t('roster.addNote')}
-                        </span>
-                        <span className="truncate text-muted-foreground">
-                          {build.description.trim()}
-                        </span>
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Actions: FAE Badge (desktop) + Separator + Share Button */}
+              {/* Actions: FAE Badge (desktop) + Separator + Note Button + Share Button */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <FaeBadge
                   rating={build.fae_rating}
@@ -232,6 +218,12 @@ export function PublicBuildPage() {
                   className="hidden sm:inline-flex w-auto"
                 />
                 <div className="hidden h-6 w-px shrink-0 bg-white/[0.12] sm:block" aria-hidden="true" />
+                <NoteButton
+                  note={build.description}
+                  title={t('notes.buildTitle')}
+                  subtitle={build.name}
+                  readOnly
+                />
                 <ShareIconButton
                   onClick={handleShare}
                   isPublic={build.is_public}
@@ -249,21 +241,6 @@ export function PublicBuildPage() {
               showUnassessed={false}
               className="sm:hidden w-full mt-2.5"
             />
-
-            {/* Mobile Note: full-width sub-row in header */}
-            {build.description?.trim() && (
-              <div
-                className="flex sm:hidden items-center gap-1.5 min-w-0 pt-3 font-mono text-xs text-muted-foreground"
-                title={build.description.trim()}
-              >
-                <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
-                  {t('roster.addNote')}
-                </span>
-                <span className="truncate text-muted-foreground">
-                  {build.description.trim()}
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Mobile W-Engine Card */}

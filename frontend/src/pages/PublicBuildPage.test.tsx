@@ -33,7 +33,8 @@ vi.mock('react-i18next', async (importOriginal) => {
           'sharing.shareBuild': 'Поделиться сборкой',
           'showcase.mobileDiscs': 'Диски',
           'showcase.mobileStats': 'Характеристики',
-          'roster.addNote': 'Заметка',
+          'notes.open': 'Заметка',
+          'notes.buildTitle': 'Заметка к сборке',
         }
         if (key === 'sharing.buildPageTitle') {
           return `${options?.agent ?? ''} — ${options?.build ?? ''} — ProxyLoadouts`

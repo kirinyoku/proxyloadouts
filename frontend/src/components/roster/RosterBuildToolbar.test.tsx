@@ -13,9 +13,12 @@ vi.mock('react-i18next', async (importOriginal) => {
         const translations: Record<string, string> = {
           'roster.deleteBuildButton': 'Удалить',
           'roster.deleteBuildTitle': 'Удалить этот билд',
-          'roster.addNote': 'Заметка',
-          'roster.addNoteTitle': 'Добавить заметку',
-          'roster.noteInputPlaceholder': 'Заметка к билду…',
+          'notes.open': 'Заметка',
+          'notes.add': 'Добавить заметку',
+          'notes.buildTitle': 'Заметка к сборке',
+          'notes.placeholder': 'Тактика, ротация, что угодно…',
+          'notes.save': 'Сохранить',
+          'notes.saveHint': 'Ctrl+Enter',
           'roster.renameBuild': 'Переименовать пресет',
           'roster.buildSelectPlaceholder': 'Билд',
         }
@@ -122,7 +125,7 @@ describe('RosterBuildToolbar', () => {
     expect(html).not.toContain('SpecialtyBadge')
   })
 
-  it('renders note with w-fit, max-w-full, truncate and does not cap with max-w-[320px]', () => {
+  it('renders note button with aria-label and note tooltip', () => {
     const html = renderWithTooltip(
       <RosterBuildToolbar
         agentName="Ария"
@@ -132,11 +135,8 @@ describe('RosterBuildToolbar', () => {
       />,
     )
 
-    expect(html).toContain('Тактическая заметка с крит уроном')
-    expect(html).toContain('w-fit')
-    expect(html).toContain('max-w-full')
-    expect(html).toContain('truncate')
-    expect(html).not.toContain('md:max-w-[320px]')
+    expect(html).toContain('aria-label="Заметка"')
+    expect(html).toContain('title="Тактическая заметка с крит уроном"')
   })
 
   it('renders capacity meta indicator when provided', () => {
@@ -276,7 +276,7 @@ describe('RosterBuildToolbar', () => {
       expect(html).toContain('lucide-share-2')
     })
 
-    it('renders note display without edit buttons in readOnly mode', () => {
+    it('renders note button in readOnly mode when note exists', () => {
       const html = renderWithTooltip(
         <RosterBuildToolbar
           agentName="Ария"
@@ -287,9 +287,8 @@ describe('RosterBuildToolbar', () => {
         />,
       )
 
-      expect(html).toContain('Заметка')
-      expect(html).toContain('Тактическая заметка с крит уроном')
-      expect(html).not.toContain('Добавить заметку')
+      expect(html).toContain('aria-label="Заметка"')
+      expect(html).toContain('title="Тактическая заметка с крит уроном"')
     })
 
     it('renders a direct share button without dropdown menu in readOnly mode', () => {

@@ -9,6 +9,7 @@ import { queryKeys, useBuilds, useDeleteTeam, usePatchTeam, useUpdateTeam } from
 import { RevokeShareDialog } from '@/components/roster/RevokeShareDialog'
 import { useShareStatus } from '@/components/roster/useShareStatus'
 import { ShareIconButton } from '@/components/common/ShareIconButton'
+import { NoteButton } from '@/components/common/NoteButton'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -312,6 +313,24 @@ export const TeamCard = memo(function TeamCard({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <NoteButton
+            note={team.description}
+            title={t('notes.teamTitle')}
+            subtitle={team.name}
+            {...(readOnly
+              ? { readOnly: true as const }
+              : {
+                  readOnly: false as const,
+                  onSave: (next) =>
+                    patchMutation.mutateAsync({
+                      id: team.id,
+                      gameAccountId: team.game_account_id,
+                      body: { description: next },
+                    }),
+                  isSaving: patchMutation.isPending,
+                })}
+          />
+
           {shareMenu}
 
           {!readOnly && (
@@ -422,21 +441,9 @@ export const TeamCard = memo(function TeamCard({
         </Suspense>
       )}
 
-      {/* Footer: Description & Updated Date */}
-      <div className="mt-auto flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border-t border-dashed border-white/10 pt-2.5 text-xs text-muted-foreground">
-        <div className="min-w-0 flex-1">
-          {team.description?.trim() && (
-            <p
-              className="text-xs font-medium text-muted-foreground line-clamp-2 sm:truncate"
-              title={team.description.trim()}
-            >
-              <span className="mr-1.5 select-none font-heading text-primary">//</span>
-              {team.description.trim()}
-            </p>
-          )}
-        </div>
-
-        <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground sm:text-right">
+      {/* Footer: Updated Date */}
+      <div className="mt-auto flex items-center justify-end border-t border-dashed border-white/10 pt-2.5 text-xs text-muted-foreground">
+        <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
           {t('teams.updatedAt', { date: formatDateTime(team.updated_at) })}
         </span>
       </div>

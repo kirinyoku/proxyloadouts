@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Check, Globe, Lock, Pencil, Plus, Share2, Trash2, X } from 'lucide-react'
+import { Check, Globe, Lock, Pencil, Share2, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   Select,
@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ShareIconButton } from '@/components/common/ShareIconButton'
+import { NoteButton } from '@/components/common/NoteButton'
 import { Button } from '@/components/ui/button'
 import { createBuildShare, revokeBuildShare } from '@/api/client'
 import { toast } from '@/components/ui/sonner'
@@ -46,8 +47,8 @@ interface RosterBuildToolbarProps {
 /**
  * Build management toolbar for an active agent:
  * - Desktop (sm+): single row with capacity indicator (1/5), build controls cluster
- *   (build selector, rename, expandable note) and delete action with "Delete" text
- * - Mobile (<sm): balanced 2-row layout (row 1: capacity indicator + build selector + rename + icon-only delete; row 2: note)
+ *   (build selector, rename), note button with dialog, and actions (share, delete)
+ * - Mobile (<sm): single row (capacity indicator + build selector + rename + note button + share + icon-only delete)
  */
 export function RosterBuildToolbar({
   agentName,
@@ -66,8 +67,6 @@ export function RosterBuildToolbar({
 
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
-  const [editingNote, setEditingNote] = useState(false)
-  const [noteDraft, setNoteDraft] = useState('')
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -79,7 +78,6 @@ export function RosterBuildToolbar({
     renameMutation.isPending ||
     deleteMutation.isPending ||
     toggleVisibilityMutation.isPending
-  const hasDescription = Boolean(currentBuild.description && currentBuild.description.trim() !== '')
 
   async function handleShare() {
     if (!currentBuild) return
@@ -151,27 +149,6 @@ export function RosterBuildToolbar({
       },
       {
         onSuccess: () => setEditingName(false),
-      },
-    )
-  }
-
-  function handleStartNoteEdit() {
-    setNoteDraft(currentBuild?.description ?? '')
-    setEditingNote(true)
-  }
-
-  function handleSaveNote() {
-    if (!currentBuild) return
-    const trimmed = noteDraft.trim()
-    renameMutation.mutate(
-      {
-        id: currentBuild.id,
-        gameAccountId: currentBuild.game_account_id,
-        name: currentBuild.name,
-        description: trimmed || null,
-      },
-      {
-        onSuccess: () => setEditingNote(false),
       },
     )
   }
@@ -330,93 +307,26 @@ export function RosterBuildToolbar({
             </>
           )}
 
-          {/* Segment separator between the build picker and the note field */}
-          {(hasDescription || !readOnly) && (
-            <div className="mx-0.5 h-5 w-px shrink-0 bg-white/[0.1]" aria-hidden="true" />
-          )}
-
-          {/* Note segment */}
-          {readOnly ? (
-            hasDescription && (
-              <div
-                className="flex h-full min-w-0 w-fit max-w-full shrink select-none items-center gap-1.5 rounded-[calc(var(--radius-xl)-2px)] pl-2 pr-2.5 text-xs"
-                title={currentBuild.description ?? ''}
-              >
-                <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
-                  {t('roster.addNote')}
-                </span>
-                <span className="min-w-0 truncate text-neutral-200">
-                  {currentBuild.description}
-                </span>
-              </div>
-            )
-          ) : editingNote ? (
-            <div className="flex h-full min-w-0 w-56 sm:w-80 md:w-96 max-w-full items-center gap-1 px-0.5">
-              <input
-                value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
-                placeholder={t('roster.noteInputPlaceholder')}
-                className="h-7.5 min-w-0 flex-1 rounded-[calc(var(--radius-xl)-2px)] border-0 bg-black/60 px-2.5 text-xs text-foreground outline-none ring-1 ring-primary/50 transition-shadow placeholder:text-muted-foreground/50 focus:ring-2"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveNote()
-                  if (e.key === 'Escape') setEditingNote(false)
-                }}
-                maxLength={250}
-              />
-              <Button
-                size="sm"
-                onClick={handleSaveNote}
-                disabled={isPending}
-                className="h-7.5 w-7.5 shrink-0 rounded-[calc(var(--radius-xl)-2px)] bg-primary p-0 text-black hover:bg-primary/90 cursor-pointer"
-                title={t('roster.renameSave')}
-              >
-                <Check className="size-3" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setEditingNote(false)}
-                className="h-7.5 w-7.5 shrink-0 rounded-[calc(var(--radius-xl)-2px)] p-0 text-muted-foreground hover:bg-white/10 cursor-pointer"
-                title={t('roster.renameCancel')}
-              >
-                <X className="size-3" />
-              </Button>
-            </div>
-          ) : hasDescription ? (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={handleStartNoteEdit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleStartNoteEdit()
-                }
-              }}
-              className="group/note flex h-full min-w-0 w-fit max-w-full shrink cursor-pointer select-none items-center gap-1.5 rounded-[calc(var(--radius-xl)-2px)] pl-2 pr-2.5 text-xs transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
-              title={t('roster.noteEditTitle', { desc: currentBuild.description ?? '' })}
-            >
-              <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
-                {t('roster.addNote')}
-              </span>
-              <span className="min-w-0 truncate text-neutral-200 transition-colors group-hover/note:text-white">
-                {currentBuild.description}
-              </span>
-              <Pencil className="ml-0.5 size-2.5 shrink-0 text-neutral-400 opacity-50 transition-all group-hover/note:opacity-100 group-hover/note:text-primary group-hover/note:scale-110" />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleStartNoteEdit}
-              className="flex h-full min-w-0 w-fit shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-[calc(var(--radius-xl)-2px)] pl-2 pr-2.5 text-xs text-neutral-400 transition-colors hover:bg-white/[0.07] hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
-              title={t('roster.addNoteTitle')}
-            >
-              <Plus className="size-3 shrink-0" />
-              <span className="truncate">{t('roster.addNote')}</span>
-            </button>
-          )}
         </div>
+
+        <NoteButton
+          note={currentBuild.description}
+          title={t('notes.buildTitle')}
+          subtitle={currentBuild.name}
+          {...(readOnly
+            ? { readOnly: true as const }
+            : {
+                readOnly: false as const,
+                onSave: (next) =>
+                  renameMutation.mutateAsync({
+                    id: currentBuild.id,
+                    gameAccountId: currentBuild.game_account_id,
+                    name: currentBuild.name,
+                    description: next,
+                  }),
+                isSaving: renameMutation.isPending,
+              })}
+        />
 
         {faeBadge && (
           <div className="ml-auto flex shrink-0 items-center">{faeBadge}</div>
@@ -570,6 +480,25 @@ export function RosterBuildToolbar({
             </div>
           )}
 
+          <NoteButton
+            note={currentBuild.description}
+            title={t('notes.buildTitle')}
+            subtitle={currentBuild.name}
+            {...(readOnly
+              ? { readOnly: true as const }
+              : {
+                  readOnly: false as const,
+                  onSave: (next) =>
+                    renameMutation.mutateAsync({
+                      id: currentBuild.id,
+                      gameAccountId: currentBuild.game_account_id,
+                      name: currentBuild.name,
+                      description: next,
+                    }),
+                  isSaving: renameMutation.isPending,
+                })}
+          />
+
           {shareMenu}
 
           {/* Delete button on mobile with icon only */}
@@ -611,93 +540,6 @@ export function RosterBuildToolbar({
             </AlertDialog>
           )}
         </div>
-
-        {/* Row 2: Note */}
-        {readOnly ? (
-          hasDescription && (
-            <div className="flex items-center gap-1.5">
-              <div className="flex h-7.5 flex-1 min-w-0 items-center gap-1.5 rounded-xl border border-white/[0.1] bg-card/80 px-2.5 text-xs shadow-xs">
-                <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
-                  {t('roster.addNote')}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-neutral-200">
-                  {currentBuild.description}
-                </span>
-              </div>
-            </div>
-          )
-        ) : (
-          <div className="flex items-center gap-1.5">
-            {editingNote ? (
-              <div className="flex items-center gap-1.5 flex-1 min-w-0 max-w-full">
-                <input
-                  value={noteDraft}
-                  onChange={(e) => setNoteDraft(e.target.value)}
-                  placeholder={t('roster.noteInputPlaceholder')}
-                  className="h-7.5 text-xs bg-black/60 border border-white/20 focus:border-primary/60 focus:ring-0 text-foreground placeholder:text-muted-foreground/50 rounded-[8px_8px_0_8px] px-2.5 outline-none flex-1 transition-colors"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveNote()
-                    if (e.key === 'Escape') setEditingNote(false)
-                  }}
-                  maxLength={250}
-                />
-                <Button
-                  size="sm"
-                  onClick={handleSaveNote}
-                  disabled={isPending}
-                  className="h-7.5 px-2 text-xs font-semibold rounded-[6px_6px_0_6px] bg-primary text-black hover:bg-primary/90 cursor-pointer shrink-0 transition-all"
-                  title={t('roster.renameSave')}
-                >
-                  <Check className="size-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setEditingNote(false)}
-                  className="h-7.5 px-1.5 text-xs rounded-[6px_6px_0_6px] hover:bg-white/10 text-muted-foreground cursor-pointer shrink-0"
-                  title={t('roster.renameCancel')}
-                >
-                  <X className="size-3" />
-                </Button>
-              </div>
-            ) : hasDescription ? (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={handleStartNoteEdit}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    handleStartNoteEdit()
-                  }
-                }}
-                className="group/note flex h-7.5 flex-1 min-w-0 items-center justify-between gap-1.5 rounded-xl border border-white/[0.1] bg-card/80 px-2.5 text-xs transition-all hover:border-white/25 hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none shadow-xs"
-                title={t('roster.noteEditTitle', { desc: currentBuild.description ?? '' })}
-              >
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <span className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary select-none shrink-0">
-                    {t('roster.addNote')}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-neutral-200 transition-colors group-hover/note:text-white">
-                    {currentBuild.description}
-                  </span>
-                </div>
-                <Pencil className="ml-1 size-2.5 shrink-0 text-neutral-400 opacity-60 transition-all group-hover/note:opacity-100 group-hover/note:text-primary" />
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleStartNoteEdit}
-                className="inline-flex h-7.5 flex-1 items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/[0.2] bg-white/[0.03] hover:border-primary/50 hover:bg-white/[0.08] hover:text-primary px-2.5 text-xs text-neutral-300 transition-all active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 cursor-pointer select-none min-w-0"
-                title={t('roster.addNoteTitle')}
-              >
-                <Plus className="size-3 shrink-0" />
-                <span className="truncate">{t('roster.addNote')}</span>
-              </button>
-            )}
-          </div>
-        )}
 
         {faeBadge}
       </div>

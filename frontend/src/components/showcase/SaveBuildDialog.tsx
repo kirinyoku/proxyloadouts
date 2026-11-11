@@ -216,7 +216,7 @@ export function SaveBuildDialog({
                     {t('saveBuild.descLabel')}
                   </Label>
                   <span className="font-mono text-[11px] text-muted-foreground/60 whitespace-nowrap">
-                    {`${description.length} / 250`}
+                    {`${description.length} / 500`}
                   </span>
                 </div>
 
@@ -225,7 +225,7 @@ export function SaveBuildDialog({
                   placeholder={t('saveBuild.descPlaceholder')}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  maxLength={250}
+                  maxLength={500}
                   className="h-9 text-xs"
                 />
               </div>
