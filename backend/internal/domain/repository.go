@@ -42,6 +42,14 @@ type AccountRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
+// PresetDetailsPatch describes the metadata changes to apply to a saved build or team.
+type PresetDetailsPatch struct {
+	Name         *string
+	Description  **string // An outer nil omits the field and an inner nil clears it.
+	IsNotePublic *bool
+	IsPublic     *bool
+}
+
 // BuildRepository manages saved agent builds.
 //
 // Delete implementations rely on the database-level ON DELETE RESTRICT
@@ -59,6 +67,7 @@ type BuildRepository interface {
 	UpdateDetails(ctx context.Context, id uuid.UUID, name string, description *string) error
 	UpdateName(ctx context.Context, id uuid.UUID, name string) error
 	UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error
+	PatchDetails(ctx context.Context, id uuid.UUID, patch PresetDetailsPatch) error
 	AttachFaeRating(ctx context.Context, id uuid.UUID, rating *FaeRating) (*FaeRating, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -71,6 +80,7 @@ type TeamRepository interface {
 	// Update atomically updates team metadata and replaces all member slots.
 	Update(ctx context.Context, team *Team, members []TeamMember) error
 	UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error
+	PatchDetails(ctx context.Context, id uuid.UUID, patch PresetDetailsPatch) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Team, error)
 	GetPublicByID(ctx context.Context, id uuid.UUID) (*Team, *PublicOwnerInfo, error)
 	GetMembers(ctx context.Context, teamID uuid.UUID) ([]TeamMember, error)

@@ -81,7 +81,7 @@ func (h *PublicHandler) handleGetBuild(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, publicBuildResponse{
-		Build: newBuildResponse(detail.Build),
+		Build: newBuildResponse(detail.Build, visitorNotes),
 		Owner: newPublicOwnerInfoResponse(detail.Owner),
 	})
 }
@@ -110,12 +110,12 @@ func (h *PublicHandler) handleGetTeam(w http.ResponseWriter, r *http.Request) {
 	for _, m := range detail.Members {
 		members = append(members, teamMemberResponse{
 			SlotNumber: m.Member.SlotNumber,
-			Build:      newBuildResponse(m.Build),
+			Build:      newBuildResponse(m.Build, visitorNotes),
 		})
 	}
 
 	respondJSON(w, http.StatusOK, publicTeamResponse{
-		Team:    newTeamResponse(detail.Team),
+		Team:    newTeamResponse(detail.Team, visitorNotes),
 		Report:  detail.Report,
 		Members: members,
 		Owner:   newPublicOwnerInfoResponse(detail.Owner),

@@ -328,6 +328,10 @@ func TestOpenGraph_DynamicInjection(t *testing.T) {
 	}
 	buildID, _ := decodeBody(t, createRec)["id"].(string)
 
+	if rec := f.do(t, http.MethodPatch, "/api/v1/builds/"+buildID, map[string]any{"is_note_public": true}, session); rec.Code != http.StatusNoContent {
+		t.Fatalf("make build note public: %d %s", rec.Code, rec.Body.String())
+	}
+
 	// 1. GET /b/{buildID} returns injected HTML
 	req := httptest.NewRequest(http.MethodGet, "/b/"+buildID, nil)
 	rec := httptest.NewRecorder()
@@ -391,6 +395,10 @@ func TestOpenGraph_DynamicInjection(t *testing.T) {
 		"build_ids":       []string{buildID},
 	}, session)
 	teamID, _ := decodeBody(t, teamRec)["id"].(string)
+
+	if rec := f.do(t, http.MethodPatch, "/api/v1/teams/"+teamID, map[string]any{"is_note_public": true}, session); rec.Code != http.StatusOK {
+		t.Fatalf("make team note public: %d %s", rec.Code, rec.Body.String())
+	}
 
 	reqTeam := httptest.NewRequest(http.MethodGet, "/t/"+teamID, nil)
 	recTeam := httptest.NewRecorder()

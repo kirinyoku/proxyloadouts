@@ -4,6 +4,8 @@ import { AlertCircle, UserRound, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/client'
 import { useMe, useSaveBuild } from '@/api/hooks'
+import { NoteDraftField } from '@/components/common/NoteDraftField'
+import { countNoteRunes, NOTE_MAX_RUNES } from '@/components/common/note-model'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -48,6 +50,7 @@ export function SaveBuildDialog({
 
   const isSubmitting = saveMutation.isPending
   const isNameEmpty = name.trim().length === 0
+  const isNoteTooLong = countNoteRunes(description.trim()) > NOTE_MAX_RUNES
 
   if (!agent) return null
 
@@ -56,7 +59,7 @@ export function SaveBuildDialog({
 
   function handleSave() {
     const finalName = name.trim()
-    if (isLimitReached || !agent || !finalName) return
+    if (isLimitReached || !agent || !finalName || isNoteTooLong) return
     const finalDesc = description.trim() || null
 
     saveMutation.mutate(
@@ -209,26 +212,13 @@ export function SaveBuildDialog({
                 )}
               </div>
 
-              {/* Description / Notes */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="save-build-desc" className="text-xs font-medium">
-                    {t('saveBuild.descLabel')}
-                  </Label>
-                  <span className="font-mono text-[11px] text-muted-foreground/60 whitespace-nowrap">
-                    {`${description.length} / 250`}
-                  </span>
-                </div>
-
-                <Input
-                  id="save-build-desc"
-                  placeholder={t('saveBuild.descPlaceholder')}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  maxLength={250}
-                  className="h-9 text-xs"
-                />
-              </div>
+              <NoteDraftField
+                id="save-build-desc"
+                label={t('saveBuild.descLabel')}
+                placeholder={t('saveBuild.descPlaceholder')}
+                value={description}
+                onChange={setDescription}
+              />
 
               {saveMutation.isError && (
                 <p className="text-xs text-destructive font-medium" role="alert">
@@ -254,7 +244,7 @@ export function SaveBuildDialog({
               <Button
                 type="submit"
                 size="sm"
-                disabled={isNameEmpty}
+                disabled={isNameEmpty || isNoteTooLong}
                 loading={isSubmitting}
               >
                 {t('saveBuild.submit')}

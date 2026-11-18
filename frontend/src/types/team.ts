@@ -7,6 +7,7 @@ export interface Team {
   game_account_id: string
   name: string
   description: string | null
+  is_note_public?: boolean
   is_public: boolean
   created_at: string
   updated_at: string
@@ -60,5 +61,6 @@ export interface PublicTeamResponse {
 export interface PatchTeamRequest {
   name?: string
   description?: string | null
+  is_note_public?: boolean
   is_public?: boolean
 }

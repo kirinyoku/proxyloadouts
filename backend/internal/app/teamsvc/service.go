@@ -517,21 +517,23 @@ func (s *Service) SetVisibility(ctx context.Context, userID, teamID uuid.UUID, i
 
 // PatchInput describes partial updates to an owned team.
 type PatchInput struct {
-	TeamID      uuid.UUID
-	UserID      uuid.UUID
-	Name        *string
-	Description *string
-	IsPublic    *bool
+	UserID           uuid.UUID
+	TeamID           uuid.UUID
+	Name             *string
+	Description      *string
+	ClearDescription bool
+	IsNotePublic     *bool
+	IsPublic         *bool
 }
 
-// Patch updates name, description, and/or visibility of an owned team.
+// Patch updates the details and visibility of an owned team.
 func (s *Service) Patch(ctx context.Context, input PatchInput, lang ...string) (*TeamSummary, error) {
-	team, err := s.ownedTeam(ctx, input.UserID, input.TeamID)
+	_, err := s.ownedTeam(ctx, input.UserID, input.TeamID)
 	if err != nil {
 		return nil, err
 	}
 
-	nameToSet := team.Name
+	patch := domain.PresetDetailsPatch{IsPublic: input.IsPublic, IsNotePublic: input.IsNotePublic}
 	if input.Name != nil {
 		trimmed := strings.TrimSpace(*input.Name)
 		if trimmed == "" {
@@ -540,37 +542,25 @@ func (s *Service) Patch(ctx context.Context, input PatchInput, lang ...string) (
 		if utf8.RuneCountInString(trimmed) > domain.MaxTeamNameLength {
 			return nil, fmt.Errorf("%w: team name must not exceed %d characters", domain.ErrInvalidInput, domain.MaxTeamNameLength)
 		}
-		nameToSet = trimmed
+		patch.Name = &trimmed
 	}
 
-	descToSet := team.Description
-	if input.Description != nil {
-		trimmed := strings.TrimSpace(*input.Description)
-		if trimmed != "" {
+	if input.Description != nil || input.ClearDescription {
+		var description *string
+		if input.Description != nil {
+			trimmed := strings.TrimSpace(*input.Description)
 			if utf8.RuneCountInString(trimmed) > domain.MaxTeamDescriptionLength {
 				return nil, fmt.Errorf("%w: team description must not exceed %d characters", domain.ErrInvalidInput, domain.MaxTeamDescriptionLength)
 			}
-			descToSet = &trimmed
-		} else {
-			descToSet = nil
+			if trimmed != "" {
+				description = &trimmed
+			}
 		}
+		patch.Description = &description
 	}
 
-	if input.Name != nil || input.Description != nil {
-		members, err := s.teams.GetMembers(ctx, team.ID)
-		if err != nil {
-			return nil, err
-		}
-		team.Name = nameToSet
-		team.Description = descToSet
-		if input.IsPublic != nil {
-			team.IsPublic = *input.IsPublic
-		}
-		if err := s.teams.Update(ctx, team, members); err != nil {
-			return nil, err
-		}
-	} else if input.IsPublic != nil {
-		if err := s.teams.UpdateVisibility(ctx, team.ID, *input.IsPublic); err != nil {
+	if patch.Name != nil || patch.Description != nil || patch.IsNotePublic != nil || patch.IsPublic != nil {
+		if err := s.teams.PatchDetails(ctx, input.TeamID, patch); err != nil {
 			return nil, err
 		}
 	}

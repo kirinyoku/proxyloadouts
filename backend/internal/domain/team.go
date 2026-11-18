@@ -25,6 +25,7 @@ type Team struct {
 	Name          string
 	Description   *string // nil when the team has no description
 	IsPublic      bool
+	IsNotePublic  bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }

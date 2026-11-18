@@ -1884,6 +1884,9 @@ components:
         build_data:
           type: object
           description: Full enriched agent payload from Enka / Fairy
+        is_note_public:
+          type: boolean
+          description: Whether visitors can see the note when they can access this preset.
         is_public:
           type: boolean
           example: false
@@ -1927,6 +1930,9 @@ components:
           type:
             - string
             - "null"
+        is_note_public:
+          type: boolean
+          description: Changes note visibility independently of preset sharing.
         is_public:
           type: boolean
 
@@ -1953,6 +1959,9 @@ components:
           type:
             - string
             - "null"
+        is_note_public:
+          type: boolean
+          description: Whether visitors can see the note when they can access this preset.
         is_public:
           type: boolean
           example: false
@@ -2083,6 +2092,9 @@ components:
           type:
             - string
             - "null"
+        is_note_public:
+          type: boolean
+          description: Changes note visibility independently of preset sharing.
         is_public:
           type: boolean
 

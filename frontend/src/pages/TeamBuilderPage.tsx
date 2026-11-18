@@ -22,6 +22,7 @@ import { TeamSlotListSkeleton } from '@/components/teambuilder/TeamSlotListSkele
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/EmptyState'
 import { InterknotTerminalError } from '@/components/common/InterknotTerminalError'
+import { countNoteRunes, NOTE_MAX_RUNES } from '@/components/common/note-model'
 import { useActiveAccount } from '@/hooks/useActiveAccount'
 import { getDetailedSlotConflicts, getSlotConflicts } from '@/lib/conflicts'
 import { generateTeamName } from '@/lib/teams'
@@ -86,6 +87,7 @@ function TeamBuilderForm({
   const slots = isEditing ? editSlots : draftSlots
   const name = isEditing ? editName : draftName
   const description = isEditing ? editDescription : draftDescription
+  const isNoteTooLong = countNoteRunes(description.trim()) > NOTE_MAX_RUNES
 
   const selectedBuilds = useMemo(() => {
     return slots.map((buildId) => {
@@ -156,6 +158,7 @@ function TeamBuilderForm({
   }
 
   function handleSave() {
+    if (isNoteTooLong) return
     if (isEditing) {
       if (!teamId || !effectiveName || selectedIds.length === 0) return
       updateMutation.mutate(
@@ -220,7 +223,7 @@ function TeamBuilderForm({
     !isMaxTeams &&
     effectiveName.length > 0 &&
     effectiveName.length <= 100 &&
-    description.trim().length <= 500 &&
+    !isNoteTooLong &&
     selectedIds.length > 0 &&
     !isValidating &&
     (!effectiveReport || effectiveReport.is_valid)
@@ -231,7 +234,6 @@ function TeamBuilderForm({
     if (selectedIds.length === 0) return t('teamBuilder.hintSelectAgent')
     if (!effectiveName) return t('teamBuilder.hintEnterName')
     if (effectiveName.length > 100) return t('teamBuilder.hintNameTooLong')
-    if (description.trim().length > 500) return t('teamBuilder.hintDescTooLong')
     if (effectiveReport && !effectiveReport.is_valid) return t('teamBuilder.hintResolveConflicts')
     return null
   }

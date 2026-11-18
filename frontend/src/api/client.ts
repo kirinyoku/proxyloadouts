@@ -321,10 +321,6 @@ export function updateBuild(id: string, body: UpdateBuildRequest): Promise<void>
   })
 }
 
-export function renameBuild(id: string, name: string, description?: string | null): Promise<void> {
-  return updateBuild(id, { name, description })
-}
-
 export function fetchPublicBuild(
   id: string,
   lang?: string,

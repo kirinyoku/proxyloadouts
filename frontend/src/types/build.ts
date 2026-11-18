@@ -13,6 +13,7 @@ export interface Build {
   weapon_id: number | null
   disc_uids: string[]
   build_data: Agent
+  is_note_public?: boolean
   is_public: boolean
   fae_rating?: FaeRating
   created_at: string
@@ -31,6 +32,7 @@ export interface CreateBuildRequest {
 export interface UpdateBuildRequest {
   name?: string
   description?: string | null
+  is_note_public?: boolean
   is_public?: boolean
 }
 

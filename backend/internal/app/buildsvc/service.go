@@ -460,21 +460,18 @@ func (s *Service) Delete(ctx context.Context, userID, buildID uuid.UUID) error {
 
 // PatchInput describes partial updates to an owned build.
 type PatchInput struct {
-	UserID      uuid.UUID
-	BuildID     uuid.UUID
-	Name        *string
-	Description *string
-	IsPublic    *bool
+	UserID           uuid.UUID
+	BuildID          uuid.UUID
+	Name             *string
+	Description      *string
+	ClearDescription bool
+	IsNotePublic     *bool
+	IsPublic         *bool
 }
 
-// Patch updates name, description, and/or visibility of an owned build.
+// Patch updates the details and visibility of an owned build.
 func (s *Service) Patch(ctx context.Context, input PatchInput) (*domain.AgentBuild, error) {
-	build, err := s.Get(ctx, input.UserID, input.BuildID)
-	if err != nil {
-		return nil, err
-	}
-
-	nameToSet := build.Name
+	patch := domain.PresetDetailsPatch{IsPublic: input.IsPublic, IsNotePublic: input.IsNotePublic}
 	if input.Name != nil {
 		trimmed := strings.TrimSpace(*input.Name)
 		if trimmed == "" {
@@ -483,37 +480,45 @@ func (s *Service) Patch(ctx context.Context, input PatchInput) (*domain.AgentBui
 		if utf8.RuneCountInString(trimmed) > domain.MaxBuildNameLength {
 			return nil, fmt.Errorf("%w: build name must not exceed %d characters", domain.ErrInvalidInput, domain.MaxBuildNameLength)
 		}
-		nameToSet = trimmed
+		patch.Name = &trimmed
 	}
 
-	descToSet := build.Description
-	if input.Description != nil {
-		trimmed := strings.TrimSpace(*input.Description)
-		if trimmed != "" {
+	if input.Description != nil || input.ClearDescription {
+		var description *string
+		if input.Description != nil {
+			trimmed := strings.TrimSpace(*input.Description)
 			if utf8.RuneCountInString(trimmed) > domain.MaxBuildDescriptionLength {
 				return nil, fmt.Errorf("%w: build description must not exceed %d characters", domain.ErrInvalidInput, domain.MaxBuildDescriptionLength)
 			}
-			descToSet = &trimmed
-		} else {
-			descToSet = nil
+			if trimmed != "" {
+				description = &trimmed
+			}
 		}
+		patch.Description = &description
 	}
 
-	if input.Name != nil || input.Description != nil {
-		if err := s.builds.UpdateDetails(ctx, input.BuildID, nameToSet, descToSet); err != nil {
+	build, err := s.Get(ctx, input.UserID, input.BuildID)
+	if err != nil {
+		return nil, err
+	}
+	if patch.Name != nil || patch.Description != nil || patch.IsNotePublic != nil || patch.IsPublic != nil {
+		if err := s.builds.PatchDetails(ctx, input.BuildID, patch); err != nil {
 			return nil, err
 		}
-		build.Name = nameToSet
-		build.Description = descToSet
 	}
 
-	if input.IsPublic != nil {
-		if err := s.builds.UpdateVisibility(ctx, input.BuildID, *input.IsPublic); err != nil {
-			return nil, err
-		}
-		build.IsPublic = *input.IsPublic
+	if patch.Name != nil {
+		build.Name = *patch.Name
 	}
-
+	if patch.Description != nil {
+		build.Description = *patch.Description
+	}
+	if patch.IsNotePublic != nil {
+		build.IsNotePublic = *patch.IsNotePublic
+	}
+	if patch.IsPublic != nil {
+		build.IsPublic = *patch.IsPublic
+	}
 	return build, nil
 }
 
