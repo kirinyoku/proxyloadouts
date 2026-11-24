@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { persistLastUid, UID_PATTERN } from '@/lib/uid'
 import { HowItWorks } from '@/components/home/HowItWorks'
 import { UidSearchForm } from '@/components/common/UidSearchForm'
+import { Label } from '@/components/ui/label'
 import anbyArtwork from '@/assets/home/anby.webp'
 import '@/styles/home.css'
 
@@ -25,7 +26,9 @@ export function HomePage() {
           <h1 id="home-title">{t('home.title')}</h1>
           <p className="home-summary">{t('home.subtitle')}</p>
           <div className="home-scan">
+            <Label htmlFor="home-uid" className="mb-2 text-xs font-semibold">{t('home.uidAria')}</Label>
             <UidSearchForm
+              inputId="home-uid"
               uidInput={uid}
               isUidValid={valid}
               onUidInputChange={setUid}
@@ -34,9 +37,8 @@ export function HomePage() {
                 navigate(`/showcase?uid=${value}`)
               }}
               placeholder={t('home.searchPlaceholder')}
-              searchButtonAria={t('home.showShowcase')}
+              buttonLabel={t('home.showShowcase')}
               describedBy="home-uid-hint"
-              className="w-full sm:w-40 lg:w-44"
             />
             <p id="home-uid-hint" className={showError ? 'home-uid-error' : undefined} aria-live="polite">
               {t(showError ? 'home.uidError' : 'home.guestHint')}

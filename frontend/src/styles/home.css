@@ -30,26 +30,27 @@
 .home-game svg { width: 1.1rem; height: 1.1rem; color: var(--primary); }
 
 .home-intro h1 {
-  max-width: 8ch;
-  margin: 1rem 0 1.2rem;
-  font-family: var(--font-heading);
-  font-size: clamp(3.5rem, 6.8vw, 6rem);
-  font-weight: 400;
-  letter-spacing: -.038em;
-  line-height: .96;
+  max-width: 7ch;
+  margin: .85rem 0 1.15rem;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: clamp(4rem, 7vw, 6.5rem);
+  font-weight: 700;
+  letter-spacing: -.055em;
+  line-height: .88;
 }
 
 .home-summary {
-  max-width: 26rem;
-  color: color-mix(in srgb, var(--foreground) 34%, var(--muted-foreground));
-  font-size: clamp(.95rem, 1.25vw, 1.05rem);
-  line-height: 1.55;
+  max-width: 38ch;
+  color: color-mix(in srgb, var(--foreground) 64%, var(--muted-foreground));
+  font-size: clamp(1rem, 1.3vw, 1.125rem);
+  line-height: 1.5;
   text-wrap: pretty;
 }
 
 .home-scan {
-  max-width: 25.5rem;
-  margin-top: 1.75rem;
+  width: 100%;
+  max-width: 27rem;
+  margin-top: clamp(1.4rem, 2.5vw, 2rem);
 }
 
 .home-scan > p {
@@ -170,16 +171,16 @@
 
 @media (max-width: 740px) {
   .home-hero {
-    grid-template-columns: minmax(0, 1fr) 45%;
+    grid-template-columns: minmax(0, 1fr) 40%;
     column-gap: clamp(.65rem, 2vw, 1.1rem);
     grid-template-areas: 'game game' 'title artwork' 'summary summary' 'scan scan';
     padding-block: clamp(1.75rem, 6vw, 3rem);
   }
   .home-intro { display: contents; }
   .home-game { grid-area: game; }
-  .home-intro h1 { grid-area: title; font-size: clamp(2rem, 9.8vw, 4.55rem); }
+  .home-intro h1 { grid-area: title; font-size: clamp(2.45rem, 10.8vw, 4.9rem); }
   .home-summary { grid-area: summary; margin-top: .55rem; }
-  .home-scan { grid-area: scan; margin-top: 1.35rem; }
+  .home-scan { grid-area: scan; max-width: 30rem; margin-top: 1.35rem; }
   .home-art { grid-area: artwork; aspect-ratio: 1.16; }
   .home-album { inset: 11% 22% 9% 1%; }
 }

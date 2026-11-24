@@ -18,14 +18,14 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     const brand = page.getByRole('banner').getByRole('link', { name: /PROXY\s*LOADOUTS/i })
     await expect(brand).toBeVisible()
 
-    const showcaseHeading = page.getByRole('heading', { name: 'Сборки агентов' })
+    const showcaseHeading = page.getByRole('heading', { name: 'Build Manager' })
     await expect(showcaseHeading).toBeVisible()
 
     // 3. Assert: Public showcase search input and action button exist
     const uidInput = page.getByLabel('Игровой UID')
     await expect(uidInput).toBeVisible()
 
-    const scanButton = page.getByRole('button', { name: 'Сканировать' })
+    const scanButton = page.getByRole('button', { name: 'Открыть витрину' })
     await expect(scanButton).toBeVisible()
     await expect(scanButton).toBeDisabled()
   })
@@ -34,7 +34,7 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     await page.goto('/')
 
     const uidInput = page.getByLabel('Игровой UID')
-    const scanButton = page.getByRole('button', { name: 'Сканировать' })
+    const scanButton = page.getByRole('button', { name: 'Открыть витрину' })
 
     // Typing less than 10 digits leaves button disabled
     await uidInput.fill('1504')
