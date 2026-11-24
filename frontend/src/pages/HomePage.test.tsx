@@ -16,11 +16,11 @@ describe('HomePage', () => {
       </I18nextProvider>
     )
 
-    expect(html).toContain(home.title)
+    expect(html.replace(/<[^>]+>/g, '')).toContain(home.title)
     expect(html).toContain(home.subtitle)
     expect(html).toContain(`aria-label="${home.uidAria}"`)
     expect(html).toContain(`placeholder="${home.searchPlaceholder}"`)
-    expect(html).toContain(home.showShowcase)
+    expect(html).toContain(home.scanButton)
     expect(html).toContain(home.guestHint)
   })
 })

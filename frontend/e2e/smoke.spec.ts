@@ -25,25 +25,25 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     const uidInput = page.getByLabel('Игровой UID')
     await expect(uidInput).toBeVisible()
 
-    const scanButton = page.getByRole('button', { name: 'Открыть витрину' })
+    const scanButton = page.getByRole('button', { name: 'SCAN' })
     await expect(scanButton).toBeVisible()
-    await expect(scanButton).toBeDisabled()
+    await expect(scanButton).toBeEnabled()
   })
 
   test('validates UID input format and enables scan button on valid 10 digits', async ({ page }) => {
     await page.goto('/')
 
     const uidInput = page.getByLabel('Игровой UID')
-    const scanButton = page.getByRole('button', { name: 'Открыть витрину' })
+    const scanButton = page.getByRole('button', { name: 'SCAN' })
 
-    // Typing less than 10 digits leaves button disabled
+    // Submitting fewer than 10 digits stays on / and displays the UID validation error
     await uidInput.fill('1504')
-    await expect(scanButton).toBeDisabled()
+    await scanButton.click()
+    await expect(page).toHaveURL('/')
     await expect(page.getByText('UID должен быть 10 цифр и начинаться с 10, 13, 15 или 17')).toBeVisible()
 
-    // Typing 10 digits enables the scan button and submits to /showcase
+    // Typing a valid 10-digit UID clears the error and navigates to /showcase
     await uidInput.fill('1504687050')
-    await expect(scanButton).toBeEnabled()
     await expect(page.getByText('UID должен быть 10 цифр и начинаться с 10, 13, 15 или 17')).not.toBeVisible()
 
     await scanButton.click()
