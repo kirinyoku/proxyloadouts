@@ -63,9 +63,15 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
   test('shows how to scan, save builds and assemble a squad', async ({ page }) => {
     await page.goto('/')
     const guide = page.getByRole('region', { name: 'С чего начать' })
-    await expect(guide.getByRole('heading', { name: 'Откройте витрину' })).toBeVisible()
-    await expect(guide.getByRole('heading', { name: 'Сохраните сборку' })).toBeVisible()
-    await expect(guide.getByRole('heading', { name: 'Соберите отряд' })).toBeVisible()
+    for (const stepTitle of [
+      'Настройте витрину',
+      'Найдите агентов по UID',
+      'Войдите через Discord',
+      'Сохраните сборку',
+      'Соберите отряд',
+    ]) {
+      await expect(guide.getByRole('heading', { name: stepTitle })).toBeVisible()
+    }
     await guide.getByRole('link', { name: 'Подробнее о проекте' }).click()
     await expect(page).toHaveURL('/about')
   })
