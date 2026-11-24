@@ -1,30 +1,16 @@
 import { useState } from 'react'
-import { ExternalLink, Layers, X } from 'lucide-react'
+import { ExternalLink, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { NoteButton } from '@/components/common/NoteButton'
 import { toBuildNoteSubject } from '@/components/common/note-model'
-import { AttributeBadge, SpecialtyBadge } from '@/components/ui/game-badge'
-import { MindscapeBadge } from '@/components/ui/MindscapeBadge'
-import { AgentStatsPanel } from '@/components/showcase/AgentStatsPanel'
-import { FaeBadge } from '@/components/showcase/FaeBadge'
-import { WEngineCard } from '@/components/showcase/WEngineCard'
-import { DriveDiscGrid } from '@/components/showcase/DriveDiscGrid'
-import {
-  agentRoleCircleUrl,
-  agentRoleIconUrl,
-  agentRoleSelectUrl,
-} from '@/lib/agent-icons'
-import { formatDateTime } from '@/lib/format'
+import { BuildEquipmentCard } from '@/components/showcase/BuildEquipmentCard'
 import { cn } from '@/lib/utils'
 import type { Build } from '@/types'
 
@@ -106,194 +92,62 @@ export function BuildInspectorDialog({
 
   if (!build) return null
 
-  const agent = build.build_data
-  const agentName = build.agent_name || agent.name
-  const attributeName = agent.attribute ? t(`attributes.${agent.attribute}`, agent.attribute_name || agent.attribute) : (agent.attribute_name || '')
-  const specialtyName = agent.specialty ? t(`specialties.${agent.specialty}`, agent.specialty_name || agent.specialty) : (agent.specialty_name || '')
-  const circleUrl = agentRoleCircleUrl(agent.id)
-  const selectUrl = agentRoleSelectUrl(agent.id)
-  const generalUrl = agentRoleIconUrl(agent.id)
-  const iconUrl = circleUrl ?? selectUrl ?? generalUrl ?? agent.splash_art_url
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
         className="max-w-[calc(100vw-1.5rem)] sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden border border-white/[0.08] bg-card/96 p-3.5 sm:p-4 md:p-5 shadow-2xl backdrop-blur-2xl rounded-3xl"
       >
-        <div className="space-y-3 min-w-0">
-          {/* Header */}
-          <DialogHeader className="border-b border-white/[0.08] pb-3 text-left">
-            <div className="flex items-center justify-between gap-2.5 min-w-0">
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                {/* Agent Circle Avatar */}
-                <div
-                  className={cn(
-                    'relative size-11 sm:size-13 shrink-0 rounded-full border-2 bg-subtle shadow-md',
-                    agent.rarity === 'S'
-                      ? 'border-amber-400/80 shadow-[0_0_12px_rgba(245,238,56,0.2)]'
-                      : agent.rarity === 'A'
-                        ? 'border-purple-400/80 shadow-[0_0_12px_rgba(192,132,252,0.2)]'
-                        : 'border-white/20',
-                  )}
+        <BuildEquipmentCard
+          build={build}
+          variant="dialog"
+          mobileSection={mobileSection}
+          tabs={<MobileSectionTabs activeSection={mobileSection} onChange={setMobileSection} />}
+          controls={(
+            <>
+              <NoteButton
+                subject={toBuildNoteSubject(build)}
+                note={build.description}
+                readOnly
+                showCopy={showNoteCopy && !isPublic}
+              />
+              {!isPublic && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-2.5 sm:px-3 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95 hover:border-primary/60 hover:bg-primary/15 hover:text-primary dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground dark:hover:border-primary/60 dark:hover:bg-primary/15 dark:hover:text-primary"
+                  asChild
                 >
-                  <span className="relative block size-full overflow-hidden rounded-full">
-                    {iconUrl ? (
-                      <img
-                        src={iconUrl}
-                        alt={agentName}
-                        width={48}
-                        height={48}
-                        loading="eager"
-                        decoding="async"
-                        className="crisp-img size-full object-cover select-none pointer-events-none"
-                      />
-                    ) : (
-                      <span className="flex size-full items-center justify-center font-heading text-xs font-bold text-foreground">
-                        {agentName.slice(0, 2)}
-                      </span>
-                    )}
-                  </span>
-
-                  {agent.mindscape_cinema > 0 && (
-                    <MindscapeBadge level={agent.mindscape_cinema} size="sm" />
-                  )}
-                </div>
-
-                {/* Agent Titles & Build Details */}
-                <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
-                  {/* Line 1: Agent Name + Attribute Badge + Specialty Badge */}
-                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <DialogTitle className="truncate font-heading text-base sm:text-lg font-bold tracking-wide text-foreground">
-                      {agentName}
-                    </DialogTitle>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <AttributeBadge
-                        attribute={agent.attribute}
-                        label={attributeName}
-                        className="size-3.5 sm:size-4"
-                      />
-                      <SpecialtyBadge
-                        specialty={agent.specialty}
-                        label={specialtyName}
-                        className="size-3.5 sm:size-4"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Line 2: Build Name */}
-                  <div className="flex items-center gap-2 sm:gap-3.5 text-xs min-w-0">
-                    <div className="inline-flex items-center gap-1.5 min-w-0 max-w-full">
-                      <Layers className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-                      <span className="truncate font-mono text-xs font-semibold text-foreground">
-                        {build.name}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions: FAE Badge (desktop) + Note Button + Open in Roster (private mode) + Close Button */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <FaeBadge
-                  rating={build.fae_rating}
-                  showUnassessed={false}
-                  className="hidden sm:inline-flex w-auto"
-                />
-                <NoteButton
-                  subject={toBuildNoteSubject(build)}
-                  note={build.description}
-                  readOnly
-                  showCopy={showNoteCopy && !isPublic}
-                />
-                {!isPublic && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-2.5 sm:px-3 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-xs active:scale-95 hover:border-primary/60 hover:bg-primary/15 hover:text-primary dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground dark:hover:border-primary/60 dark:hover:bg-primary/15 dark:hover:text-primary"
-                    asChild
+                  <Link
+                    to={`/roster?build=${encodeURIComponent(build.id)}&from=teams`}
+                    title={t('roster.openInRoster')}
+                    aria-label={t('roster.openInRoster')}
+                    className="inline-flex items-center gap-1.5"
                   >
-                    <Link
-                      to={`/roster?build=${encodeURIComponent(build.id)}&from=teams`}
-                      title={t('roster.openInRoster')}
-                      aria-label={t('roster.openInRoster')}
-                      className="inline-flex items-center gap-1.5"
-                    >
-                      <span className="hidden min-[380px]:inline sm:inline">{t('roster.openInRoster')}</span>
-                      <ExternalLink className="size-3.5 shrink-0" />
-                    </Link>
-                  </Button>
-                )}
+                    <span className="hidden min-[380px]:inline sm:inline">{t('roster.openInRoster')}</span>
+                    <ExternalLink className="size-3.5 shrink-0" />
+                  </Link>
+                </Button>
+              )}
 
-                <DialogClose asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => onOpenChange(false)}
-                    className="size-8 rounded-xl text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/10 dark:hover:text-white transition-colors cursor-pointer active:scale-95"
-                    aria-label={t('common.close', 'Close')}
-                    title={t('common.close', 'Close')}
-                  >
-                    <X className="size-4" />
-                    <span className="sr-only">{t('common.close', 'Close')}</span>
-                  </Button>
-                </DialogClose>
-              </div>
-            </div>
-
-            {/* Mobile FAE Badge: full-width sub-row in header */}
-            <FaeBadge
-              rating={build.fae_rating}
-              showUnassessed={false}
-              className="sm:hidden w-full mt-2.5"
-            />
-          </DialogHeader>
-
-          {/* On mobile screens: W-Engine card is displayed above the section tabs */}
-          <div className="lg:hidden">
-            <WEngineCard wEngine={agent.w_engine} />
-          </div>
-
-          {/* On mobile screens, clean 2-tab switch between Discs & Build and Detailed Stats */}
-          <MobileSectionTabs activeSection={mobileSection} onChange={setMobileSection} />
-
-          {/* Body: Left WEngine & Stats + Right Discs */}
-          <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[270px_minmax(0,1fr)]">
-            {/* Left Column (Desktop) / Stats & Engine Panel (Mobile Stats Tab) */}
-            <div className={cn('space-y-2.5', mobileSection === 'discs' && 'hidden lg:block')}>
-              <div className="hidden lg:block">
-                <WEngineCard wEngine={agent.w_engine} />
-              </div>
-              <AgentStatsPanel
-                uiStats={agent.ui_stats}
-                specialty={agent.specialty}
-                agentId={agent.id}
-                highlightProps={agent.highlight_props}
-              />
-            </div>
-
-            {/* Right Column (Desktop) / Discs & Build Section (Mobile Discs Tab) */}
-            <div className={cn('min-w-0 space-y-3', mobileSection !== 'discs' && 'hidden lg:block')}>
-              <DriveDiscGrid
-                driveDiscs={agent.drive_discs}
-                wEngine={agent.w_engine}
-                agentId={agent.id}
-                recommendedSubStats={agent.recommended_sub_stats}
-                highlightProps={agent.highlight_props}
-              />
-            </div>
-          </div>
-
-          {/* Footer: Build snapshot date metadata */}
-          <div className="flex items-center justify-end border-t border-white/[0.08] pt-2 text-right">
-            <DialogDescription className="font-mono text-[11px] text-muted-foreground/60">
-              {t('roster.updatedAt', { date: formatDateTime(build.updated_at) })}
-            </DialogDescription>
-          </div>
-        </div>
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => onOpenChange(false)}
+                  className="size-8 rounded-xl text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/10 dark:hover:text-white transition-colors cursor-pointer active:scale-95"
+                  aria-label={t('common.close', 'Close')}
+                  title={t('common.close', 'Close')}
+                >
+                  <X className="size-4" />
+                  <span className="sr-only">{t('common.close', 'Close')}</span>
+                </Button>
+              </DialogClose>
+            </>
+          )}
+        />
       </DialogContent>
     </Dialog>
   )
 }
-

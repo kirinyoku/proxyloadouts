@@ -9,6 +9,7 @@ vi.mock('react-i18next', async (importOriginal) => {
     ...actual,
     useTranslation: () => ({
       t: (key: string, options?: Record<string, unknown>) => {
+        if (key === 'gear.level' && options?.level != null) return `Ур. ${options.level}`
         const translations: Record<string, string> = {
           'showcase.mobileDiscs': 'Диски',
           'showcase.mobileStats': 'Характеристики',
@@ -128,6 +129,7 @@ describe('BuildInspectorDialog', () => {
     )
 
     expect(html).toContain('Эвелин')
+    expect(html).toContain('Ур. 60')
     expect(html).toContain('Основной билд')
     expect(html).not.toContain('Команда 1')
     expect(html).toContain('Фокус на крит и атаку')
@@ -139,6 +141,7 @@ describe('BuildInspectorDialog', () => {
     expect(html).toContain('В Ростер')
     expect(html).toContain('Закрыть')
     expect(html).toContain('Обновлено')
+    expect(html).not.toContain('proxyloadouts.com')
   })
 
   it('renders mobile tabs for Discs and Stats with correct layout classes', () => {

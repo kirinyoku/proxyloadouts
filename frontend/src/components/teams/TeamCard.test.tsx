@@ -206,13 +206,13 @@ describe('TeamCard', () => {
     expect(html).toContain('Выбрать агента')
   })
 
-  it('renders direct share button without dropdown in readOnly mode, hiding edit, delete, and picker', () => {
+  it('offers a share menu in readOnly mode, hiding edit, delete, and picker', () => {
     const summary = createSummary({ isPublic: true })
     const html = renderToString(<TeamCard summary={summary} readOnly />)
 
     expect(html).toContain('Thunder Squad')
     expect(html).toContain('Поделиться отряд')
-    expect(html).not.toContain('aria-haspopup="menu"')
+    expect(html).toContain('aria-haspopup="menu"')
     expect(html).not.toContain('/teams/team-1/edit')
     expect(html).not.toContain('Редактировать отряд')
     expect(html).not.toContain('Удалить отряд')

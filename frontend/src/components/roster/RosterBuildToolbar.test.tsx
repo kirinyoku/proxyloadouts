@@ -291,7 +291,7 @@ describe('RosterBuildToolbar', () => {
       expect(html).toContain('title="Тактическая заметка с крит уроном"')
     })
 
-    it('renders a direct share button without dropdown menu in readOnly mode', () => {
+    it('offers sharing through a dropdown in readOnly mode', () => {
       const html = renderWithTooltip(
         <RosterBuildToolbar
           agentName="Ария"
@@ -303,7 +303,7 @@ describe('RosterBuildToolbar', () => {
       )
 
       expect(html).toContain('lucide-share-2')
-      expect(html).not.toContain('aria-haspopup="menu"')
+      expect(html).toContain('aria-haspopup="menu"')
     })
 
     it('renders faeBadge in both desktop and mobile layouts when provided', () => {
