@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Layers } from 'lucide-react'
+import { Layers, Share2 } from 'lucide-react'
 import { usePublicBuild } from '@/api/hooks'
 import { PublicOwnerHeader } from '@/components/common/PublicOwnerHeader'
 import { PageLoader } from '@/components/common/PageLoader'
 import { ShareIconButton } from '@/components/common/ShareIconButton'
+import { ImageExportMenuItems } from '@/components/common/ImageExportMenuItems'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { useImageExport } from '@/hooks/useImageExport'
 import { NoteButton } from '@/components/common/NoteButton'
 import { toBuildNoteSubject } from '@/components/common/note-model'
 import { SharedUnavailableState } from '@/components/common/SharedUnavailableState'
@@ -78,6 +81,7 @@ export function PublicBuildPage() {
   const [mobileSection, setMobileSection] = useState<MobileSection>('discs')
   const [linkCopied, setLinkCopied] = useState(false)
   const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const imageExport = useImageExport()
 
   async function handleShare() {
     try {
@@ -224,13 +228,23 @@ export function PublicBuildPage() {
                   note={build.description}
                   readOnly
                 />
-                <ShareIconButton
-                  onClick={handleShare}
-                  isPublic={build.is_public}
-                  copied={linkCopied}
-                  aria-label={t('sharing.shareBuild')}
-                  title={t('sharing.shareBuild')}
-                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <ShareIconButton
+                      isPublic={build.is_public}
+                      copied={linkCopied}
+                      aria-label={t('sharing.shareBuild')}
+                      title={t('sharing.shareBuild')}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={handleShare}>
+                      <Share2 className="size-4" />
+                      {t('sharing.shareBuild')}
+                    </DropdownMenuItem>
+                    <ImageExportMenuItems subject={{ kind: 'build', build }} {...imageExport} />
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
