@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { preloadRoute } from '@/lib/route-preload'
+import showcaseConsole from '@/assets/home/showcase-console.webp'
+import discordKey from '@/assets/home/discord-arcade-key.webp'
 import anby from '@/assets/home/anby-portrait.webp'
 import nicole from '@/assets/home/nicole-portrait.webp'
 import billy from '@/assets/home/billy-portrait.webp'
@@ -13,6 +15,14 @@ export function HowItWorks() {
   const steps = [
     {
       id: 'showcase',
+      title: t('home.showcaseTitle'),
+      description: t('home.showcaseGuide'),
+      illustration: (
+        <img className="guide-console" src={showcaseConsole} alt="" loading="lazy" />
+      ),
+    },
+    {
+      id: 'scan',
       title: t('home.scanTitle'),
       description: t('home.scanGuide'),
       illustration: (
@@ -24,6 +34,12 @@ export function HowItWorks() {
           </div>
         </div>
       ),
+    },
+    {
+      id: 'discord',
+      title: t('home.discordTitle'),
+      description: t('home.discordGuide'),
+      illustration: <img className="guide-key" src={discordKey} alt="" loading="lazy" />,
     },
     {
       id: 'loadout',
@@ -63,7 +79,6 @@ export function HowItWorks() {
         </Link>
       </div>
       <div className="guide-strip">
-        <div className="guide-strip-reel" aria-hidden="true" />
         <ol className="guide-frames">
           {steps.map((step, index) => (
             <li key={step.id} className="guide-step">

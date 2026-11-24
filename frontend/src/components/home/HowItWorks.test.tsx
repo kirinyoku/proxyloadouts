@@ -16,8 +16,11 @@ describe('HowItWorks', () => {
 
     expect(html).toContain(home.stepsAria)
     expect(html.match(/<ol[\s>]/g)).toHaveLength(1)
-    expect(html.match(/<li[\s>]/g)).toHaveLength(3)
-    for (const text of [home.scanGuide, home.saveGuide, home.squadGuide, home.aboutPromptLink]) {
+    expect(html.match(/<li[\s>]/g)).toHaveLength(5)
+    expect([...html.matchAll(/<h3>(.*?)<\/h3>/g)].map((match) => match[1])).toEqual([
+      home.showcaseTitle, home.scanTitle, home.discordTitle, home.saveTitle, home.squadTitle,
+    ])
+    for (const text of [home.showcaseGuide, home.scanGuide, home.discordGuide, home.saveGuide, home.squadGuide, home.aboutPromptLink]) {
       expect(html).toContain(text)
     }
     expect(html).toContain('href="/about"')
