@@ -18,32 +18,32 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     const brand = page.getByRole('banner').getByRole('link', { name: /PROXY\s*LOADOUTS/i })
     await expect(brand).toBeVisible()
 
-    const showcaseHeading = page.getByRole('heading', { name: /Менеджер сборок агентов/i })
+    const showcaseHeading = page.getByRole('heading', { name: 'Build Manager' })
     await expect(showcaseHeading).toBeVisible()
 
     // 3. Assert: Public showcase search input and action button exist
     const uidInput = page.getByLabel('Игровой UID')
     await expect(uidInput).toBeVisible()
 
-    const scanButton = page.getByRole('button', { name: 'Сканировать' })
+    const scanButton = page.getByRole('button', { name: 'SCAN' })
     await expect(scanButton).toBeVisible()
-    await expect(scanButton).toBeDisabled()
+    await expect(scanButton).toBeEnabled()
   })
 
   test('validates UID input format and enables scan button on valid 10 digits', async ({ page }) => {
     await page.goto('/')
 
     const uidInput = page.getByLabel('Игровой UID')
-    const scanButton = page.getByRole('button', { name: 'Сканировать' })
+    const scanButton = page.getByRole('button', { name: 'SCAN' })
 
-    // Typing less than 10 digits leaves button disabled
+    // Submitting fewer than 10 digits stays on / and displays the UID validation error
     await uidInput.fill('1504')
-    await expect(scanButton).toBeDisabled()
+    await scanButton.click()
+    await expect(page).toHaveURL('/')
     await expect(page.getByText('UID должен быть 10 цифр и начинаться с 10, 13, 15 или 17')).toBeVisible()
 
-    // Typing 10 digits enables the scan button and submits to /showcase
+    // Typing a valid 10-digit UID clears the error and navigates to /showcase
     await uidInput.fill('1504687050')
-    await expect(scanButton).toBeEnabled()
     await expect(page.getByText('UID должен быть 10 цифр и начинаться с 10, 13, 15 или 17')).not.toBeVisible()
 
     await scanButton.click()
@@ -60,15 +60,20 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     await expect(page.getByRole('link', { name: /^(Войти|Log In)$/i })).toBeVisible()
   })
 
-  test('renders 5-step minimalist guide for new ZZZ players including auth', async ({ page }) => {
+  test('shows how to scan, save builds and assemble a squad', async ({ page }) => {
     await page.goto('/')
-
-    // Check 5-step process guide
-    await expect(page.getByRole('heading', { name: 'Игровая витрина' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Скан по UID' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Авторизация через Discord' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Менеджмент сборок' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Менеджмент отрядов' })).toBeVisible()
+    const guide = page.getByRole('region', { name: 'С чего начать' })
+    for (const stepTitle of [
+      'Настройте витрину',
+      'Найдите агентов по UID',
+      'Войдите через Discord',
+      'Сохраните сборку',
+      'Соберите отряд',
+    ]) {
+      await expect(guide.getByRole('heading', { name: stepTitle })).toBeVisible()
+    }
+    await guide.getByRole('link', { name: 'Подробнее о проекте' }).click()
+    await expect(page).toHaveURL('/about')
   })
 
   test('renders 404 not found page with ZZZ terminal for unknown routes', async ({ page }) => {
