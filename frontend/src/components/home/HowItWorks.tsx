@@ -65,14 +65,14 @@ export function HowItWorks() {
       <ol>
         {steps.map((step, index) => (
           <li key={step.id} className="guide-step">
-            <div className="guide-illustration" aria-hidden="true">{step.illustration}</div>
-            <div className="guide-copy">
-              <h3>
-                <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-                {step.title}
-              </h3>
-              <p>{step.description}</p>
+            <div className="guide-frame">
+              <div className="guide-illustration" aria-hidden="true">{step.illustration}</div>
+              <div className="guide-copy">
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
+              </div>
             </div>
+            <span className="guide-frame-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
           </li>
         ))}
       </ol>

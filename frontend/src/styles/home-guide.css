@@ -1,3 +1,25 @@
+/* The strip spans main, while its frames share the hero's content width. */
+main:has(> .home-page) {
+  max-width: none;
+  padding-inline: 0;
+}
+
+.home-page {
+  --home-gutter: max(1rem, calc((100% - var(--container-6xl)) / 2 + 1rem));
+}
+
+.home-hero, .home-guide-heading {
+  margin-inline: var(--home-gutter);
+}
+
+.home-guide {
+  --film-base: #050607;
+  --film-rail: 2.65rem;
+  --film-pitch: clamp(2rem, 4.6vw, 4.25rem);
+  --perforation: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='19' viewBox='0 0 28 19'%3E%3Crect x='.5' y='.5' width='27' height='18' rx='3' fill='%238b939b' stroke='%23383d42'/%3E%3C/svg%3E");
+  --panel-inset: clamp(1rem, 2.1vw, 1.65rem);
+}
+
 .home-guide-heading {
   display: flex;
   align-items: baseline;
@@ -35,37 +57,93 @@
 .home-guide-heading a:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 
 .home-guide ol {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-block: 1px solid var(--input);
-  background: color-mix(in srgb, var(--card) 86%, transparent);
+  gap: .62rem;
+  margin-block: clamp(1rem, 1.3vw, 1.75rem);
+  padding: var(--film-rail) var(--home-gutter);
+  border-block: 1px solid var(--border);
+  background:
+    var(--perforation) center top .4rem / var(--film-pitch) 1.05rem repeat-x,
+    var(--perforation) center bottom .4rem / var(--film-pitch) 1.05rem repeat-x,
+    var(--film-base);
+  transform: skewY(-.7deg);
 }
 
-.guide-step {
-  padding: clamp(1rem, 2.1vw, 1.65rem);
+/* Unexposed margins and cropped exposures continue beyond the three numbered frames. */
+.home-guide ol::before, .home-guide ol::after {
+  content: '';
+  position: absolute;
+  inset-block: var(--film-rail);
+  width: max(0px, calc(var(--home-gutter) - .62rem));
+  background-color: #14171b;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: grayscale(1) brightness(.55);
 }
 
-.guide-step + .guide-step { border-inline-start: 1px solid var(--input); }
+.home-guide ol::before {
+  left: 0;
+  background-image: url('../assets/home/billy-portrait.webp');
+  background-position: right 40%;
+}
+
+.home-guide ol::after {
+  right: 0;
+  background-image: url('../assets/home/nicole-portrait.webp');
+  background-position: left 45%;
+}
+
+.guide-step { position: relative; display: grid; }
+
+.guide-frame {
+  position: relative;
+  isolation: isolate;
+  padding: var(--panel-inset);
+  overflow: hidden;
+  border-radius: 2px;
+  color: var(--foreground);
+  background: #13161a;
+}
+
+.guide-frame::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: url('/noise.png') repeat;
+  opacity: .07;
+}
+
+.guide-frame-number {
+  position: absolute;
+  inset: 100% auto auto .2rem;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  color: var(--primary);
+  font: 700 .83rem/1 'JetBrains Mono Variable', monospace;
+  letter-spacing: .07em;
+}
+
+.guide-frame-number::after {
+  content: '';
+  border-block: .26rem solid transparent;
+  border-left: .65rem solid currentColor;
+}
 
 .guide-illustration {
   position: relative;
-  width: min(100%, 14.5rem);
+  width: min(100%, 20rem);
   aspect-ratio: 2.35;
   margin: 0 auto 1.05rem;
   container-type: inline-size;
 }
 
-.guide-illustration::before {
-  content: '';
-  position: absolute;
-  inset: 8% 3% 3%;
-  background: radial-gradient(var(--muted-foreground) .85px, transparent 1.15px) 0 0 / 3.7px 3.7px;
-  opacity: .35;
-  mask-image: radial-gradient(ellipse closest-side, black 25%, transparent);
-}
-
 .guide-id, .guide-film, .guide-equipment img {
-  filter: drop-shadow(.9cqw 1.7cqw 1cqw #0006);
+  filter: drop-shadow(.9cqw 1.7cqw 1cqw #0008);
 }
 
 .guide-id {
@@ -122,7 +200,7 @@
   gap: 1.3%;
   padding: 3.8% 2.5%;
   transform: rotate(5deg);
-  background: #483f36;
+  background: var(--film-base);
 }
 
 .guide-film::before, .guide-film::after {
@@ -130,7 +208,7 @@
   position: absolute;
   inset-inline: 2.5%;
   height: 1.25cqw;
-  background: repeating-linear-gradient(90deg, var(--card) 0 2cqw, transparent 2cqw 4cqw);
+  background: repeating-linear-gradient(90deg, #889093 0 2cqw, transparent 2cqw 4cqw);
 }
 
 .guide-film::before { top: 1.15cqw; }
@@ -140,38 +218,44 @@
 .guide-film img:nth-of-type(3) { background: #c1b3c5; }
 
 .guide-copy h3 {
-  display: flex;
-  align-items: baseline;
-  gap: .55rem;
   font-size: clamp(1.02rem, 1.65vw, 1.4rem);
   letter-spacing: -.018em;
 }
 
-.guide-copy h3 span {
-  font: 600 .72rem/1 'JetBrains Mono Variable', monospace;
-  color: color-mix(in srgb, var(--primary) 75%, var(--foreground));
-}
-
 .guide-copy p {
   margin-top: .55rem;
-  color: var(--muted-foreground);
+  color: #c4c8cb;
   font-size: .9rem;
   line-height: 1.5;
   text-wrap: pretty;
 }
 
 @media (max-width: 700px) {
-  .home-guide ol { grid-template-columns: 1fr; }
-  .guide-step {
+  .home-guide ol {
+    --film-side: var(--home-gutter);
+    --hole-width: min(1.05rem, calc(var(--film-side) - .5rem));
+    --hole-inset: calc((var(--film-side) - var(--hole-width)) / 2);
+    grid-template-columns: 1fr;
+    gap: .52rem;
+    padding-block: .55rem;
+    margin-block: .5rem;
+    background:
+      var(--perforation) left var(--hole-inset) center / var(--hole-width) 2.4rem repeat-y,
+      var(--perforation) right var(--hole-inset) center / var(--hole-width) 2.4rem repeat-y,
+      var(--film-base);
+    transform: none;
+  }
+  .home-guide ol::before, .home-guide ol::after { content: none; }
+  .guide-frame-number {
+    inset: auto .6rem .4rem auto;
+    font-size: .68rem;
+  }
+  .guide-frame {
     display: grid;
     grid-template-columns: minmax(0, 31%) 1fr;
     align-items: center;
     gap: clamp(.65rem, 3vw, 1.35rem);
-    padding: 1.15rem clamp(.7rem, 2.5vw, 1.25rem);
-  }
-  .guide-step + .guide-step {
-    border-inline-start: 0;
-    border-top: 1px solid var(--input);
+    padding: 1.05rem var(--panel-inset) 1.5rem;
   }
   .guide-illustration { margin: 0; aspect-ratio: 1.8; }
   .guide-id { inset: 3% 2%; }
@@ -180,6 +264,6 @@
   .guide-record { width: 52%; left: 5%; }
   .guide-engine { width: 52%; left: 43%; }
   .guide-film { inset: 12% 0; }
-  .guide-copy h3 { gap: .35rem; font-size: 1.05rem; }
+  .guide-copy h3 { font-size: 1.05rem; }
   .guide-copy p { margin-top: .32rem; font-size: .85rem; }
 }
