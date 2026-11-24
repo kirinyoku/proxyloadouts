@@ -62,20 +62,23 @@ export function HowItWorks() {
           {t('home.aboutPromptLink')}
         </Link>
       </div>
-      <ol>
-        {steps.map((step, index) => (
-          <li key={step.id} className="guide-step">
-            <div className="guide-frame">
-              <div className="guide-illustration" aria-hidden="true">{step.illustration}</div>
-              <div className="guide-copy">
-                <h3>{step.title}</h3>
-                <p>{step.description}</p>
+      <div className="guide-strip">
+        <div className="guide-strip-reel" aria-hidden="true" />
+        <ol className="guide-frames">
+          {steps.map((step, index) => (
+            <li key={step.id} className="guide-step">
+              <div className="guide-frame">
+                <div className="guide-illustration" aria-hidden="true">{step.illustration}</div>
+                <div className="guide-copy">
+                  <h3>{step.title}</h3>
+                  <p>{step.description}</p>
+                </div>
               </div>
-            </div>
-            <span className="guide-frame-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-          </li>
-        ))}
-      </ol>
+              <span className="guide-frame-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
     </section>
   )
 }
