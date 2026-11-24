@@ -91,6 +91,9 @@ const mockTeamSummary = {
 
 test.describe('Teams Page Characterization & Safety Net Suite', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route(/\/api\/v1\/(?:accounts\/[^/]+\/teams-share|teams\/[^/]+\/share)$/, (route) =>
+      route.fulfill({ json: { active: false } }),
+    )
     await page.route('**/api/v1/builds?game_account_id=*', (route) =>
       route.fulfill({
         status: 200,

@@ -51,10 +51,11 @@ func TestBuildMetaForBuild_Localization(t *testing.T) {
 	desc := "High anomaly burn setup"
 	detail := &buildsvc.PublicBuildDetail{
 		Build: &domain.AgentBuild{
-			ID:          uuid.New(),
-			AgentName:   "Burnice",
-			Name:        "Burn DPS",
-			Description: &desc,
+			ID:           uuid.New(),
+			AgentName:    "Burnice",
+			Name:         "Burn DPS",
+			Description:  &desc,
+			IsNotePublic: true,
 			BuildData: []byte(`{
 				"w_engine": {"name": "Flamemaker Shaker"},
 				"drive_discs": {
@@ -154,9 +155,10 @@ func TestTeamMetaForTeam_Localization(t *testing.T) {
 	desc := "Fast fire stun rotation"
 	detail := &teamsvc.PublicTeamDetail{
 		Team: &domain.Team{
-			ID:          uuid.New(),
-			Name:        "Fire Disorder",
-			Description: &desc,
+			ID:           uuid.New(),
+			Name:         "Fire Disorder",
+			Description:  &desc,
+			IsNotePublic: true,
 		},
 		Owner: &domain.PublicOwnerInfo{
 			UID:      "1500000002",
@@ -266,6 +268,9 @@ func TestOpenGraph_HTTPEndpoints_Localization(t *testing.T) {
 		t.Fatalf("failed to create team: %d", teamRec.Code)
 	}
 	teamID := decodeBody(t, teamRec)["id"].(string)
+	if rec := f.do(t, http.MethodPatch, "/api/v1/teams/"+teamID, map[string]any{"is_note_public": true}, session); rec.Code != http.StatusOK {
+		t.Fatalf("make team note public: %d %s", rec.Code, rec.Body.String())
+	}
 
 	t.Run("Build OpenGraph with ?lang=en", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/b/"+buildID+"?lang=en", nil)

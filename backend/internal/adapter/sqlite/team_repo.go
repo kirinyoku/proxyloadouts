@@ -46,10 +46,10 @@ func (r *SQLiteTeamRepo) Create(ctx context.Context, team *domain.Team, members 
 	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO teams (id, user_id, game_account_id, name, description, is_public, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+		`INSERT INTO teams (id, user_id, game_account_id, name, description, is_public, is_note_public, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
 		team.ID.String(), team.UserID.String(), team.GameAccountID.String(),
-		team.Name, nullableString(team.Description), boolToInt(team.IsPublic),
+		team.Name, nullableString(team.Description), boolToInt(team.IsPublic), boolToInt(team.IsNotePublic),
 		formatTime(team.CreatedAt), formatTime(team.UpdatedAt),
 	); err != nil {
 		if mapped := mapConstraintError(err); mapped != nil {
@@ -140,6 +140,36 @@ func (r *SQLiteTeamRepo) Update(ctx context.Context, team *domain.Team, members 
 	return nil
 }
 
+// PatchDetails updates the supplied team metadata fields atomically.
+func (r *SQLiteTeamRepo) PatchDetails(ctx context.Context, id uuid.UUID, patch domain.PresetDetailsPatch) error {
+	var description *string
+	if patch.Description != nil {
+		description = *patch.Description
+	}
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE teams
+		    SET name = COALESCE(?1, name),
+		        description = CASE WHEN ?2 THEN ?3 ELSE description END,
+		        is_note_public = COALESCE(?4, is_note_public),
+		        is_public = COALESCE(?5, is_public),
+		        updated_at = CASE WHEN ?1 IS NOT NULL OR ?2 THEN ?6 ELSE updated_at END
+		  WHERE id = ?7;`,
+		patch.Name, patch.Description != nil, description, patch.IsNotePublic, patch.IsPublic,
+		formatTime(time.Now()), id.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to patch team %s: %w", id, err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check patched team %s: %w", id, err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("%w: team %s", domain.ErrNotFound, id)
+	}
+	return nil
+}
+
 // UpdateVisibility updates the is_public flag of a team without modifying updated_at.
 func (r *SQLiteTeamRepo) UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error {
 	res, err := r.db.ExecContext(ctx,
@@ -155,7 +185,7 @@ func (r *SQLiteTeamRepo) UpdateVisibility(ctx context.Context, id uuid.UUID, isP
 	return nil
 }
 
-const teamSelect = `SELECT id, user_id, game_account_id, name, description, is_public, created_at, updated_at FROM teams`
+const teamSelect = `SELECT id, user_id, game_account_id, name, description, is_public, is_note_public, created_at, updated_at FROM teams`
 
 // GetByID returns the team with the given ID or domain.ErrNotFound.
 func (r *SQLiteTeamRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Team, error) {
@@ -170,7 +200,7 @@ func (r *SQLiteTeamRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Tea
 // the team does not exist, is private (is_public = 0), or the owner is banned.
 func (r *SQLiteTeamRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*domain.Team, *domain.PublicOwnerInfo, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT t.id, t.user_id, t.game_account_id, t.name, t.description, t.is_public, t.created_at, t.updated_at,
+		`SELECT t.id, t.user_id, t.game_account_id, t.name, t.description, t.is_public, t.is_note_public, t.created_at, t.updated_at,
 		        ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.show_discord,
 		        u.discord_id, u.username, u.avatar_url
 		 FROM teams t
@@ -187,6 +217,7 @@ func (r *SQLiteTeamRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*doma
 		name             string
 		desc             sql.NullString
 		isPublic         int
+		isNotePublic     int
 		createdAt        string
 		updatedAt        string
 		ownerUID         string
@@ -200,14 +231,14 @@ func (r *SQLiteTeamRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*doma
 	)
 
 	if err := row.Scan(
-		&teamID, &userID, &accountID, &name, &desc, &isPublic, &createdAt, &updatedAt,
+		&teamID, &userID, &accountID, &name, &desc, &isPublic, &isNotePublic, &createdAt, &updatedAt,
 		&ownerUID, &ownerRegion, &ownerNickname, &ownerAvatarURL, &ownerShowDiscord,
 		&discordID, &discordUsername, &discordAvatarURL,
 	); err != nil {
 		return nil, nil, notFound("team", err)
 	}
 
-	team, err := parseTeamFields(teamID, userID, accountID, name, desc, isPublic, createdAt, updatedAt)
+	team, err := parseTeamFields(teamID, userID, accountID, name, desc, isPublic, isNotePublic, createdAt, updatedAt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -394,26 +425,27 @@ func (r *SQLiteTeamRepo) Delete(ctx context.Context, id uuid.UUID) error {
 
 func scanTeamRow(row rowScanner) (*domain.Team, error) {
 	var (
-		id        string
-		userID    string
-		accountID string
-		name      string
-		desc      sql.NullString
-		isPublic  int
-		createdAt string
-		updatedAt string
+		id           string
+		userID       string
+		accountID    string
+		name         string
+		desc         sql.NullString
+		isPublic     int
+		isNotePublic int
+		createdAt    string
+		updatedAt    string
 	)
-	if err := row.Scan(&id, &userID, &accountID, &name, &desc, &isPublic, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&id, &userID, &accountID, &name, &desc, &isPublic, &isNotePublic, &createdAt, &updatedAt); err != nil {
 		return nil, notFound("team", err)
 	}
 
-	return parseTeamFields(id, userID, accountID, name, desc, isPublic, createdAt, updatedAt)
+	return parseTeamFields(id, userID, accountID, name, desc, isPublic, isNotePublic, createdAt, updatedAt)
 }
 
 func parseTeamFields(
 	id, userID, accountID, name string,
 	desc sql.NullString,
-	isPublic int,
+	isPublic, isNotePublic int,
 	createdAt, updatedAt string,
 ) (*domain.Team, error) {
 	parsedIDs, err := parseUUID3("team", "id", id, "user_id", userID, "game_account_id", accountID)
@@ -437,6 +469,7 @@ func parseTeamFields(
 		Name:          name,
 		Description:   nullStringPointer(desc),
 		IsPublic:      isPublic != 0,
+		IsNotePublic:  isNotePublic != 0,
 		CreatedAt:     createdAtParsed,
 		UpdatedAt:     updatedAtParsed,
 	}, nil

@@ -224,7 +224,7 @@ func (h *shareHandler) read(w http.ResponseWriter, r *http.Request, target share
 			respondDomainError(w, r, err)
 			return
 		}
-		respondJSON(w, http.StatusOK, publicBuildResponse{Build: newBuildResponse(item), Owner: newPublicOwnerInfoResponse(owner)})
+		respondJSON(w, http.StatusOK, publicBuildResponse{Build: newBuildResponse(item, visitorNotes), Owner: newPublicOwnerInfoResponse(owner)})
 		return
 	case shareTargetRoster:
 		owner, err := h.accounts.GetPublicOwnerInfo(r.Context(), id)
@@ -241,7 +241,7 @@ func (h *shareHandler) read(w http.ResponseWriter, r *http.Request, target share
 			Owner:            newPublicOwnerInfoResponse(owner),
 			IsPublicRoster:   true,
 			IsPublicShowcase: true,
-			Builds:           newBuildListResponse(builds),
+			Builds:           newBuildListResponse(builds, visitorNotes),
 			Teams:            []teamSummaryResponse{},
 		})
 		return
@@ -260,11 +260,11 @@ func (h *shareHandler) read(w http.ResponseWriter, r *http.Request, target share
 		for _, m := range item.Members {
 			members = append(members, teamMemberResponse{
 				SlotNumber: m.Member.SlotNumber,
-				Build:      newBuildResponse(m.Build),
+				Build:      newBuildResponse(m.Build, visitorNotes),
 			})
 		}
 		respondJSON(w, http.StatusOK, publicTeamResponse{
-			Team:    newTeamResponse(item.Team),
+			Team:    newTeamResponse(item.Team, visitorNotes),
 			Report:  item.Report,
 			Members: members,
 			Owner:   newPublicOwnerInfoResponse(owner),
@@ -287,7 +287,7 @@ func (h *shareHandler) read(w http.ResponseWriter, r *http.Request, target share
 			IsPublicTeams:    true,
 			IsPublicShowcase: true,
 			Builds:           []buildResponse{},
-			Teams:            newTeamSummaryListResponse(teamsList),
+			Teams:            newTeamSummaryListResponse(teamsList, visitorNotes),
 		})
 		return
 	}

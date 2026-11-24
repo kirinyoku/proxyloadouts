@@ -63,6 +63,8 @@ vi.mock('react-i18next', async (importOriginal) => {
           'teams.slotLabel': `Слот ${options?.slot ?? 1}`,
           'teams.noWEngineShort': 'Нет амплификатора',
           'teams.noDiscsShort': 'Нет дисков',
+          'notes.open': 'Заметка',
+          'notes.teamTitle': 'Заметка к отряду',
         }
         if (key === 'teams.teamAria') return `Отряд ${options?.name ?? ''}`
         if (key === 'teams.editTeamAria') return `Редактировать отряд ${options?.name ?? ''}`
@@ -161,12 +163,13 @@ function createSummary(options?: {
   hasConflict?: boolean
   isPublic?: boolean
   members?: TeamMember[]
+  description?: string | null
 }): TeamSummary {
   const team: Team = {
     id: 'team-1',
     game_account_id: 'acc-1',
     name: 'Thunder Squad',
-    description: 'Electric burst team',
+    description: options?.description !== undefined ? options.description : 'Electric burst team',
     is_public: options?.isPublic ?? true,
     created_at: '2026-03-01T12:00:00Z',
     updated_at: '2026-03-01T12:00:00Z',
@@ -217,12 +220,20 @@ describe('TeamCard', () => {
   })
 
   it('does not render public green dot indicator when team is private', () => {
-    const summary = createSummary({ isPublic: false })
+    const summary = createSummary({ isPublic: false, description: null })
     const html = renderToString(<TeamCard summary={summary} />)
 
     expect(html).toContain('Thunder Squad')
     expect(html).toContain('Поделиться отряд')
     expect(html).not.toContain('rounded-full bg-primary')
+  })
+
+  it('renders note button in header actions', () => {
+    const summary = createSummary({ description: 'Electric burst team' })
+    const html = renderToString(<TeamCard summary={summary} />)
+
+    expect(html).toContain('aria-label="Заметка"')
+    expect(html).toContain('title="Electric burst team"')
   })
 
   it('does not render top rim accent or via-primary when there is no conflict', () => {

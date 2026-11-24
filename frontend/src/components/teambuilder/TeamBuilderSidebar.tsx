@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Eraser } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { NoteDraftField } from '@/components/common/NoteDraftField'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +15,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import type { Build, ConflictReport } from '@/types'
 
 interface TeamBuilderSidebarProps {
@@ -97,29 +97,13 @@ export function TeamBuilderSidebar({
             </p>
           </div>
 
-          {/* Description Textarea */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label
-                htmlFor="team-description"
-                className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300"
-              >
-                {t('teamBuilder.teamDescLabel')}
-              </Label>
-              <span className="font-mono text-[10px] text-zinc-400">
-                {description.length}/500
-              </span>
-            </div>
-            <Textarea
-              id="team-description"
-              placeholder={t('teamBuilder.teamDescPlaceholder') || 'Some useful info...'}
-              value={description}
-              onChange={(event) => onSetDescription(event.target.value)}
-              rows={2}
-              maxLength={500}
-              className="bg-subtle dark:bg-subtle border-white/20 text-xs text-foreground resize-none focus-visible:bg-elevated focus-visible:border-primary/70 focus-visible:ring-1 focus-visible:ring-primary/40 shadow-xs transition-all"
-            />
-          </div>
+          <NoteDraftField
+            id="team-description"
+            label={t('teamBuilder.teamDescLabel')}
+            placeholder={t('teamBuilder.teamDescPlaceholder')}
+            value={description}
+            onChange={onSetDescription}
+          />
         </div>
       </div>
 

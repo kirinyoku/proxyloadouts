@@ -208,8 +208,8 @@ func (h *ShowcaseHandler) handleRoster(w http.ResponseWriter, r *http.Request) {
 		IsPublicRoster:   account.IsPublicRoster,
 		IsPublicTeams:    account.IsPublicTeams,
 		IsPublicShowcase: account.IsPublicShowcase(),
-		Builds:           newBuildListResponse(buildsList),
-		Teams:            newTeamSummaryListResponse(teamsList),
+		Builds:           newBuildListResponse(buildsList, visitorNotes),
+		Teams:            newTeamSummaryListResponse(teamsList, visitorNotes),
 	})
 }
 

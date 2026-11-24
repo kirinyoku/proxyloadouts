@@ -269,8 +269,8 @@ func buildMetaForBuild(detail *buildsvc.PublicBuildDetail, lang ...string) (titl
 		descParts = append(descParts, strings.Join(statStrs, " • "))
 	}
 
-	if b.Description != nil && *b.Description != "" {
-		descParts = append(descParts, *b.Description)
+	if note := visitorNotes.description(b.Description, b.IsNotePublic); note != nil && *note != "" {
+		descParts = append(descParts, *note)
 	}
 
 	if len(descParts) > 0 {
@@ -336,11 +336,11 @@ func teamMetaForTeam(detail *teamsvc.PublicTeamDetail, lang ...string) (title, d
 			descParts = append(descParts, "Состав: "+strings.Join(agentEntries, ", "))
 		}
 	}
-	if t.Description != nil && *t.Description != "" {
+	if note := visitorNotes.description(t.Description, t.IsNotePublic); note != nil && *note != "" {
 		if en {
-			descParts = append(descParts, "Note: "+*t.Description)
+			descParts = append(descParts, "Note: "+*note)
 		} else {
-			descParts = append(descParts, "Заметка: "+*t.Description)
+			descParts = append(descParts, "Заметка: "+*note)
 		}
 	}
 

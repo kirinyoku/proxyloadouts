@@ -426,7 +426,7 @@ test.describe('Team Builder (/teams/new) Minimalist E2E Suite', () => {
   test('auto-generates team name from agents when user leaves name empty and saves successfully', async ({
     page,
   }) => {
-    let capturedBody: { name?: string; build_ids?: string[] } | null = null
+    let capturedBody: { name?: string; build_ids?: string[]; description?: string } | null = null
     await setupBaseRoutes(page, [mockEllenBuild, mockLycaonBuild])
 
     await page.route('**/api/v1/teams', async (route) => {
@@ -439,7 +439,7 @@ test.describe('Team Builder (/teams/new) Minimalist E2E Suite', () => {
             id: 'team-new-uuid',
             game_account_id: 'acc-uuid-1',
             name: capturedBody?.name,
-            description: null,
+            description: capturedBody?.description,
             created_at: '2026-01-01T00:00:00Z',
             updated_at: '2026-01-01T00:00:00Z',
           }),
@@ -467,12 +467,19 @@ test.describe('Team Builder (/teams/new) Minimalist E2E Suite', () => {
     const saveButton = page.getByRole('button', { name: 'Сохранить отряд' })
     await expect(saveButton).toBeEnabled()
 
+    const note = page.getByRole('textbox', { name: 'Заметка к отряду' })
+    const noteAtLimit = `${'❄️'.repeat(249)}\n🧊`
+    await note.fill(`${noteAtLimit}🧊`)
+    await expect(note).toHaveAccessibleDescription('Сократите заметку до 500 символов.')
+    await expect(saveButton).toBeDisabled()
+    await note.fill(noteAtLimit)
+    await expect(saveButton).toBeEnabled()
+
     // Click Save
     await saveButton.click()
 
     // Verify POST payload contains auto-generated name
-    expect(capturedBody).not.toBeNull()
-    expect(capturedBody?.name).toBe('Ellen Joe/Lycaon')
+    expect(capturedBody).toMatchObject({ name: 'Ellen Joe/Lycaon', description: noteAtLimit })
     await expect(page).toHaveURL('/teams')
   })
 })

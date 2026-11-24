@@ -34,12 +34,13 @@ type buildResponse struct {
 	DiscUIDs      []string          `json:"disc_uids"`
 	BuildData     json.RawMessage   `json:"build_data"`
 	IsPublic      bool              `json:"is_public"`
+	IsNotePublic  bool              `json:"is_note_public"`
 	FaeRating     *domain.FaeRating `json:"fae_rating,omitempty"`
 	CreatedAt     string            `json:"created_at"`
 	UpdatedAt     string            `json:"updated_at"`
 }
 
-func newBuildResponse(b *domain.AgentBuild) buildResponse {
+func newBuildResponse(b *domain.AgentBuild, audience noteAudience) buildResponse {
 	discUIDs := b.DiscUIDs
 	if discUIDs == nil {
 		discUIDs = []string{}
@@ -50,22 +51,23 @@ func newBuildResponse(b *domain.AgentBuild) buildResponse {
 		AgentID:       b.AgentID,
 		AgentName:     b.AgentName,
 		Name:          b.Name,
-		Description:   b.Description,
+		Description:   audience.description(b.Description, b.IsNotePublic),
 		WeaponUID:     b.WeaponUID,
 		WeaponID:      b.WeaponID,
 		DiscUIDs:      discUIDs,
 		BuildData:     b.BuildData,
 		IsPublic:      b.IsPublic,
+		IsNotePublic:  b.IsNotePublic,
 		FaeRating:     b.FaeRating,
 		CreatedAt:     b.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     b.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 
-func newBuildListResponse(builds []*domain.AgentBuild) []buildResponse {
+func newBuildListResponse(builds []*domain.AgentBuild, audience noteAudience) []buildResponse {
 	out := make([]buildResponse, 0, len(builds))
 	for _, b := range builds {
-		out = append(out, newBuildResponse(b))
+		out = append(out, newBuildResponse(b, audience))
 	}
 	return out
 }
@@ -102,7 +104,7 @@ func (h *BuildHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		respondDomainError(w, r, err)
 		return
 	}
-	respondJSON(w, http.StatusCreated, newBuildResponse(build))
+	respondJSON(w, http.StatusCreated, newBuildResponse(build, ownerNotes))
 }
 
 // handleList returns saved builds of an owned game account.
@@ -121,7 +123,7 @@ func (h *BuildHandler) handleList(w http.ResponseWriter, r *http.Request) {
 		respondDomainError(w, r, err)
 		return
 	}
-	respondJSON(w, http.StatusOK, newBuildListResponse(builds))
+	respondJSON(w, http.StatusOK, newBuildListResponse(builds, ownerNotes))
 }
 
 // handleGet returns one owned build with the full equipment payload.
@@ -140,7 +142,7 @@ func (h *BuildHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		respondDomainError(w, r, err)
 		return
 	}
-	respondJSON(w, http.StatusOK, newBuildResponse(build))
+	respondJSON(w, http.StatusOK, newBuildResponse(build, ownerNotes))
 }
 
 // handleUpdate renames, updates notes, or changes visibility on an owned build preset.
@@ -159,65 +161,43 @@ func (h *BuildHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nameRaw, hasName := raw["name"]
-	descRaw, hasDesc := raw["description"]
-	isPubRaw, hasIsPub := raw["is_public"]
-
-	if !hasName && !hasDesc && !hasIsPub {
-		respondError(w, http.StatusBadRequest, "at least one of 'name', 'description', or 'is_public' must be provided")
-		return
-	}
-
-	var (
-		name  string
-		desc  *string
-		isPub bool
-	)
-
-	if hasName {
-		if err := json.Unmarshal(nameRaw, &name); err != nil {
+	input := buildsvc.PatchInput{UserID: user.ID, BuildID: buildID}
+	if value, ok := raw["name"]; ok {
+		var name string
+		if err := json.Unmarshal(value, &name); err != nil {
 			respondError(w, http.StatusBadRequest, "invalid name")
 			return
 		}
+		input.Name = &name
 	}
-
-	if hasDesc {
-		if err := json.Unmarshal(descRaw, &desc); err != nil {
+	if value, ok := raw["description"]; ok {
+		if err := json.Unmarshal(value, &input.Description); err != nil {
 			respondError(w, http.StatusBadRequest, "invalid description")
 			return
 		}
+		input.ClearDescription = input.Description == nil
 	}
-
-	if hasIsPub {
-		if err := json.Unmarshal(isPubRaw, &isPub); err != nil {
+	if value, ok := raw["is_public"]; ok {
+		var isPublic bool
+		if err := json.Unmarshal(value, &isPublic); err != nil {
 			respondError(w, http.StatusBadRequest, "invalid is_public")
 			return
 		}
+		input.IsPublic = &isPublic
 	}
-
-	switch {
-	case hasName && hasDesc:
-		if err := h.builds.UpdateDetails(r.Context(), user.ID, buildID, name, desc); err != nil {
-			respondDomainError(w, r, err)
-			return
-		}
-	case hasName && !hasDesc:
-		if err := h.builds.Rename(r.Context(), user.ID, buildID, name); err != nil {
-			respondDomainError(w, r, err)
-			return
-		}
-	case !hasName && hasDesc:
-		if err := h.builds.UpdateDescription(r.Context(), user.ID, buildID, desc); err != nil {
-			respondDomainError(w, r, err)
+	if value, ok := raw["is_note_public"]; ok {
+		if err := json.Unmarshal(value, &input.IsNotePublic); err != nil || input.IsNotePublic == nil {
+			respondError(w, http.StatusBadRequest, "invalid is_note_public")
 			return
 		}
 	}
-
-	if hasIsPub {
-		if err := h.builds.SetVisibility(r.Context(), user.ID, buildID, isPub); err != nil {
-			respondDomainError(w, r, err)
-			return
-		}
+	if input.Name == nil && input.Description == nil && !input.ClearDescription && input.IsPublic == nil && input.IsNotePublic == nil {
+		respondError(w, http.StatusBadRequest, "at least one of 'name', 'description', 'is_public', or 'is_note_public' must be provided")
+		return
+	}
+	if _, err := h.builds.Patch(r.Context(), input); err != nil {
+		respondDomainError(w, r, err)
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)

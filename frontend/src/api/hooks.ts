@@ -14,6 +14,7 @@ import type {
   PatchTeamRequest,
   TeamSummary,
   UpdateAccountRequest,
+  UpdateBuildRequest,
   UpdateTeamRequest,
   VerificationChallengeRequest,
   VerificationConfirmRequest,
@@ -68,6 +69,12 @@ export const queryKeys = {
     lang ? (['public', 'build', id, lang] as const) : (['public', 'build', id] as const),
   publicTeam: (id: string, lang?: string) =>
     lang ? (['public', 'team', id, lang] as const) : (['public', 'team', id] as const),
+}
+
+function invalidateSharedNotes(queryClient: ReturnType<typeof useQueryClient>) {
+  for (const scope of ['shared-build', 'shared-team', 'shared-roster', 'shared-squads']) {
+    void queryClient.invalidateQueries({ queryKey: [scope] })
+  }
 }
 
 /**
@@ -467,14 +474,13 @@ export function useRenameBuild() {
   return useMutation({
     mutationFn: ({
       id,
-      name,
-      description,
+      changes,
     }: {
       id: string
       gameAccountId: string
       name: string
-      description?: string | null
-    }) => api.renameBuild(id, name, description),
+      changes: UpdateBuildRequest
+    }) => api.updateBuild(id, changes),
     onSuccess: (_data, variables) => {
       // Invalidate exactly the list that can contain this build. A bare
       // ['builds'] prefix also matches every other account and every other
@@ -484,7 +490,13 @@ export function useRenameBuild() {
         exact: true,
       })
       void queryClient.invalidateQueries({ queryKey: ['showcase'] })
-      void queryClient.invalidateQueries({ queryKey: ['public', 'build'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.publicBuild(variables.id) })
+      if ('description' in variables.changes || 'is_note_public' in variables.changes) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.teams(variables.gameAccountId) })
+        void queryClient.invalidateQueries({ queryKey: ['teams', 'detail'] })
+        void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
+        invalidateSharedNotes(queryClient)
+      }
       toast.success(i18n.t('toasts.buildUpdated', { name: variables.name }))
     },
     onError: (error) => notifyMutationError(error, i18n.t('toasts.buildUpdateError')),
@@ -655,6 +667,9 @@ export function usePatchTeam() {
       })
       void queryClient.invalidateQueries({ queryKey: ['showcase'] })
       void queryClient.invalidateQueries({ queryKey: ['public', 'team'] })
+      if ('description' in variables.body || 'is_note_public' in variables.body) {
+        invalidateSharedNotes(queryClient)
+      }
     },
     onError: (error) => notifyMutationError(error, i18n.t('toasts.teamUpdateError')),
   })

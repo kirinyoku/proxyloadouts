@@ -70,13 +70,13 @@ func (r *SQLiteBuildRepo) Create(ctx context.Context, build *domain.AgentBuild) 
 
 	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO agent_builds (id, user_id, game_account_id, agent_id, agent_name, name, description,
-		 weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, fae_data, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+		 weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, is_note_public, fae_data, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
 		build.ID.String(), build.UserID.String(), build.GameAccountID.String(),
 		build.AgentID, build.AgentName, build.Name, nullableString(build.Description),
 		nullableString(build.WeaponUID), nullableInt(build.WeaponID),
 		string(discUIDs), string(discSlots), string(build.RawData),
-		boolToInt(build.IsPublic), faeData,
+		boolToInt(build.IsPublic), boolToInt(build.IsNotePublic), faeData,
 		formatTime(build.CreatedAt), formatTime(build.UpdatedAt),
 	)
 	if err != nil {
@@ -240,6 +240,36 @@ func (r *SQLiteBuildRepo) UpdateName(ctx context.Context, id uuid.UUID, name str
 	return nil
 }
 
+// PatchDetails updates the supplied agent build metadata fields atomically.
+func (r *SQLiteBuildRepo) PatchDetails(ctx context.Context, id uuid.UUID, patch domain.PresetDetailsPatch) error {
+	var description *string
+	if patch.Description != nil {
+		description = *patch.Description
+	}
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE agent_builds
+		    SET name = COALESCE(?1, name),
+		        description = CASE WHEN ?2 THEN ?3 ELSE description END,
+		        is_note_public = COALESCE(?4, is_note_public),
+		        is_public = COALESCE(?5, is_public),
+		        updated_at = CASE WHEN ?1 IS NOT NULL OR ?2 THEN ?6 ELSE updated_at END
+		  WHERE id = ?7;`,
+		patch.Name, patch.Description != nil, description, patch.IsNotePublic, patch.IsPublic,
+		formatTime(time.Now()), id.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to patch agent build %s: %w", id, err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check patched agent build %s: %w", id, err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("%w: agent build %s", domain.ErrNotFound, id)
+	}
+	return nil
+}
+
 // UpdateVisibility updates the is_public flag of an agent build without modifying updated_at.
 func (r *SQLiteBuildRepo) UpdateVisibility(ctx context.Context, id uuid.UUID, isPublic bool) error {
 	res, err := r.db.ExecContext(ctx,
@@ -291,7 +321,7 @@ func (r *SQLiteBuildRepo) AttachFaeRating(ctx context.Context, id uuid.UUID, rat
 func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*domain.AgentBuild, *domain.PublicOwnerInfo, error) {
 	row := r.db.QueryRowContext(ctx,
 		`SELECT b.id, b.user_id, b.game_account_id, b.agent_id, b.agent_name, b.name, b.description,
-		        b.weapon_uid, b.weapon_id, b.disc_uids, b.disc_slots, b.raw_data, b.is_public, b.fae_data, b.created_at, b.updated_at,
+		        b.weapon_uid, b.weapon_id, b.disc_uids, b.disc_slots, b.raw_data, b.is_public, b.is_note_public, b.fae_data, b.created_at, b.updated_at,
 		        ga.uid, ga.region, ga.nickname, ga.avatar_url, ga.show_discord,
 		        u.discord_id, u.username, u.avatar_url
 		 FROM agent_builds b
@@ -315,6 +345,7 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 		discSlots        string
 		rawData          string
 		isPublic         int
+		isNotePublic     int
 		faeData          sql.NullString
 		createdAt        string
 		updatedAt        string
@@ -330,7 +361,7 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 
 	if err := row.Scan(
 		&buildID, &userID, &accountID, &agentID, &agentName, &name, &description,
-		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &faeData, &createdAt, &updatedAt,
+		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &isNotePublic, &faeData, &createdAt, &updatedAt,
 		&ownerUID, &ownerRegion, &ownerNickname, &ownerAvatarURL, &ownerShowDiscord,
 		&discordID, &discordUsername, &discordAvatarURL,
 	); err != nil {
@@ -338,7 +369,7 @@ func (r *SQLiteBuildRepo) GetPublicByID(ctx context.Context, id uuid.UUID) (*dom
 	}
 
 	build, err := parseBuildFields(buildID, userID, accountID, agentID, agentName, name, description,
-		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, faeData, createdAt, updatedAt)
+		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, isNotePublic, faeData, createdAt, updatedAt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -364,35 +395,36 @@ func (r *SQLiteBuildRepo) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 const buildSelect = `SELECT id, user_id, game_account_id, agent_id, agent_name, name, description,
-	weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, fae_data, created_at, updated_at
+	weapon_uid, weapon_id, disc_uids, disc_slots, raw_data, is_public, is_note_public, fae_data, created_at, updated_at
 	FROM agent_builds`
 
 func scanBuildRow(row rowScanner) (*domain.AgentBuild, error) {
 	var (
-		id          string
-		userID      string
-		accountID   string
-		agentID     int
-		agentName   string
-		name        string
-		description sql.NullString
-		weaponUID   sql.NullString
-		weaponID    sql.NullInt64
-		discUIDs    string
-		discSlots   string
-		rawData     string
-		isPublic    int
-		faeData     sql.NullString
-		createdAt   string
-		updatedAt   string
+		id           string
+		userID       string
+		accountID    string
+		agentID      int
+		agentName    string
+		name         string
+		description  sql.NullString
+		weaponUID    sql.NullString
+		weaponID     sql.NullInt64
+		discUIDs     string
+		discSlots    string
+		rawData      string
+		isPublic     int
+		isNotePublic int
+		faeData      sql.NullString
+		createdAt    string
+		updatedAt    string
 	)
 	if err := row.Scan(&id, &userID, &accountID, &agentID, &agentName, &name, &description,
-		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &faeData, &createdAt, &updatedAt); err != nil {
+		&weaponUID, &weaponID, &discUIDs, &discSlots, &rawData, &isPublic, &isNotePublic, &faeData, &createdAt, &updatedAt); err != nil {
 		return nil, notFound("agent build", err)
 	}
 
 	return parseBuildFields(id, userID, accountID, agentID, agentName, name, description,
-		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, faeData, createdAt, updatedAt)
+		weaponUID, weaponID, discUIDs, discSlots, rawData, isPublic, isNotePublic, faeData, createdAt, updatedAt)
 }
 
 func parseBuildFields(
@@ -401,7 +433,7 @@ func parseBuildFields(
 	description, weaponUID sql.NullString,
 	weaponID sql.NullInt64,
 	discUIDs, discSlots, rawData string,
-	isPublic int,
+	isPublic, isNotePublic int,
 	faeData sql.NullString,
 	createdAt, updatedAt string,
 ) (*domain.AgentBuild, error) {
@@ -445,6 +477,7 @@ func parseBuildFields(
 		DiscSlots:     slotsMap,
 		RawData:       json.RawMessage(rawData),
 		IsPublic:      isPublic != 0,
+		IsNotePublic:  isNotePublic != 0,
 		CreatedAt:     createdAtParsed,
 		UpdatedAt:     updatedAtParsed,
 	}

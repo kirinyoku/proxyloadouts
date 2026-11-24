@@ -982,6 +982,8 @@ export interface components {
             disc_uids: string[];
             /** @description Full enriched agent payload from Enka / Fairy */
             build_data: Record<string, never>;
+            /** @description Whether visitors can see the note when they can access this preset. */
+            is_note_public?: boolean;
             /** @example false */
             is_public: boolean;
             /** Format: date-time */
@@ -1003,6 +1005,8 @@ export interface components {
         PatchBuildRequest: {
             name?: string;
             description?: string | null;
+            /** @description Changes note visibility independently of preset sharing. */
+            is_note_public?: boolean;
             is_public?: boolean;
         };
         Team: {
@@ -1013,6 +1017,8 @@ export interface components {
             /** @example Ice Anomaly Trio */
             name: string;
             description?: string | null;
+            /** @description Whether visitors can see the note when they can access this preset. */
+            is_note_public?: boolean;
             /** @example false */
             is_public: boolean;
             /** Format: date-time */
@@ -1066,6 +1072,8 @@ export interface components {
         PatchTeamRequest: {
             name?: string;
             description?: string | null;
+            /** @description Changes note visibility independently of preset sharing. */
+            is_note_public?: boolean;
             is_public?: boolean;
         };
         /** @enum {string} */
