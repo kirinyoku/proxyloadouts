@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Search, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
@@ -9,6 +10,7 @@ export interface UidSearchFormProps {
   onScan: (uid: string) => void
   placeholder?: string
   className?: string
+  describedBy?: string
   inputClassName?: string
   searchButtonTitle?: string
   searchButtonAria?: string
@@ -20,12 +22,14 @@ export function UidSearchForm({
   onUidInputChange,
   onScan,
   placeholder,
+  describedBy,
   className,
   inputClassName,
   searchButtonTitle,
   searchButtonAria,
 }: UidSearchFormProps) {
   const { t } = useTranslation()
+  const inputRef = useRef<HTMLInputElement>(null)
   const valid = isUidValid ?? (uidInput.trim().length >= 8)
 
   return (
@@ -41,7 +45,10 @@ export function UidSearchForm({
       noValidate
     >
       <input
+        ref={inputRef}
         name="uid"
+        aria-describedby={describedBy}
+        aria-invalid={uidInput.length > 0 && !valid}
         inputMode="numeric"
         placeholder={placeholder ?? t('showcase.searchPlaceholder')}
         value={uidInput}
@@ -57,7 +64,10 @@ export function UidSearchForm({
       {uidInput.length > 0 && (
         <button
           type="button"
-          onClick={() => onUidInputChange('')}
+          onClick={() => {
+            onUidInputChange('')
+            inputRef.current?.focus()
+          }}
           title={t('common.clear')}
           aria-label={t('common.clear')}
           className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-white/10 hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"

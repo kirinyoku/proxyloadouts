@@ -52,46 +52,6 @@
   margin-top: 1.75rem;
 }
 
-.home-scan-controls {
-  display: flex;
-  gap: .65rem;
-}
-
-.home-uid-entry {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  border: 1px solid color-mix(in srgb, var(--foreground) 25%, var(--card));
-  border-radius: var(--radius-input-lg);
-  background: var(--card);
-}
-
-.home-uid-entry input {
-  flex: 1;
-  min-width: 0;
-  height: 2.8rem;
-  padding-inline: .8rem .15rem;
-  font-family: var(--font-mono);
-  font-size: 1rem;
-  color: var(--foreground);
-  outline: none;
-}
-
-.home-uid-entry input::placeholder { color: var(--muted-foreground); }
-.home-uid-entry:focus-within { border-color: var(--ring); }
-.home-scan button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-
-.home-clear {
-  display: grid;
-  width: 1.9rem;
-  height: 2.4rem;
-  place-items: center;
-  color: var(--muted-foreground);
-}
-
-.home-clear:hover { color: var(--foreground); }
-
 .home-scan > p {
   margin-top: .55rem;
   color: var(--muted-foreground);

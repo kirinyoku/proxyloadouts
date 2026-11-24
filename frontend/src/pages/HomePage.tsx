@@ -1,17 +1,16 @@
-import { useRef, useState } from 'react'
-import { Disc3, X } from 'lucide-react'
+import { useState } from 'react'
+import { Disc3 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { persistLastUid, UID_PATTERN } from '@/lib/uid'
 import { HowItWorks } from '@/components/home/HowItWorks'
-import { Button } from '@/components/ui/button'
+import { UidSearchForm } from '@/components/common/UidSearchForm'
 import anbyArtwork from '@/assets/home/anby.webp'
 import '@/styles/home.css'
 
 export function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const inputRef = useRef<HTMLInputElement>(null)
   const [uid, setUid] = useState('')
   const valid = UID_PATTERN.test(uid)
   const showError = uid.length > 0 && !valid
@@ -25,52 +24,24 @@ export function HomePage() {
           <p className="home-game"><Disc3 aria-hidden="true" />Zenless Zone Zero</p>
           <h1 id="home-title">{t('home.title')}</h1>
           <p className="home-summary">{t('home.subtitle')}</p>
-          <form
-            className="home-scan"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (!valid) return
-              persistLastUid(uid)
-              navigate(`/showcase?uid=${uid}`)
-            }}
-          >
-            <div className="home-scan-controls">
-              <div className="home-uid-entry">
-                <input
-                  ref={inputRef}
-                  id="home-uid"
-                  name="uid"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  aria-label={t('home.uidAria')}
-                  placeholder={t('home.searchPlaceholder')}
-                  value={uid}
-                  onChange={(event) => setUid(event.target.value.replace(/\D/g, '').slice(0, 10))}
-                  aria-describedby="home-uid-hint"
-                  aria-invalid={showError}
-                />
-                {uid && (
-                  <button
-                    type="button"
-                    className="home-clear"
-                    aria-label={t('home.clearInput')}
-                    onClick={() => {
-                      setUid('')
-                      inputRef.current?.focus()
-                    }}
-                  >
-                    <X size={16} aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-              <Button className="h-auto px-4 text-sm" type="submit" disabled={!valid}>
-                {t('home.showShowcase')}
-              </Button>
-            </div>
+          <div className="home-scan">
+            <UidSearchForm
+              uidInput={uid}
+              isUidValid={valid}
+              onUidInputChange={setUid}
+              onScan={(value) => {
+                persistLastUid(value)
+                navigate(`/showcase?uid=${value}`)
+              }}
+              placeholder={t('home.searchPlaceholder')}
+              searchButtonAria={t('home.showShowcase')}
+              describedBy="home-uid-hint"
+              className="w-full sm:w-40 lg:w-44"
+            />
             <p id="home-uid-hint" className={showError ? 'home-uid-error' : undefined} aria-live="polite">
               {t(showError ? 'home.uidError' : 'home.guestHint')}
             </p>
-          </form>
+          </div>
         </div>
 
         <div className="home-art" aria-hidden="true">
