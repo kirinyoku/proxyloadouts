@@ -18,7 +18,7 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     const brand = page.getByRole('banner').getByRole('link', { name: /PROXY\s*LOADOUTS/i })
     await expect(brand).toBeVisible()
 
-    const showcaseHeading = page.getByRole('heading', { name: /Менеджер сборок агентов/i })
+    const showcaseHeading = page.getByRole('heading', { name: 'Сборки агентов' })
     await expect(showcaseHeading).toBeVisible()
 
     // 3. Assert: Public showcase search input and action button exist
@@ -60,15 +60,14 @@ test.describe('ProxyLoadouts MVP Smoke Suite', () => {
     await expect(page.getByRole('link', { name: /^(Войти|Log In)$/i })).toBeVisible()
   })
 
-  test('renders 5-step minimalist guide for new ZZZ players including auth', async ({ page }) => {
+  test('shows how to scan, save builds and assemble a squad', async ({ page }) => {
     await page.goto('/')
-
-    // Check 5-step process guide
-    await expect(page.getByRole('heading', { name: 'Игровая витрина' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Скан по UID' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Авторизация через Discord' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Менеджмент сборок' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Менеджмент отрядов' })).toBeVisible()
+    const guide = page.getByRole('region', { name: 'С чего начать' })
+    await expect(guide.getByRole('heading', { name: 'Откройте витрину' })).toBeVisible()
+    await expect(guide.getByRole('heading', { name: 'Сохраните сборку' })).toBeVisible()
+    await expect(guide.getByRole('heading', { name: 'Соберите отряд' })).toBeVisible()
+    await guide.getByRole('link', { name: 'Подробнее о проекте' }).click()
+    await expect(page).toHaveURL('/about')
   })
 
   test('renders 404 not found page with ZZZ terminal for unknown routes', async ({ page }) => {

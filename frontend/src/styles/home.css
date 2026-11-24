@@ -1,0 +1,252 @@
+.home-page {
+  width: 100%;
+  margin: clamp(.5rem, 2.3vw, 2rem) auto 2.5rem;
+}
+
+#root:has(.home-page) .zzz-bg-animated-root { opacity: .28; }
+
+.home-hero {
+  --paper: #e8e9e1;
+  --ink: #1c201e;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(2rem, 4.1vw, 3.6rem);
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.home-intro {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.home-game {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .875rem;
+  font-weight: 650;
+}
+
+.home-game svg { width: 1.1rem; height: 1.1rem; }
+
+.home-intro h1 {
+  max-width: 8ch;
+  margin: 1.15rem 0;
+  font-family: 'Russo One', sans-serif;
+  font-size: clamp(3.5rem, 6.8vw, 6rem);
+  font-weight: 400;
+  letter-spacing: -.038em;
+  line-height: .96;
+}
+
+.home-summary {
+  max-width: 26rem;
+  color: #424844;
+  font-size: clamp(.95rem, 1.25vw, 1.05rem);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.home-scan {
+  max-width: 25.5rem;
+  margin-top: 1.75rem;
+}
+
+.home-scan label {
+  display: block;
+  margin-bottom: .4rem;
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.home-scan-controls {
+  display: flex;
+  align-items: stretch;
+  padding: 3px;
+  border: 1px solid #82877e;
+  border-radius: min(var(--radius), 6px);
+  background: #fbfcf6;
+}
+
+.home-uid-entry {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.home-uid-entry input {
+  flex: 1;
+  min-width: 0;
+  height: 2.8rem;
+  padding-inline: .7rem .15rem;
+  font-family: 'JetBrains Mono Variable', monospace;
+  font-size: 1rem;
+  outline: none;
+}
+
+.home-uid-entry input::placeholder { color: #6c726b; }
+.home-scan-controls:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.home-scan button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+.home-clear {
+  display: grid;
+  width: 1.9rem;
+  height: 2.4rem;
+  place-items: center;
+}
+
+.home-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  padding: 0 .95rem;
+  border-radius: min(var(--radius), 3px);
+  background: var(--ink);
+  color: #fff;
+  font-size: .875rem;
+  font-weight: 650;
+}
+
+.home-submit:hover:enabled { background: #354232; }
+.home-submit:disabled { background: #d0d4ca; color: #50564f; }
+
+.home-scan > p {
+  margin-top: .55rem;
+  color: #545b53;
+  font-size: .76rem;
+  line-height: 1.45;
+}
+
+.home-scan > .home-uid-error { color: #98241c; }
+
+/* A printed jacket in a clear jewel case, with the disc partly pulled out. */
+.home-art {
+  width: calc(100% + 1.25rem);
+  position: relative;
+  aspect-ratio: 1.23;
+  pointer-events: none;
+  user-select: none;
+}
+
+.home-album {
+  position: absolute;
+  inset: 10% 22% 7% 9%;
+  transform: rotate(-8deg);
+  filter: drop-shadow(2px 4px 2px #282d292e) drop-shadow(6px 18px 10px #282d2929);
+}
+
+.home-disc {
+  position: absolute;
+  width: 97%;
+  aspect-ratio: 1;
+  top: 4%;
+  left: 38%;
+  border: 2px solid #6e7577;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle, transparent 0 2px, #2d31451f 2.5px, transparent 3.5px),
+    conic-gradient(from -50deg, #757a7f, #ced2cc 11%, #f1e5bc 17%, #abc6d3 22%, #585d63 30%, #d5dbda 41%, #99a7ad 48%, #e2c6c3 53%, #777e85 62%, #dce4dc 76%, #7b8187 90%, #757a7f);
+  box-shadow: inset 0 0 0 2px #edf0e7;
+}
+
+.home-jacket {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 2px solid #636661;
+  border-radius: 4px;
+  padding: 1.3% 1.3% 1.3% 5.6%;
+  background: repeating-linear-gradient(90deg, #454742 0 1px, #a8aaa3 1px 2px, #676a65 2px 4px);
+  box-shadow: inset 0 0 0 1px #e0e2d8;
+}
+
+.home-insert {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+  isolation: isolate;
+  border: 1px solid #4c463a;
+  background:
+    linear-gradient(126deg, transparent 0 48%, #ffb489 48% 57%, transparent 57% 60%, #ffb489 60% 63%, transparent 63%),
+    #fb754a;
+}
+
+.home-insert::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#862d17 1px, transparent 1.3px);
+  background-size: 4px 4px;
+  mask-image: linear-gradient(35deg, black, transparent 55%);
+}
+
+.home-insert img {
+  position: absolute;
+  top: 5%;
+  left: -11%;
+  width: 120%;
+  height: auto;
+  max-width: none;
+}
+
+.home-faction {
+  position: absolute;
+  z-index: 1;
+  top: 5%;
+  left: 6%;
+  max-width: 46%;
+  font-size: 4.1cqw;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.home-cover-caption {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 10% 5% 4%;
+  color: #fff9e8;
+  background: linear-gradient(transparent, #211f1be6);
+}
+
+.home-cover-caption span {
+  display: block;
+  font-family: 'Russo One', sans-serif;
+  font-size: 24cqw;
+  line-height: .9;
+  letter-spacing: -.065em;
+  text-transform: uppercase;
+}
+
+.home-cover-caption small {
+  display: block;
+  margin: 2% 0 0 1%;
+  font-size: 3.9cqw;
+  font-weight: 600;
+}
+
+@media (max-width: 740px) {
+  .home-hero {
+    grid-template-columns: minmax(0, 1fr) 45%;
+    grid-template-areas: 'game game' 'title artwork' 'summary summary' 'scan scan';
+    padding: clamp(1.15rem, 5vw, 2.5rem);
+  }
+  .home-intro { display: contents; }
+  .home-game { grid-area: game; }
+  .home-intro h1 { grid-area: title; font-size: clamp(2rem, 9.8vw, 4.55rem); }
+  .home-summary { grid-area: summary; margin-top: .55rem; }
+  .home-scan { grid-area: scan; margin-top: 1.35rem; }
+  .home-art { grid-area: artwork; width: 118%; aspect-ratio: 1.16; }
+  .home-album { inset: 11% 22% 9% 1%; }
+}
+
+@media (max-width: 480px) {
+  .home-submit { gap: .35rem; padding-inline: .65rem; }
+}

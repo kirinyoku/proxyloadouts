@@ -1,63 +1,26 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { renderToString } from 'react-dom/server'
+import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter } from 'react-router-dom'
+import i18n, { resources } from '@/i18n'
 import { HomePage } from './HomePage'
-import ru from '@/i18n/locales/ru'
-
-function getNestedValue(obj: Record<string, unknown>, path: string): string {
-  const parts = path.split('.')
-  let current: unknown = obj
-  for (const part of parts) {
-    if (current && typeof current === 'object' && part in current) {
-      current = (current as Record<string, unknown>)[part]
-    } else {
-      return path
-    }
-  }
-  return typeof current === 'string' ? current : path
-}
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, defaultVal?: string) => {
-      const val = getNestedValue(ru as unknown as Record<string, unknown>, key)
-      return val === key && defaultVal ? defaultVal : val
-    },
-  }),
-}))
 
 describe('HomePage', () => {
-  const renderHomeHtml = () => {
-    return renderToString(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
+  it.each(['en', 'ru'] as const)('renders the scanner and guest instructions in %s', (lang) => {
+    const { home } = resources[lang].translation
+    const html = renderToString(
+      <I18nextProvider i18n={i18n.cloneInstance({ lng: lang })}>
+        <MemoryRouter>
+          <HomePage />
+        </MemoryRouter>
+      </I18nextProvider>
     )
-  }
 
-  it('renders updated title and subtitle copy', () => {
-    const html = renderHomeHtml()
-
-    // Title parts
-    expect(html).toContain(ru.home.title1)
-    expect(html).toContain(ru.home.title2)
-    // Full subtitle / description text
-    expect(html).toContain(ru.home.subtitle)
-    expect(html).toContain('Храните сменные комплекты экипировки')
-    expect(html).toContain('делитесь сборками и отрядами в один клик')
-  })
-
-  it('renders UID search input and scan button', () => {
-    const html = renderHomeHtml()
-
-    expect(html).toContain(ru.home.searchPlaceholder)
-    expect(html).toContain(ru.home.showShowcase)
-  })
-
-  it('renders a link to the about page after the how-it-works section', () => {
-    const html = renderHomeHtml()
-
-    expect(html).toContain('href="/about"')
-    expect(html).toContain(ru.home.aboutPromptLink)
+    expect(html).toContain(home.title)
+    expect(html).toContain(home.subtitle)
+    expect(html).toContain(home.uidAria)
+    expect(html).toContain(home.searchPlaceholder)
+    expect(html).toContain(home.showShowcase)
+    expect(html).toContain(home.guestHint)
   })
 })
