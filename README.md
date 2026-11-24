@@ -96,6 +96,10 @@ make docker-up
 
 You can also compile the production single binary directly (`frontend/dist` embedded into `backend/bin/server` via `//go:embed`) with `make build`.
 
+The production VPS uses the standalone binary under systemd. After a push to `main`, CI uploads the verified Linux amd64 binary, restarts `proxyloadouts.service`, and checks both database health and the running commit. A failed check restores the previous binary. Configure the `VPS_HOST` and `VPS_SSH_KEY` Actions secrets; `VPS_USER` defaults to `root`, and `VPS_PORT` defaults to `22`. Missing required secrets fail deployment.
+
+The existing service reads `/etc/proxyloadouts/proxyloadouts.env` with `HOST=127.0.0.1`, `PORT=8090`, and `ADMIN_PORT=8091`. Caddy proxies the public site to port `8090`. CI updates the executable at `/usr/local/bin/proxyloadouts`; the service configuration and SQLite data stay on the VPS.
+
 ### Common `Makefile` Commands
 
 | Command | Description |
