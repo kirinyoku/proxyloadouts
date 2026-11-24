@@ -8,6 +8,7 @@ import (
 
 func TestLoad_Defaults(t *testing.T) {
 	// Clear relevant env vars
+	_ = os.Unsetenv("HOST")
 	_ = os.Unsetenv("PORT")
 	_ = os.Unsetenv("ENV")
 	_ = os.Unsetenv("DATABASE_PATH")
@@ -26,6 +27,9 @@ func TestLoad_Defaults(t *testing.T) {
 		t.Fatalf("Load() returned unexpected error: %v", err)
 	}
 
+	if cfg.Host != "" {
+		t.Errorf("expected default Host empty, got %s", cfg.Host)
+	}
 	if cfg.Port != "8080" {
 		t.Errorf("expected default Port 8080, got %s", cfg.Port)
 	}
@@ -65,6 +69,7 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_CustomEnv(t *testing.T) {
+	t.Setenv("HOST", "127.0.0.1")
 	t.Setenv("PORT", "9090")
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("DATABASE_PATH", "/tmp/test.db")
@@ -80,6 +85,9 @@ func TestLoad_CustomEnv(t *testing.T) {
 		t.Fatalf("Load() returned unexpected error: %v", err)
 	}
 
+	if cfg.Host != "127.0.0.1" {
+		t.Errorf("expected Host 127.0.0.1, got %s", cfg.Host)
+	}
 	if cfg.Port != "9090" {
 		t.Errorf("expected Port 9090, got %s", cfg.Port)
 	}

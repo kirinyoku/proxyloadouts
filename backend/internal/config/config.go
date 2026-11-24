@@ -11,6 +11,7 @@ import (
 
 // Config holds all configuration parameters for the application.
 type Config struct {
+	Host                  string
 	Port                  string
 	AdminPort             string
 	Env                   string
@@ -46,6 +47,7 @@ func Load(filenames ...string) (*Config, error) {
 	}
 
 	cfg := &Config{
+		Host:                  getEnv("HOST", ""),
 		Port:                  getEnv("PORT", "8080"),
 		AdminPort:             getEnv("ADMIN_PORT", "8081"),
 		Env:                   getEnv("ENV", "development"),

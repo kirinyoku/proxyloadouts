@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -70,6 +71,7 @@ func run() error {
 	slog.SetDefault(logger)
 
 	slog.Info("configuration loaded",
+		"host", cfg.Host,
 		"port", cfg.Port,
 		"env", cfg.Env,
 		"log_level", cfg.LogLevel,
@@ -227,8 +229,9 @@ func run() error {
 	)
 
 	// 8. Start HTTP Server (and internal Admin Console if enabled)
+	mainAddr := net.JoinHostPort(cfg.Host, cfg.Port)
 	server := &http.Server{
-		Addr:              ":" + cfg.Port,
+		Addr:              mainAddr,
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
@@ -236,7 +239,10 @@ func run() error {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	var adminServer *http.Server
+	var (
+		adminServer *http.Server
+		adminAddr   string
+	)
 	if cfg.AdminPort != "" && cfg.AdminPort != "0" && !strings.EqualFold(cfg.AdminPort, "off") {
 		adminRouter := adminhttp.NewRouter(adminhttp.Deps{
 			AdminRepo:        adminRepo,
@@ -256,8 +262,9 @@ func run() error {
 			Release:          release,
 			StartedAt:        startedAt,
 		})
+		adminAddr = net.JoinHostPort(cfg.Host, cfg.AdminPort)
 		adminServer = &http.Server{
-			Addr:              ":" + cfg.AdminPort,
+			Addr:              adminAddr,
 			Handler:           adminRouter,
 			ReadHeaderTimeout: 5 * time.Second,
 			ReadTimeout:       15 * time.Second,
@@ -271,8 +278,8 @@ func run() error {
 
 	serverErrChan := make(chan error, 2)
 	go func() {
-		slog.Info("HTTP server starting", "port", cfg.Port)
-		alertNotifier.NotifyLifecycle("Server Started", "HTTP listener active on port "+cfg.Port)
+		slog.Info("HTTP server starting", "addr", mainAddr, "host", cfg.Host, "port", cfg.Port)
+		alertNotifier.NotifyLifecycle("Server Started", "HTTP listener active on "+mainAddr)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErrChan <- err
 		}
@@ -280,7 +287,7 @@ func run() error {
 
 	if adminServer != nil {
 		go func() {
-			slog.Info("Admin Console HTTP server starting", "admin_port", cfg.AdminPort)
+			slog.Info("Admin Console HTTP server starting", "addr", adminAddr, "host", cfg.Host, "admin_port", cfg.AdminPort)
 			if err := adminServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				serverErrChan <- fmt.Errorf("admin server: %w", err)
 			}
