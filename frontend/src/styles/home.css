@@ -52,20 +52,9 @@
   margin-top: 1.75rem;
 }
 
-.home-scan label {
-  display: block;
-  margin-bottom: .5rem;
-  font-size: .85rem;
-  font-weight: 700;
-}
-
 .home-scan-controls {
   display: flex;
-  align-items: stretch;
-  padding: 4px;
-  border: 1px solid color-mix(in srgb, var(--foreground) 25%, var(--card));
-  border-radius: var(--radius-input-lg);
-  background: var(--card);
+  gap: .65rem;
 }
 
 .home-uid-entry {
@@ -73,6 +62,9 @@
   align-items: center;
   flex: 1;
   min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--foreground) 25%, var(--card));
+  border-radius: var(--radius-input-lg);
+  background: var(--card);
 }
 
 .home-uid-entry input {
@@ -87,7 +79,7 @@
 }
 
 .home-uid-entry input::placeholder { color: var(--muted-foreground); }
-.home-scan-controls:focus-within { border-color: var(--ring); }
+.home-uid-entry:focus-within { border-color: var(--ring); }
 .home-scan button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 .home-clear {

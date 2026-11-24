@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ArrowRight, Disc3, X } from 'lucide-react'
+import { Disc3, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { persistLastUid, UID_PATTERN } from '@/lib/uid'
@@ -34,7 +34,6 @@ export function HomePage() {
               navigate(`/showcase?uid=${uid}`)
             }}
           >
-            <label htmlFor="home-uid">{t('home.uidAria')}</label>
             <div className="home-scan-controls">
               <div className="home-uid-entry">
                 <input
@@ -43,6 +42,7 @@ export function HomePage() {
                   name="uid"
                   inputMode="numeric"
                   autoComplete="off"
+                  aria-label={t('home.uidAria')}
                   placeholder={t('home.searchPlaceholder')}
                   value={uid}
                   onChange={(event) => setUid(event.target.value.replace(/\D/g, '').slice(0, 10))}
@@ -64,7 +64,7 @@ export function HomePage() {
                 )}
               </div>
               <Button className="h-auto px-4 text-sm" type="submit" disabled={!valid}>
-                {t('home.showShowcase')} <ArrowRight size={17} aria-hidden="true" />
+                {t('home.showShowcase')}
               </Button>
             </div>
             <p id="home-uid-hint" className={showError ? 'home-uid-error' : undefined} aria-live="polite">

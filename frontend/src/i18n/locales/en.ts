@@ -56,7 +56,7 @@ const en: TranslationSchema = {
     title: 'Agent loadouts',
     pageTitle: 'Agent Build Manager for Zenless Zone Zero',
     subtitle: 'Save Drive Discs and W-Engines for each agent. Put a squad together and share it with a link.',
-    searchPlaceholder: '10 digits',
+    searchPlaceholder: 'UID',
     clearInput: 'Clear input',
     uidAria: 'Game UID',
     showShowcase: 'Scan',

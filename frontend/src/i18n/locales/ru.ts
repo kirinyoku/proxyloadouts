@@ -54,7 +54,7 @@ const ru = {
     title: 'Сборки агентов',
     pageTitle: 'Менеджер сборок агентов для Zenless Zone Zero',
     subtitle: 'Сохраняйте драйв-диски и амплификаторы для каждого агента. Собирайте отряды и делитесь ими по ссылке.',
-    searchPlaceholder: '10 цифр',
+    searchPlaceholder: 'UID',
     clearInput: 'Очистить поле ввода',
     uidAria: 'Игровой UID',
     showShowcase: 'Сканировать',

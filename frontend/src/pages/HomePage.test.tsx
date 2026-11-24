@@ -18,8 +18,8 @@ describe('HomePage', () => {
 
     expect(html).toContain(home.title)
     expect(html).toContain(home.subtitle)
-    expect(html).toContain(home.uidAria)
-    expect(html).toContain(home.searchPlaceholder)
+    expect(html).toContain(`aria-label="${home.uidAria}"`)
+    expect(html).toContain('placeholder="UID"')
     expect(html).toContain(home.showShowcase)
     expect(html).toContain(home.guestHint)
   })
