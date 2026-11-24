@@ -64,7 +64,7 @@ export function HowItWorks() {
       </div>
       <ol>
         {steps.map((step, index) => (
-          <li key={step.id} className={`guide-step guide-step-${step.id}`}>
+          <li key={step.id} className="guide-step">
             <div className="guide-illustration" aria-hidden="true">{step.illustration}</div>
             <div className="guide-copy">
               <h3>

@@ -1,21 +1,15 @@
 .home-page {
-  width: 100%;
-  margin: clamp(.5rem, 2.3vw, 2rem) auto 2.5rem;
+  margin-bottom: clamp(2.5rem, 5vw, 4rem);
 }
 
-#root:has(.home-page) .zzz-bg-animated-root { opacity: .28; }
+#root:has(.home-page) .zzz-bg-animated-root { opacity: .44; }
 
 .home-hero {
-  --paper: #e8e9e1;
-  --ink: #1c201e;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
   align-items: center;
   isolation: isolate;
-  overflow: hidden;
-  padding: clamp(2rem, 4.1vw, 3.6rem);
-  color: var(--ink);
-  background: var(--paper);
+  padding-block: clamp(2.25rem, 4.5vw, 4.25rem);
 }
 
 .home-intro {
@@ -28,16 +22,17 @@
   display: flex;
   align-items: center;
   gap: .5rem;
+  color: var(--muted-foreground);
   font-size: .875rem;
   font-weight: 650;
 }
 
-.home-game svg { width: 1.1rem; height: 1.1rem; }
+.home-game svg { width: 1.1rem; height: 1.1rem; color: var(--primary); }
 
 .home-intro h1 {
   max-width: 8ch;
-  margin: 1.15rem 0;
-  font-family: 'Russo One', sans-serif;
+  margin: 1rem 0 1.2rem;
+  font-family: var(--font-heading);
   font-size: clamp(3.5rem, 6.8vw, 6rem);
   font-weight: 400;
   letter-spacing: -.038em;
@@ -46,7 +41,7 @@
 
 .home-summary {
   max-width: 26rem;
-  color: #424844;
+  color: color-mix(in srgb, var(--foreground) 34%, var(--muted-foreground));
   font-size: clamp(.95rem, 1.25vw, 1.05rem);
   line-height: 1.55;
   text-wrap: pretty;
@@ -59,7 +54,7 @@
 
 .home-scan label {
   display: block;
-  margin-bottom: .4rem;
+  margin-bottom: .5rem;
   font-size: .85rem;
   font-weight: 700;
 }
@@ -67,10 +62,10 @@
 .home-scan-controls {
   display: flex;
   align-items: stretch;
-  padding: 3px;
-  border: 1px solid #82877e;
-  border-radius: min(var(--radius), 6px);
-  background: #fbfcf6;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 25%, var(--card));
+  border-radius: var(--radius-input-lg);
+  background: var(--card);
 }
 
 .home-uid-entry {
@@ -84,51 +79,39 @@
   flex: 1;
   min-width: 0;
   height: 2.8rem;
-  padding-inline: .7rem .15rem;
-  font-family: 'JetBrains Mono Variable', monospace;
+  padding-inline: .8rem .15rem;
+  font-family: var(--font-mono);
   font-size: 1rem;
+  color: var(--foreground);
   outline: none;
 }
 
-.home-uid-entry input::placeholder { color: #6c726b; }
-.home-scan-controls:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
-.home-scan button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.home-uid-entry input::placeholder { color: var(--muted-foreground); }
+.home-scan-controls:focus-within { border-color: var(--ring); }
+.home-scan button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 .home-clear {
   display: grid;
   width: 1.9rem;
   height: 2.4rem;
   place-items: center;
+  color: var(--muted-foreground);
 }
 
-.home-submit {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .55rem;
-  padding: 0 .95rem;
-  border-radius: min(var(--radius), 3px);
-  background: var(--ink);
-  color: #fff;
-  font-size: .875rem;
-  font-weight: 650;
-}
-
-.home-submit:hover:enabled { background: #354232; }
-.home-submit:disabled { background: #d0d4ca; color: #50564f; }
+.home-clear:hover { color: var(--foreground); }
 
 .home-scan > p {
   margin-top: .55rem;
-  color: #545b53;
-  font-size: .76rem;
+  color: var(--muted-foreground);
+  font-size: .8rem;
   line-height: 1.45;
 }
 
-.home-scan > .home-uid-error { color: #98241c; }
+.home-scan > .home-uid-error { color: color-mix(in srgb, var(--destructive) 52%, var(--foreground)); }
 
 /* A printed jacket in a clear jewel case, with the disc partly pulled out. */
 .home-art {
-  width: calc(100% + 1.25rem);
+  width: 93%;
   position: relative;
   aspect-ratio: 1.23;
   pointer-events: none;
@@ -139,7 +122,7 @@
   position: absolute;
   inset: 10% 22% 7% 9%;
   transform: rotate(-8deg);
-  filter: drop-shadow(2px 4px 2px #282d292e) drop-shadow(6px 18px 10px #282d2929);
+  filter: drop-shadow(2px 4px 2px #0007) drop-shadow(6px 18px 14px #0005);
 }
 
 .home-disc {
@@ -203,6 +186,7 @@
   top: 5%;
   left: 6%;
   max-width: 46%;
+  color: #201c18;
   font-size: 4.1cqw;
   font-weight: 800;
   line-height: 1.05;
@@ -235,18 +219,15 @@
 @media (max-width: 740px) {
   .home-hero {
     grid-template-columns: minmax(0, 1fr) 45%;
+    column-gap: clamp(.65rem, 2vw, 1.1rem);
     grid-template-areas: 'game game' 'title artwork' 'summary summary' 'scan scan';
-    padding: clamp(1.15rem, 5vw, 2.5rem);
+    padding-block: clamp(1.75rem, 6vw, 3rem);
   }
   .home-intro { display: contents; }
   .home-game { grid-area: game; }
   .home-intro h1 { grid-area: title; font-size: clamp(2rem, 9.8vw, 4.55rem); }
   .home-summary { grid-area: summary; margin-top: .55rem; }
   .home-scan { grid-area: scan; margin-top: 1.35rem; }
-  .home-art { grid-area: artwork; width: 118%; aspect-ratio: 1.16; }
+  .home-art { grid-area: artwork; aspect-ratio: 1.16; }
   .home-album { inset: 11% 22% 9% 1%; }
-}
-
-@media (max-width: 480px) {
-  .home-submit { gap: .35rem; padding-inline: .65rem; }
 }

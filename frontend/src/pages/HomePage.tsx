@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { persistLastUid, UID_PATTERN } from '@/lib/uid'
 import { HowItWorks } from '@/components/home/HowItWorks'
+import { Button } from '@/components/ui/button'
 import anbyArtwork from '@/assets/home/anby.webp'
 import '@/styles/home.css'
 
@@ -62,9 +63,9 @@ export function HomePage() {
                   </button>
                 )}
               </div>
-              <button className="home-submit" type="submit" disabled={!valid}>
+              <Button className="h-auto px-4 text-sm" type="submit" disabled={!valid}>
                 {t('home.showShowcase')} <ArrowRight size={17} aria-hidden="true" />
-              </button>
+              </Button>
             </div>
             <p id="home-uid-hint" className={showError ? 'home-uid-error' : undefined} aria-live="polite">
               {t(showError ? 'home.uidError' : 'home.guestHint')}
